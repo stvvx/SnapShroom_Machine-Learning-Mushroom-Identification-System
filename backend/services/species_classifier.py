@@ -174,22 +174,34 @@ class SpeciesClassifier:
 
         if len(matching_rows) > 0:
             row = matching_rows.iloc[0]
+            # Convert pandas types to native Python types
+            def convert_value(val):
+                if pd.isna(val):
+                    return None
+                if isinstance(val, (pd._libs.tslibs.nattype.NaTType, type(pd.NaT))):
+                    return None
+                if isinstance(val, (np.integer, np.int64, np.int32)):
+                    return int(val)
+                if isinstance(val, (np.floating, np.float64, np.float32)):
+                    return float(val)
+                return val
+            
             return {
-                "mushroom_id": row.get("mushroom_id"),
-                "scientific_name": row.get("scientific_name"),
-                "english_name": row.get("english_name"),
-                "local_name": row.get("local_name"),
-                "edible": bool(row.get("edible", False)),
-                "poisonous": bool(row.get("poisonous", False)),
-                "location_region": row.get("location_region"),
-                "location_province": row.get("location_province"),
-                "habitat": row.get("habitat"),
-                "cap_color": row.get("cap_color"),
-                "cap_size_cm": row.get("cap_size_cm"),
-                "season_month": row.get("season_month"),
-                "cultivated": bool(row.get("cultivated", False)),
-                "wild": bool(row.get("wild", False)),
-                "notes": row.get("notes")
+                "mushroom_id": str(row.get("mushroom_id")) if pd.notna(row.get("mushroom_id")) else None,
+                "scientific_name": str(row.get("scientific_name")) if pd.notna(row.get("scientific_name")) else None,
+                "english_name": str(row.get("english_name")) if pd.notna(row.get("english_name")) else None,
+                "local_name": str(row.get("local_name")) if pd.notna(row.get("local_name")) else None,
+                "edible": bool(row.get("edible", False)) if pd.notna(row.get("edible")) else False,
+                "poisonous": bool(row.get("poisonous", False)) if pd.notna(row.get("poisonous")) else False,
+                "location_region": str(row.get("location_region")) if pd.notna(row.get("location_region")) else None,
+                "location_province": str(row.get("location_province")) if pd.notna(row.get("location_province")) else None,
+                "habitat": str(row.get("habitat")) if pd.notna(row.get("habitat")) else None,
+                "cap_color": str(row.get("cap_color")) if pd.notna(row.get("cap_color")) else None,
+                "cap_size_cm": float(row.get("cap_size_cm")) if pd.notna(row.get("cap_size_cm")) else None,
+                "season_month": str(row.get("season_month")) if pd.notna(row.get("season_month")) else None,
+                "cultivated": bool(row.get("cultivated", False)) if pd.notna(row.get("cultivated")) else False,
+                "wild": bool(row.get("wild", False)) if pd.notna(row.get("wild")) else False,
+                "notes": str(row.get("notes")) if pd.notna(row.get("notes")) else None
             }
 
         return {}

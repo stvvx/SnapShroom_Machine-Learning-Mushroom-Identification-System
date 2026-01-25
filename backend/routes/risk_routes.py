@@ -1,5 +1,6 @@
 from flask import Blueprint, request, jsonify
 from services.risk_engine import assess_risk
+from utils.json_encoder import safe_jsonify
 
 risk_bp = Blueprint("risk", __name__)
 
@@ -13,4 +14,4 @@ def assess():
         data["habitat_risk"]
     )
 
-    return jsonify(result)
+    return safe_jsonify(result)

@@ -6,6 +6,7 @@ from torchvision import transforms
 from PIL import Image
 from typing import Dict, Optional
 import pandas as pd
+import numpy as np
 
 class ToxicityDetector:
     """
@@ -154,13 +155,24 @@ class ToxicityDetector:
 
         if len(matching_rows) > 0:
             row = matching_rows.iloc[0]
+            # Convert pandas types to native Python types
+            def safe_get(key, default=None):
+                val = row.get(key, default)
+                if pd.isna(val):
+                    return default
+                if isinstance(val, (np.integer, np.int64, np.int32)):
+                    return int(val)
+                if isinstance(val, (np.floating, np.float64, np.float32)):
+                    return float(val)
+                return val
+            
             return {
                 "species": species_name,
-                "edible": bool(row.get("edible", False)),
-                "poisonous": bool(row.get("poisonous", False)),
-                "notes": row.get("notes", ""),
-                "english_name": row.get("english_name", ""),
-                "local_name": row.get("local_name", "")
+                "edible": bool(safe_get("edible", False)),
+                "poisonous": bool(safe_get("poisonous", False)),
+                "notes": str(safe_get("notes", "")),
+                "english_name": str(safe_get("english_name", "")),
+                "local_name": str(safe_get("local_name", ""))
             }
 
         return None

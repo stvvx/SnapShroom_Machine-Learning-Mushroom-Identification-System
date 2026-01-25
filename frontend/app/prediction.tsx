@@ -46,9 +46,18 @@ export default function PredictionScreen() {
       setIsAnalyzing(true);
       setError(null);
 
+      // Clean base64 string (remove data URI prefix if present)
+      let cleanBase64 = imageBase64 as string;
+      if (cleanBase64.includes(',')) {
+        cleanBase64 = cleanBase64.split(',')[1];
+      }
+
+      console.log('Sending image for analysis...');
+      console.log('Image size:', cleanBase64.length, 'characters');
+
       // Send image to backend for analysis
       const result = await analyzeMushroom({
-        image_base64: imageBase64,
+        image_base64: cleanBase64,
         // Add location and date if available
         location: {
           region: "Region 4A", // Default, could be made dynamic
@@ -61,10 +70,23 @@ export default function PredictionScreen() {
         }
       });
 
+      console.log('Analysis result received:', result);
       setResult(result);
     } catch (err: any) {
       console.error('Analysis error:', err);
-      setError(err.message || 'Analysis failed. Please check your connection and try again.');
+      console.error('Error details:', JSON.stringify(err, null, 2));
+      
+      // More detailed error messages
+      let errorMessage = 'Analysis failed. ';
+      if (err.message) {
+        errorMessage += err.message;
+      } else if (err.toString) {
+        errorMessage += err.toString();
+      } else {
+        errorMessage += 'Please check your connection and ensure the backend server is running.';
+      }
+      
+      setError(errorMessage);
     } finally {
       setIsAnalyzing(false);
     }

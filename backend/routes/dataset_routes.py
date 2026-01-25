@@ -4,6 +4,7 @@ from services.species_classifier import species_classifier
 from services.risk_engine import risk_engine
 import os
 import pandas as pd
+from utils.json_encoder import safe_jsonify, make_json_serializable
 
 dataset_bp = Blueprint("dataset", __name__)
 
@@ -35,7 +36,7 @@ def get_dataset_info():
         risk_stats = risk_engine.get_risk_statistics()
         info["risk_statistics"] = risk_stats
 
-        return jsonify(info)
+        return safe_jsonify(info)
 
     except Exception as e:
         return jsonify({"error": str(e)}), 500
@@ -61,7 +62,7 @@ def get_species_list():
                     "local_name": species
                 })
 
-        return jsonify({
+        return safe_jsonify({
             "count": len(detailed_species),
             "species": detailed_species
         })
@@ -82,7 +83,7 @@ def get_species_details(species_name):
             if toxicity_info:
                 info["toxicity_info"] = toxicity_info
 
-            return jsonify(info)
+            return safe_jsonify(info)
         else:
             return jsonify({"error": "Species not found"}), 404
 
@@ -138,7 +139,9 @@ def search_species():
                 df = df[df['edible'] == True]
 
             results = df.to_dict('records')
-            return jsonify({
+            # Convert pandas types to native Python types
+            results = make_json_serializable(results)
+            return safe_jsonify({
                 "count": len(results),
                 "results": results
             })

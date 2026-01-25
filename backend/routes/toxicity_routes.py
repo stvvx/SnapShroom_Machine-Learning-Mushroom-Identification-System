@@ -8,6 +8,7 @@ import io
 import base64
 from flask import current_app
 import os
+from utils.json_encoder import safe_jsonify, make_json_serializable
 
 toxicity_bp = Blueprint("toxicity", __name__)
 
@@ -31,7 +32,7 @@ def detect_toxicity():
         # Detect toxicity
         result = toxicity_detector.detect_toxicity(image)
 
-        return jsonify(result)
+        return safe_jsonify(result)
 
     except Exception as e:
         return jsonify({"error": str(e)}), 500
@@ -42,15 +43,36 @@ def comprehensive_prediction():
     Comprehensive mushroom analysis combining all services.
     """
     try:
+        print("Received prediction request")
+        
         # Handle image upload
+        image = None
         if 'image' in request.files:
+            print("Processing file upload")
             image_file = request.files['image']
             image = Image.open(image_file.stream)
         elif request.json and 'image_base64' in request.json:
-            image_data = base64.b64decode(request.json['image_base64'])
-            image = Image.open(io.BytesIO(image_data))
+            print("Processing base64 image")
+            try:
+                image_base64 = request.json['image_base64']
+                # Remove data URI prefix if present
+                if ',' in image_base64:
+                    image_base64 = image_base64.split(',')[1]
+                
+                print(f"Decoding base64 image (length: {len(image_base64)})")
+                image_data = base64.b64decode(image_base64)
+                print(f"Decoded image size: {len(image_data)} bytes")
+                image = Image.open(io.BytesIO(image_data))
+                print(f"Image opened: {image.size}, mode: {image.mode}")
+            except Exception as e:
+                print(f"Error processing base64 image: {str(e)}")
+                return jsonify({"error": f"Invalid image data: {str(e)}"}), 400
         else:
-            return jsonify({"error": "No image provided"}), 400
+            print("No image found in request")
+            return jsonify({"error": "No image provided. Send 'image' file or 'image_base64' in JSON."}), 400
+        
+        if image is None:
+            return jsonify({"error": "Failed to load image"}), 400
 
         # Get optional context data
         context = request.json or {}
@@ -59,16 +81,24 @@ def comprehensive_prediction():
         user_context = context.get('user_context', {})
 
         # Run all analyses
+        print("Starting species classification...")
         species_result = species_classifier.classify_species(image)
+        print(f"Species result: {species_result.get('species', 'unknown')}")
+        
+        print("Starting toxicity detection...")
         toxicity_result = toxicity_detector.detect_toxicity(image)
+        print(f"Toxicity result: {toxicity_result.get('toxicity_status', 'unknown')}")
+        
         habitat_result = None
         if location:
+            print("Starting habitat analysis...")
             habitat_result = habitat_analyzer.analyze_habitat_suitability(
                 species_result.get('scientific_name', ''),
                 location,
                 current_date
             )
 
+        print("Starting risk assessment...")
         # Comprehensive risk assessment
         risk_assessment = risk_engine.assess_overall_risk(
             species_result,
@@ -76,6 +106,7 @@ def comprehensive_prediction():
             habitat_result,
             user_context
         )
+        print("Analysis complete")
 
         # Compile comprehensive response
         response = {
@@ -90,10 +121,18 @@ def comprehensive_prediction():
             "safety_actions": risk_assessment.get("safety_actions", [])
         }
 
-        return jsonify(response)
+        # Convert to JSON-serializable format (handles pandas/numpy types)
+        return safe_jsonify(response)
 
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        import traceback
+        error_trace = traceback.format_exc()
+        print(f"Error in comprehensive_prediction: {str(e)}")
+        print(f"Traceback: {error_trace}")
+        return jsonify({
+            "error": str(e),
+            "details": error_trace if current_app.config.get('DEBUG') else None
+        }), 500
 
 @toxicity_bp.route("/species", methods=["POST"])
 def classify_species():
@@ -112,7 +151,7 @@ def classify_species():
             return jsonify({"error": "No image provided"}), 400
 
         result = species_classifier.classify_species(image)
-        return jsonify(result)
+        return safe_jsonify(result)
 
     except Exception as e:
         return jsonify({"error": str(e)}), 500
@@ -131,7 +170,7 @@ def analyze_habitat():
         result = habitat_analyzer.analyze_habitat_suitability(
             species_name, location, current_date
         )
-        return jsonify(result)
+        return safe_jsonify(result)
 
     except Exception as e:
         return jsonify({"error": str(e)}), 500
@@ -151,7 +190,7 @@ def assess_risk():
         result = risk_engine.assess_overall_risk(
             species_result, toxicity_result, habitat_result, user_context
         )
-        return jsonify(result)
+        return safe_jsonify(result)
 
     except Exception as e:
         return jsonify({"error": str(e)}), 500

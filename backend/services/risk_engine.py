@@ -1,6 +1,8 @@
 from typing import Dict, List, Optional
 import pandas as pd
+import numpy as np
 import os
+from datetime import datetime
 
 class RiskEngine:
     """
@@ -89,7 +91,7 @@ class RiskEngine:
             "confidence_assessment": self._assess_overall_confidence(
                 species_result, toxicity_result, habitat_result
             ),
-            "last_updated": pd.Timestamp.now().isoformat()
+            "last_updated": datetime.now().isoformat()
         }
 
     def _assess_toxicity_risk(self, toxicity_result: Dict) -> Dict:
@@ -377,16 +379,16 @@ class RiskEngine:
         if self.csv_data is None:
             return {"error": "No data available"}
 
-        total_species = len(self.csv_data)
-        poisonous_species = len(self.csv_data[self.csv_data['poisonous'] == True])
-        edible_species = len(self.csv_data[self.csv_data['edible'] == True])
+        total_species = int(len(self.csv_data))
+        poisonous_species = int(len(self.csv_data[self.csv_data['poisonous'] == True]))
+        edible_species = int(len(self.csv_data[self.csv_data['edible'] == True]))
 
         return {
             "total_species": total_species,
             "poisonous_species": poisonous_species,
             "edible_species": edible_species,
-            "poisonous_percentage": round((poisonous_species / total_species) * 100, 1),
-            "edible_percentage": round((edible_species / total_species) * 100, 1)
+            "poisonous_percentage": float(round((poisonous_species / total_species) * 100, 1)),
+            "edible_percentage": float(round((edible_species / total_species) * 100, 1))
         }
 
 

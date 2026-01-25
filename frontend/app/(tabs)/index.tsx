@@ -7,9 +7,13 @@ import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import { testConnection } from '@/utils/api';
+import { useState } from 'react';
 
 export default function HomeScreen() {
   const router = useRouter();
+  const [connectionStatus, setConnectionStatus] = useState<'idle' | 'testing' | 'connected' | 'failed'>('idle');
+  const [connectionMessage, setConnectionMessage] = useState('');
 
   const handleCameraPress = () => {
     router.push('/camera');
@@ -21,6 +25,25 @@ export default function HomeScreen() {
       'SnapShroom is an AI-powered mushroom identification app that helps you safely identify edible and poisonous mushrooms using your phone camera.\n\nFeatures:\n• Real-time species identification\n• Toxicity analysis\n• Habitat suitability assessment\n• Comprehensive risk evaluation\n• Safety recommendations\n\n⚠️ WARNING: This app is for educational purposes only. Always consult with mycological experts before consuming wild mushrooms.',
       [{ text: 'OK' }]
     );
+  };
+
+  const handleTestConnection = async () => {
+    setConnectionStatus('testing');
+    setConnectionMessage('Testing connection to backend...');
+    
+    try {
+      const connected = await testConnection();
+      if (connected) {
+        setConnectionStatus('connected');
+        setConnectionMessage('✅ Backend connection successful!');
+      } else {
+        setConnectionStatus('failed');
+        setConnectionMessage('❌ Backend not responding. Check if server is running.');
+      }
+    } catch (error: any) {
+      setConnectionStatus('failed');
+      setConnectionMessage(`❌ Connection failed: ${error.message || 'Cannot reach backend server'}`);
+    }
   };
 
   return (
@@ -83,6 +106,35 @@ export default function HomeScreen() {
             </ThemedText>
           </ThemedView>
         </ThemedView>
+      </ThemedView>
+
+      {/* Connection Test */}
+      <ThemedView style={styles.connectionSection}>
+        <Ionicons 
+          name={connectionStatus === 'connected' ? 'checkmark-circle' : 'wifi'} 
+          size={24} 
+          color={connectionStatus === 'connected' ? '#4CAF50' : '#666'} 
+        />
+        <ThemedText style={styles.connectionTitle}>Backend Connection</ThemedText>
+        {connectionMessage ? (
+          <ThemedText style={styles.connectionMessage}>{connectionMessage}</ThemedText>
+        ) : (
+          <ThemedText style={styles.connectionText}>
+            Test if your phone can reach the backend server
+          </ThemedText>
+        )}
+        <TouchableOpacity 
+          style={[
+            styles.testButton, 
+            connectionStatus === 'testing' && styles.testButtonDisabled
+          ]} 
+          onPress={handleTestConnection}
+          disabled={connectionStatus === 'testing'}
+        >
+          <ThemedText style={styles.testButtonText}>
+            {connectionStatus === 'testing' ? 'Testing...' : 'Test Connection'}
+          </ThemedText>
+        </TouchableOpacity>
       </ThemedView>
 
       {/* Safety Warning */}
@@ -298,5 +350,50 @@ const styles = StyleSheet.create({
     color: '#333',
     lineHeight: 20,
     flex: 1,
+  },
+  connectionSection: {
+    backgroundColor: '#E3F2FD',
+    margin: 20,
+    marginTop: 0,
+    borderRadius: 12,
+    padding: 20,
+    borderWidth: 1,
+    borderColor: '#2196F3',
+    alignItems: 'center',
+  },
+  connectionTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#1976D2',
+    marginTop: 10,
+    marginBottom: 10,
+    textAlign: 'center',
+  },
+  connectionText: {
+    fontSize: 14,
+    color: '#666',
+    textAlign: 'center',
+    marginBottom: 15,
+  },
+  connectionMessage: {
+    fontSize: 14,
+    color: '#333',
+    textAlign: 'center',
+    marginBottom: 15,
+    fontWeight: '500',
+  },
+  testButton: {
+    backgroundColor: '#2196F3',
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    borderRadius: 20,
+  },
+  testButtonDisabled: {
+    backgroundColor: '#90CAF9',
+  },
+  testButtonText: {
+    color: 'white',
+    fontSize: 14,
+    fontWeight: '600',
   },
 });

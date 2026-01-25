@@ -2,9 +2,13 @@ from flask import Flask
 from flask_cors import CORS
 import os
 from config import get_config
+from utils.json_encoder import JSONEncoder
 
 def create_app(config_name='development'):
     app = Flask(__name__)
+    
+    # Use custom JSON encoder for pandas/numpy types
+    app.json_encoder = JSONEncoder
 
     # Load configuration
     config_obj = get_config(config_name)

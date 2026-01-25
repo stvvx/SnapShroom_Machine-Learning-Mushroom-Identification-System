@@ -1,4 +1,5 @@
 import pandas as pd
+import numpy as np
 import os
 from typing import Dict, List, Optional, Tuple
 from datetime import datetime
@@ -97,17 +98,28 @@ class HabitatAnalyzer:
 
         if len(matching_rows) > 0:
             row = matching_rows.iloc[0]
+            # Convert pandas types to native Python types
+            def safe_get(key, default=None):
+                val = row.get(key, default)
+                if pd.isna(val):
+                    return default
+                if isinstance(val, (np.integer, np.int64, np.int32)):
+                    return int(val)
+                if isinstance(val, (np.floating, np.float64, np.float32)):
+                    return float(val)
+                return val
+            
             return {
-                "scientific_name": row.get("scientific_name"),
-                "english_name": row.get("english_name"),
-                "local_name": row.get("local_name"),
-                "location_region": row.get("location_region"),
-                "location_province": row.get("location_province"),
-                "habitat": row.get("habitat"),
-                "season_month": row.get("season_month"),
-                "cultivated": bool(row.get("cultivated", False)),
-                "wild": bool(row.get("wild", False)),
-                "poisonous": bool(row.get("poisonous", False))
+                "scientific_name": str(safe_get("scientific_name", "")),
+                "english_name": str(safe_get("english_name", "")),
+                "local_name": str(safe_get("local_name", "")),
+                "location_region": str(safe_get("location_region", "")),
+                "location_province": str(safe_get("location_province", "")),
+                "habitat": str(safe_get("habitat", "")),
+                "season_month": str(safe_get("season_month", "")),
+                "cultivated": bool(safe_get("cultivated", False)),
+                "wild": bool(safe_get("wild", False)),
+                "poisonous": bool(safe_get("poisonous", False))
             }
 
         return None

@@ -1,6 +1,19 @@
 // API configuration and utilities for SnapShroom frontend
 
-const API_BASE_URL = 'http://192.168.1.100:5000'; // Update this with your backend IP
+// IMPORTANT: Update this with your actual backend IP address
+// For phone testing: Use your computer's local IP (e.g., 'http://192.168.1.XXX:5000')
+// Find your IP: Windows: ipconfig | Mac/Linux: ifconfig
+// 
+// STEP 1: Find your IP address:
+//   Windows: Open Command Prompt, type: ipconfig
+//   Look for "IPv4 Address" (e.g., 192.168.1.102)
+//
+// STEP 2: Replace the IP below with YOUR computer's IP address
+// STEP 3: Make sure phone and computer are on the SAME WiFi network
+
+// IMPORTANT: Always use your computer's IP address, NOT localhost!
+// localhost only works on the same device, not from phone
+const API_BASE_URL = 'http://192.168.1.102:5000'; // ⚠️ CHANGE THIS to your computer's IP address!
 
 export interface MushroomAnalysisRequest {
   image_base64: string;
@@ -37,25 +50,62 @@ class ApiService {
 
   async analyzeMushroom(data: MushroomAnalysisRequest): Promise<MushroomAnalysisResponse> {
     try {
+      console.log('API Request URL:', `${this.baseUrl}/api/toxicity/predict`);
+      console.log('Request payload size:', JSON.stringify(data).length, 'bytes');
+      
+      // Create AbortController for timeout (AbortSignal.timeout not available in React Native)
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 60000); // 60 second timeout
+      
       const response = await fetch(`${this.baseUrl}/api/toxicity/predict`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify(data),
+        signal: controller.signal,
       });
+      
+      clearTimeout(timeoutId); // Clear timeout if request succeeds
+
+      console.log('Response status:', response.status, response.statusText);
 
       if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
+        let errorData;
+        try {
+          errorData = await response.json();
+        } catch {
+          const text = await response.text();
+          throw new Error(`Server error (${response.status}): ${text || response.statusText}`);
+        }
         throw new Error(errorData.error || `HTTP ${response.status}: ${response.statusText}`);
       }
 
       const result = await response.json();
+      console.log('Response received successfully');
       return result;
-    } catch (error) {
-      if (error instanceof TypeError && error.message.includes('fetch')) {
-        throw new Error('Unable to connect to the server. Please check your internet connection and ensure the backend server is running.');
+    } catch (error: any) {
+      console.error('API Error:', error);
+      
+      if (error instanceof TypeError) {
+        if (error.message.includes('fetch') || error.message.includes('network') || error.message.includes('Network Request Failed')) {
+          throw new Error(
+            `Cannot connect to backend at ${this.baseUrl}\n\n` +
+            `Troubleshooting steps:\n` +
+            `1. Is backend running? (Run: python app.py in backend folder)\n` +
+            `2. Check IP address in utils/api.ts matches your computer's IP\n` +
+            `3. Find your IP: Windows: ipconfig | Mac/Linux: ifconfig\n` +
+            `4. Phone and computer must be on SAME WiFi network\n` +
+            `5. Test in phone browser: http://YOUR_IP:5000\n` +
+            `6. Check Windows Firewall isn't blocking port 5000`
+          );
+        }
       }
+      
+      if (error.name === 'AbortError' || error.name === 'TimeoutError') {
+        throw new Error('Request timed out after 60 seconds. The analysis is taking too long. Please try again with a clearer image.');
+      }
+      
       throw error;
     }
   }
@@ -102,13 +152,25 @@ class ApiService {
   // Test connection to backend
   async testConnection(): Promise<boolean> {
     try {
+      console.log('Testing connection to:', this.baseUrl);
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 5000);
+      
       const response = await fetch(`${this.baseUrl}/`, {
-        timeout: 5000,
+        method: 'GET',
+        signal: controller.signal,
       });
-      return response.ok;
-    } catch (error) {
+      
+      clearTimeout(timeoutId);
+      const isOk = response.ok;
+      console.log('Connection test result:', isOk, response.status);
+      return isOk;
+    } catch (error: any) {
       console.error('Connection test failed:', error);
-      return false;
+      if (error.name === 'AbortError') {
+        throw new Error('Connection timeout - server not responding');
+      }
+      throw new Error(`Cannot connect: ${error.message || 'Network error'}`);
     }
   }
 }

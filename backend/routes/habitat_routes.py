@@ -1,5 +1,6 @@
 from flask import Blueprint, request, jsonify
 from services.habitat_analyzer import analyze_habitat
+from utils.json_encoder import safe_jsonify
 
 habitat_bp = Blueprint("habitat", __name__)
 
@@ -13,4 +14,4 @@ def analyze():
         data["habitat_type"]
     )
 
-    return jsonify(result)
+    return safe_jsonify(result)
