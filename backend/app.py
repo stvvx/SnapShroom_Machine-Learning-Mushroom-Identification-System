@@ -1,12 +1,19 @@
 from flask import Flask
 from flask_cors import CORS
+from flask_pymongo import PyMongo
+from flask_jwt_extended import JWTManager
 import os
+
 from config import get_config
 from utils.json_encoder import JSONEncoder
 
+# Initialize extensions (no app yet)
+mongo = PyMongo()
+jwt = JWTManager()
+
 def create_app(config_name='development'):
     app = Flask(__name__)
-    
+
     # Use custom JSON encoder for pandas/numpy types
     app.json_encoder = JSONEncoder
 
@@ -17,24 +24,33 @@ def create_app(config_name='development'):
     # Enable CORS
     CORS(app, origins=config_obj.CORS_ORIGINS)
 
-    # Create upload folder if it doesn't exist
+    # Initialize extensions with app
+    mongo.init_app(app)
+    jwt.init_app(app)
+
+    # Make mongo accessible everywhere
+    app.mongo = mongo
+
+    # Create required directories
     os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
     os.makedirs(app.config['MODEL_PATH'], exist_ok=True)
 
-    # Register blueprints
+    # ---- Register Blueprints ----
+    from routes.auth_routes import auth_bp
     from routes.dataset_routes import dataset_bp
     from routes.species_routes import species_bp
     from routes.toxicity_routes import toxicity_bp
     from routes.habitat_routes import habitat_bp
     from routes.risk_routes import risk_bp
 
+    app.register_blueprint(auth_bp, url_prefix="/api/auth")
     app.register_blueprint(dataset_bp, url_prefix="/api/dataset")
     app.register_blueprint(species_bp, url_prefix="/api/species")
     app.register_blueprint(toxicity_bp, url_prefix="/api/toxicity")
     app.register_blueprint(habitat_bp, url_prefix="/api/habitat")
     app.register_blueprint(risk_bp, url_prefix="/api/risk")
 
-    # Health check endpoint
+    # ---- Health Check ----
     @app.route("/")
     def home():
         return {
@@ -48,6 +64,7 @@ def create_app(config_name='development'):
         }
 
     return app
+
 
 # Create app instance
 app = create_app()
