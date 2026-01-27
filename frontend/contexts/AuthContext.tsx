@@ -3,13 +3,22 @@ import React, { createContext, useState, useContext, ReactNode, useEffect } from
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as SecureStore from 'expo-secure-store';
 import { Platform, Alert } from 'react-native';
+import axios, { AxiosError } from 'axios';
+
+// API Configuration
+const API_URL = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:5000/api';
+console.log('AuthContext: Using API URL:', API_URL);
 
 // User type definition
 export interface User {
   id: string;
   email: string;
+  username: string;
   name: string;
   avatar?: string;
+  email_verified?: boolean;
+  role?: string;
+  created_at?: string;
   subscription?: {
     type: 'free' | 'premium' | 'pro';
     expiresAt?: Date;
@@ -27,9 +36,12 @@ export interface LoginCredentials {
 }
 
 // Signup data type
-export interface SignupData extends LoginCredentials {
-  name: string;
-  confirmPassword: string;
+export interface SignupData {
+  email: string;
+  password: string;
+  username: string;
+  name?: string;
+  confirmPassword?: string;
 }
 
 // Auth context type
@@ -44,6 +56,7 @@ interface AuthContextType {
   forgotPassword: (email: string) => Promise<void>;
   clearError: () => void;
   error: string | null;
+  accessToken: string | null;
 }
 
 // Create context with default values
@@ -52,147 +65,56 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 // Storage keys
 const STORAGE_KEYS = {
   USER_TOKEN: 'snapshroom_user_token',
+  REFRESH_TOKEN: 'snapshroom_refresh_token',
   USER_DATA: 'snapshroom_user_data',
   SESSION_EXPIRY: 'snapshroom_session_expiry',
 };
 
-// Secure storage (for sensitive data)
-const SECURE_STORAGE_KEYS = {
-  REFRESH_TOKEN: 'snapshroom_refresh_token',
-};
-
-// Mock API functions (replace with your actual API calls)
-const mockApi = {
-  login: async (credentials: LoginCredentials): Promise<{ user: User; token: string; refreshToken: string }> => {
-    // Simulate API delay
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    
-    // Mock validation
-    if (credentials.email === 'demo@snapshroom.com' && credentials.password === 'password123') {
-      return {
-        user: {
-          id: '1',
-          email: credentials.email,
-          name: 'Demo User',
-          subscription: { type: 'free' },
-          preferences: { notifications: true, emailUpdates: true },
-        },
-        token: 'mock_jwt_token',
-        refreshToken: 'mock_refresh_token',
-      };
-    }
-    throw new Error('Invalid email or password');
+// Configure axios instance
+const api = axios.create({
+  baseURL: API_URL,
+  timeout: 10000,
+  headers: {
+    'Content-Type': 'application/json',
   },
-
-  signup: async (data: SignupData): Promise<{ user: User; token: string; refreshToken: string }> => {
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    
-    if (data.password !== data.confirmPassword) {
-      throw new Error('Passwords do not match');
-    }
-    
-    return {
-      user: {
-        id: Date.now().toString(),
-        email: data.email,
-        name: data.name,
-        subscription: { type: 'free' },
-        preferences: { notifications: true, emailUpdates: true },
-      },
-      token: 'mock_jwt_token_new',
-      refreshToken: 'mock_refresh_token_new',
-    };
-  },
-
-  forgotPassword: async (email: string): Promise<void> => {
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    
-    if (!email.includes('@')) {
-      throw new Error('Invalid email address');
-    }
-    
-    // Mock: Would send password reset email here
-    return;
-  },
-
-  validateToken: async (token: string): Promise<User> => {
-    await new Promise(resolve => setTimeout(resolve, 500));
-    
-    // Mock token validation
-    if (token && token.startsWith('mock_jwt_token')) {
-      return {
-        id: '1',
-        email: 'demo@snapshroom.com',
-        name: 'Demo User',
-        subscription: { type: 'free' },
-        preferences: { notifications: true, emailUpdates: true },
-      };
-    }
-    throw new Error('Invalid token');
-  },
-
-  refreshToken: async (refreshToken: string): Promise<{ token: string; refreshToken: string }> => {
-    await new Promise(resolve => setTimeout(resolve, 500));
-    
-    if (refreshToken && refreshToken.startsWith('mock_refresh_token')) {
-      return {
-        token: 'mock_jwt_token_refreshed',
-        refreshToken: 'mock_refresh_token_new',
-      };
-    }
-    throw new Error('Invalid refresh token');
-  },
-};
-
-// Storage helper functions
-const storage = {
-  // Store data securely based on platform
-  setSecureItem: async (key: string, value: string) => {
-    if (Platform.OS === 'web') {
-      await AsyncStorage.setItem(key, value);
-    } else {
-      await SecureStore.setItemAsync(key, value);
-    }
-  },
-
-  getSecureItem: async (key: string) => {
-    if (Platform.OS === 'web') {
-      return await AsyncStorage.getItem(key);
-    } else {
-      return await SecureStore.getItemAsync(key);
-    }
-  },
-
-  removeSecureItem: async (key: string) => {
-    if (Platform.OS === 'web') {
-      await AsyncStorage.removeItem(key);
-    } else {
-      await SecureStore.deleteItemAsync(key);
-    }
-  },
-};
+});
 
 // Auth Provider Component
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
+  const [accessToken, setAccessToken] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   // Initialize auth state
   const initializeAuth = async () => {
     try {
+      console.log('Initializing auth...');
       const token = await AsyncStorage.getItem(STORAGE_KEYS.USER_TOKEN);
-      const userData = await AsyncStorage.getItem(STORAGE_KEYS.USER_DATA);
+      const userDataStr = await AsyncStorage.getItem(STORAGE_KEYS.USER_DATA);
       
-      if (token && userData) {
-        // Validate token with backend (optional)
+      if (token && userDataStr) {
+        console.log('Found stored auth data');
+        const userData = JSON.parse(userDataStr);
+        
+        // Set user and token
+        setUser(userData);
+        setAccessToken(token);
+        
+        // Set default axios header
+        api.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+        
+        // Optional: Validate token with backend
         try {
-          const validUser = await mockApi.validateToken(token);
-          setUser(validUser);
+          // You could add a token validation endpoint
+          // await api.get('/auth/validate');
+          console.log('Auth initialized successfully');
         } catch (validationError) {
-          // Token is invalid, clear storage
+          console.log('Token validation failed, clearing auth data');
           await clearAuthData();
         }
+      } else {
+        console.log('No stored auth data found');
       }
     } catch (err) {
       console.error('Error initializing auth:', err);
@@ -206,13 +128,16 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     try {
       await AsyncStorage.multiRemove([
         STORAGE_KEYS.USER_TOKEN,
+        STORAGE_KEYS.REFRESH_TOKEN,
         STORAGE_KEYS.USER_DATA,
         STORAGE_KEYS.SESSION_EXPIRY,
       ]);
       
-      await storage.removeSecureItem(SECURE_STORAGE_KEYS.REFRESH_TOKEN);
-      
       setUser(null);
+      setAccessToken(null);
+      delete api.defaults.headers.common['Authorization'];
+      
+      console.log('Auth data cleared');
     } catch (err) {
       console.error('Error clearing auth data:', err);
     }
@@ -221,20 +146,27 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   // Store auth data
   const storeAuthData = async (token: string, refreshToken: string, userData: User) => {
     try {
-      // Store token and user data
-      await AsyncStorage.setItem(STORAGE_KEYS.USER_TOKEN, token);
-      await AsyncStorage.setItem(STORAGE_KEYS.USER_DATA, JSON.stringify(userData));
+      console.log('Storing auth data for user:', userData.email);
       
-      // Store refresh token securely
-      await storage.setSecureItem(SECURE_STORAGE_KEYS.REFRESH_TOKEN, refreshToken);
+      // Store tokens and user data
+      await AsyncStorage.setItem(STORAGE_KEYS.USER_TOKEN, token);
+      await AsyncStorage.setItem(STORAGE_KEYS.REFRESH_TOKEN, refreshToken);
+      await AsyncStorage.setItem(STORAGE_KEYS.USER_DATA, JSON.stringify(userData));
       
       // Set session expiry (24 hours from now)
       const expiry = new Date();
       expiry.setHours(expiry.getHours() + 24);
       await AsyncStorage.setItem(STORAGE_KEYS.SESSION_EXPIRY, expiry.toISOString());
       
+      // Update state
       setUser(userData);
+      setAccessToken(token);
       setError(null);
+      
+      // Set default axios header for future requests
+      api.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+      
+      console.log('Auth data stored successfully');
     } catch (err) {
       console.error('Error storing auth data:', err);
       throw new Error('Failed to save authentication data');
@@ -247,11 +179,57 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     setError(null);
     
     try {
-      const response = await mockApi.login(credentials);
-      await storeAuthData(response.token, response.refreshToken, response.user);
+      console.log('Attempting login for:', credentials.email);
+      
+      const response = await api.post('/auth/login', {
+        email: credentials.email.trim().toLowerCase(),
+        password: credentials.password
+      });
+      
+      console.log('Login response:', response.data);
+      
+      if (response.data.success && response.data.access_token) {
+        const userData: User = {
+          id: response.data.user.id,
+          email: response.data.user.email,
+          username: response.data.user.username,
+          name: response.data.user.name,
+          email_verified: response.data.user.email_verified,
+          role: response.data.user.role,
+          created_at: response.data.user.created_at
+        };
+        
+        await storeAuthData(
+          response.data.access_token,
+          response.data.refresh_token || response.data.access_token,
+          userData
+        );
+        
+        console.log('Login successful');
+      } else {
+        throw new Error(response.data.message || 'Login failed');
+      }
     } catch (err: any) {
-      setError(err.message || 'Login failed. Please try again.');
-      throw err;
+      console.error('Login error:', err);
+      
+      let errorMessage = 'Login failed. Please try again.';
+      
+      if (axios.isAxiosError(err)) {
+        const axiosError = err as AxiosError;
+        if (axiosError.response) {
+          // Server responded with error status
+          const errorData = axiosError.response.data as any;
+          errorMessage = errorData.message || errorData.error || errorMessage;
+        } else if (axiosError.request) {
+          // Request was made but no response
+          errorMessage = 'Unable to connect to server. Please check your internet connection.';
+        }
+      } else if (err.message) {
+        errorMessage = err.message;
+      }
+      
+      setError(errorMessage);
+      throw new Error(errorMessage);
     } finally {
       setIsLoading(false);
     }
@@ -263,11 +241,59 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     setError(null);
     
     try {
-      const response = await mockApi.signup(data);
-      await storeAuthData(response.token, response.refreshToken, response.user);
+      console.log('Attempting signup for:', data.email);
+      console.log('Full signup data:', data);
+      
+      const response = await api.post('/auth/register', {
+        email: data.email.trim().toLowerCase(),
+        password: data.password,
+        username: data.username.trim(),
+        name: data.name || data.username.trim(),
+        confirm_password: data.confirmPassword
+      });
+      
+      console.log('Signup response:', response.data);
+      
+      if (response.data.success) {
+        // Auto-login after successful registration
+        console.log('Registration successful, attempting auto-login...');
+        await login({
+          email: data.email,
+          password: data.password
+        });
+        
+        console.log('Signup and auto-login successful');
+      } else {
+        throw new Error(response.data.message || 'Registration failed');
+      }
     } catch (err: any) {
-      setError(err.message || 'Signup failed. Please try again.');
-      throw err;
+      console.error('Signup error:', err);
+      
+      let errorMessage = 'Registration failed. Please try again.';
+      
+      if (axios.isAxiosError(err)) {
+        const axiosError = err as AxiosError;
+        if (axiosError.response) {
+          const errorData = axiosError.response.data as any;
+          errorMessage = errorData.message || errorData.error || errorMessage;
+          
+          // Handle specific backend errors
+          if (axiosError.response.status === 409) {
+            if (errorData.message?.includes('Email')) {
+              errorMessage = 'Email already registered. Please use a different email or login.';
+            } else if (errorData.message?.includes('Username')) {
+              errorMessage = 'Username already taken. Please choose a different username.';
+            }
+          }
+        } else if (axiosError.request) {
+          errorMessage = 'Unable to connect to server. Please check your internet connection.';
+        }
+      } else if (err.message) {
+        errorMessage = err.message;
+      }
+      
+      setError(errorMessage);
+      throw new Error(errorMessage);
     } finally {
       setIsLoading(false);
     }
@@ -278,12 +304,22 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     setIsLoading(true);
     
     try {
+      console.log('Logging out...');
+      
       // Optional: Call backend logout endpoint
-      // await api.logout();
+      if (accessToken) {
+        try {
+          await api.post('/auth/logout');
+        } catch (logoutError) {
+          console.log('Backend logout failed, continuing with client logout');
+        }
+      }
       
       // Clear local storage
       await clearAuthData();
       setError(null);
+      
+      console.log('Logout successful');
     } catch (err) {
       console.error('Logout error:', err);
     } finally {
@@ -298,17 +334,39 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }
     
     try {
-      const updatedUser = { ...user, ...updates };
-      setUser(updatedUser);
+      console.log('Updating user profile...');
       
-      // Update stored user data
-      await AsyncStorage.setItem(STORAGE_KEYS.USER_DATA, JSON.stringify(updatedUser));
+      // Update on backend
+      const response = await api.put('/auth/profile', updates);
       
-      // Optional: Call backend update endpoint
-      // await api.updateUserProfile(updates);
+      if (response.data.success) {
+        const updatedUser = { ...user, ...response.data.user };
+        
+        // Update local state
+        setUser(updatedUser);
+        
+        // Update stored user data
+        await AsyncStorage.setItem(STORAGE_KEYS.USER_DATA, JSON.stringify(updatedUser));
+        
+        console.log('Profile updated successfully');
+      } else {
+        throw new Error(response.data.message || 'Failed to update profile');
+      }
     } catch (err: any) {
-      setError(err.message || 'Failed to update profile');
-      throw err;
+      console.error('Update profile error:', err);
+      
+      let errorMessage = 'Failed to update profile';
+      
+      if (axios.isAxiosError(err)) {
+        const axiosError = err as AxiosError;
+        if (axiosError.response) {
+          const errorData = axiosError.response.data as any;
+          errorMessage = errorData.message || errorData.error || errorMessage;
+        }
+      }
+      
+      setError(errorMessage);
+      throw new Error(errorMessage);
     }
   };
 
@@ -318,15 +376,36 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     setError(null);
     
     try {
-      await mockApi.forgotPassword(email);
-      Alert.alert(
-        'Password Reset',
-        'If an account exists with this email, you will receive password reset instructions.',
-        [{ text: 'OK' }]
-      );
+      console.log('Requesting password reset for:', email);
+      
+      const response = await api.post('/auth/forgot-password', { email });
+      
+      if (response.data.success) {
+        Alert.alert(
+          'Password Reset',
+          'If an account exists with this email, you will receive password reset instructions shortly.',
+          [{ text: 'OK' }]
+        );
+      } else {
+        throw new Error(response.data.message || 'Failed to send reset email');
+      }
     } catch (err: any) {
-      setError(err.message || 'Failed to send reset email');
-      throw err;
+      console.error('Forgot password error:', err);
+      
+      let errorMessage = 'Failed to send reset email. Please try again.';
+      
+      if (axios.isAxiosError(err)) {
+        const axiosError = err as AxiosError;
+        if (axiosError.response) {
+          const errorData = axiosError.response.data as any;
+          errorMessage = errorData.message || errorData.error || errorMessage;
+        } else if (axiosError.request) {
+          errorMessage = 'Unable to connect to server. Please check your internet connection.';
+        }
+      }
+      
+      setError(errorMessage);
+      throw new Error(errorMessage);
     } finally {
       setIsLoading(false);
     }
@@ -335,24 +414,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   // Clear error
   const clearError = () => {
     setError(null);
-  };
-
-  // Refresh token (for automatic session renewal)
-  const refreshAuthToken = async () => {
-    try {
-      const refreshToken = await storage.getSecureItem(SECURE_STORAGE_KEYS.REFRESH_TOKEN);
-      
-      if (refreshToken) {
-        const response = await mockApi.refreshToken(refreshToken);
-        const userData = user ? user : JSON.parse(await AsyncStorage.getItem(STORAGE_KEYS.USER_DATA) || '{}');
-        
-        await storeAuthData(response.token, response.refreshToken, userData);
-        return true;
-      }
-    } catch (err) {
-      console.error('Token refresh failed:', err);
-    }
-    return false;
   };
 
   // Check session expiry
@@ -364,14 +425,12 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         const expiry = new Date(expiryString);
         const now = new Date();
         
-        // If session expired, try to refresh
-        if (expiry < now) {
-          const refreshed = await refreshAuthToken();
-          
-          if (!refreshed) {
-            // Refresh failed, logout user
-            await clearAuthData();
-          }
+        // If session expired within last hour, try to refresh
+        const oneHourAgo = new Date(now.getTime() - (60 * 60 * 1000));
+        
+        if (expiry < oneHourAgo) {
+          console.log('Session expired, attempting refresh...');
+          await refreshAuthToken();
         }
       }
     } catch (err) {
@@ -379,15 +438,89 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }
   };
 
-  // Effects
+  // Refresh token
+  const refreshAuthToken = async () => {
+    try {
+      const refreshToken = await AsyncStorage.getItem(STORAGE_KEYS.REFRESH_TOKEN);
+      
+      if (refreshToken && user) {
+        console.log('Refreshing auth token...');
+        
+        const response = await api.post('/auth/refresh', {
+          refresh_token: refreshToken
+        });
+        
+        if (response.data.success && response.data.access_token) {
+          await storeAuthData(
+            response.data.access_token,
+            response.data.refresh_token || response.data.access_token,
+            user
+          );
+          
+          console.log('Token refreshed successfully');
+          return true;
+        }
+      }
+    } catch (err) {
+      console.error('Token refresh failed:', err);
+      // If refresh fails, logout user
+      await clearAuthData();
+    }
+    return false;
+  };
+
+  // Add axios interceptor for token refresh
+  useEffect(() => {
+    const requestInterceptor = api.interceptors.request.use(
+      (config) => {
+        // You could add request logging here
+        return config;
+      },
+      (error) => {
+        return Promise.reject(error);
+      }
+    );
+
+    const responseInterceptor = api.interceptors.response.use(
+      (response) => response,
+      async (error) => {
+        const originalRequest = error.config;
+        
+        // If error is 401 and we haven't tried refreshing yet
+        if (error.response?.status === 401 && !originalRequest._retry) {
+          originalRequest._retry = true;
+          
+          try {
+            const refreshed = await refreshAuthToken();
+            if (refreshed) {
+              // Retry the original request with new token
+              return api(originalRequest);
+            }
+          } catch (refreshError) {
+            // Refresh failed, logout user
+            await clearAuthData();
+          }
+        }
+        
+        return Promise.reject(error);
+      }
+    );
+
+    return () => {
+      api.interceptors.request.eject(requestInterceptor);
+      api.interceptors.response.eject(responseInterceptor);
+    };
+  }, []);
+
+  // Initialize auth on mount
   useEffect(() => {
     initializeAuth();
   }, []);
 
-  // Check session every 5 minutes
+  // Check session every 30 minutes
   useEffect(() => {
     if (user) {
-      const interval = setInterval(checkSessionExpiry, 5 * 60 * 1000);
+      const interval = setInterval(checkSessionExpiry, 30 * 60 * 1000);
       return () => clearInterval(interval);
     }
   }, [user]);
@@ -396,7 +529,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const contextValue: AuthContextType = {
     user,
     isLoading,
-    isAuthenticated: !!user,
+    isAuthenticated: !!user && !!accessToken,
     login,
     signup,
     logout,
@@ -404,6 +537,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     forgotPassword,
     clearError,
     error,
+    accessToken,
   };
 
   return (
@@ -444,4 +578,13 @@ export const withAuth = <P extends object>(Component: React.ComponentType<P>) =>
   };
   
   return AuthenticatedComponent;
+};
+
+// Utility function to get auth headers
+export const getAuthHeaders = async () => {
+  const token = await AsyncStorage.getItem(STORAGE_KEYS.USER_TOKEN);
+  return {
+    'Authorization': `Bearer ${token}`,
+    'Content-Type': 'application/json',
+  };
 };

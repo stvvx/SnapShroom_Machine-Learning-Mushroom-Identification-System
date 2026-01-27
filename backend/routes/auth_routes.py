@@ -5,9 +5,7 @@ from flask_jwt_extended import (
     create_access_token,
     create_refresh_token,
     get_jwt,
-    set_access_cookies,
-    set_refresh_cookies,
-    unset_jwt_cookies
+    decode_token
 )
 from datetime import datetime, timedelta
 from bson import ObjectId
@@ -40,142 +38,62 @@ def validate_username(username):
         return False, "Username can only contain letters, numbers, underscores, and hyphens"
     return True, ""
 
-# Auth service functions (replacing missing imports)
-def register_user(mongo, username, email, password, name=None):
-    """Register a new user"""
-    users = mongo.db.users
-    
-    # Create user document
-    user_data = {
-        "username": username,
-        "email": email,
-        "name": name or username,
-        "password_hash": generate_password_hash(password),
-        "created_at": datetime.utcnow(),
-        "updated_at": datetime.utcnow(),
-        "is_active": True,
-        "is_verified": False,
-        "subscription": {"type": "free"},
-        "preferences": {
-            "notifications": True,
-            "email_updates": True
-        }
-    }
-    
-    try:
-        result = users.insert_one(user_data)
-        return result.inserted_id
-    except Exception as e:
-        current_app.logger.error(f"Error registering user: {str(e)}")
-        return None
-
-def login_user(mongo, email, password):
-    """Authenticate user"""
-    try:
-        user = mongo.db.users.find_one({"email": email, "is_active": True})
-        if user and check_password_hash(user["password_hash"], password):
-            # Update last login
-            mongo.db.users.update_one(
-                {"_id": user["_id"]},
-                {"$set": {"last_login": datetime.utcnow()}}
-            )
-            return user["_id"]
-        return None
-    except Exception as e:
-        current_app.logger.error(f"Error logging in user: {str(e)}")
-        return None
-
-def get_user_by_id(mongo, user_id):
-    """Get user by ID"""
-    try:
-        if isinstance(user_id, str):
-            user_id = ObjectId(user_id)
-        user = mongo.db.users.find_one({"_id": user_id, "is_active": True})
-        
-        # Remove sensitive data
-        if user and 'password_hash' in user:
-            del user['password_hash']
-        return user
-    except Exception as e:
-        current_app.logger.error(f"Error getting user by ID: {str(e)}")
-        return None
-
-def update_user_profile(mongo, user_id, update_data):
-    """Update user profile"""
-    try:
-        if isinstance(user_id, str):
-            user_id = ObjectId(user_id)
-        
-        update_data['updated_at'] = datetime.utcnow()
-        
-        result = mongo.db.users.update_one(
-            {"_id": user_id},
-            {"$set": update_data}
-        )
-        return result.modified_count > 0
-    except Exception as e:
-        current_app.logger.error(f"Error updating user profile: {str(e)}")
-        return False
-
-def hash_password(password):
-    """Hash password"""
-    return generate_password_hash(password)
-
-def verify_password(hashed_password, password):
-    """Verify password"""
-    return check_password_hash(hashed_password, password)
-
-def generate_token(user_id, expires_delta=None):
-    """Generate JWT access token"""
-    if expires_delta is None:
-        expires_delta = timedelta(hours=1)
-    return create_access_token(identity=str(user_id), expires_delta=expires_delta)
-
-def generate_refresh_token(user_id):
-    """Generate refresh token"""
-    return create_refresh_token(identity=str(user_id))
-
-def verify_refresh_token(refresh_token):
-    """Verify refresh token - simplified version"""
-    try:
-        from flask_jwt_extended import decode_token
-        decoded = decode_token(refresh_token)
-        return decoded['sub']
-    except Exception as e:
-        current_app.logger.error(f"Error verifying refresh token: {str(e)}")
-        return None
-
 @auth_bp.route("/register", methods=["POST"])
 def register():
-    data = request.json
-    mongo = current_app.mongo
-
-    # Validate required fields
-    required_fields = ["username", "email", "password"]
-    for field in required_fields:
-        if field not in data:
-            return jsonify({"error": f"Missing required field: {field}"}), 400
-
-    username = data["username"].strip()
-    email = data["email"].strip().lower()
-    password = data["password"]
-
-    # Validate input
-    username_valid, username_error = validate_username(username)
-    if not username_valid:
-        return jsonify({"error": username_error}), 400
-
-    if not validate_email(email):
-        return jsonify({"error": "Invalid email format"}), 400
-
-    password_valid, password_error = validate_password(password)
-    if not password_valid:
-        return jsonify({"error": password_error}), 400
-
-    # Optional fields
-    name = data.get("name", username)
-    
+    """Register a new user"""
     try:
+        data = request.get_json()
+        mongo = current_app.mongo
+        
+        if not data:
+            return jsonify({
+                "success": False,
+                "message": "No data provided"
+            }), 400
+
+        # Validate required fields
+        required_fields = ["email", "password", "username"]
+        for field in required_fields:
+            if field not in data or not data[field].strip():
+                return jsonify({
+                    "success": False,
+                    "message": f"Missing required field: {field}"
+                }), 400
+
+        username = data["username"].strip()
+        email = data["email"].strip().lower()
+        password = data["password"]
+        name = data.get("name", username)
+        confirm_password = data.get("confirm_password")
+
+        # Validate input
+        username_valid, username_error = validate_username(username)
+        if not username_valid:
+            return jsonify({
+                "success": False,
+                "message": username_error
+            }), 400
+
+        if not validate_email(email):
+            return jsonify({
+                "success": False,
+                "message": "Invalid email format"
+            }), 400
+
+        password_valid, password_error = validate_password(password)
+        if not password_valid:
+            return jsonify({
+                "success": False,
+                "message": password_error
+            }), 400
+
+        # Check password confirmation if provided
+        if confirm_password and password != confirm_password:
+            return jsonify({
+                "success": False,
+                "message": "Passwords do not match"
+            }), 400
+
         # Check if user already exists
         existing_user = mongo.db.users.find_one({
             "$or": [
@@ -185,26 +103,54 @@ def register():
         })
         
         if existing_user:
-            field = "email" if existing_user["email"] == email else "username"
-            return jsonify({"error": f"{field.capitalize()} already exists"}), 409
+            field = "email" if existing_user.get("email") == email else "username"
+            return jsonify({
+                "success": False,
+                "message": f"{field.capitalize()} already exists"
+            }), 409
 
-        # Register user
-        user_id = register_user(mongo, username, email, password, name)
+        # Create user document
+        user_data = {
+            "username": username,
+            "email": email,
+            "name": name,
+            "password_hash": generate_password_hash(password),
+            "created_at": datetime.utcnow(),
+            "updated_at": datetime.utcnow(),
+            "is_active": True,
+            "is_verified": False,
+            "role": "user",
+            "subscription": {"type": "free"},
+            "preferences": {
+                "notifications": True,
+                "email_updates": True
+            },
+            "last_login": None,
+            "avatar": None,
+            "identification_history": []
+        }
         
-        if not user_id:
-            return jsonify({"error": "Registration failed"}), 500
-
+        # Insert user
+        result = mongo.db.users.insert_one(user_data)
+        user_id = result.inserted_id
+        
         # Generate tokens
-        access_token = create_access_token(identity=str(user_id))
+        access_token = create_access_token(
+            identity=str(user_id),
+            expires_delta=timedelta(hours=24)
+        )
         refresh_token = create_refresh_token(identity=str(user_id))
 
         # Get user data (excluding password)
         user = mongo.db.users.find_one({"_id": user_id})
-        user_data = {
+        
+        user_data_response = {
             "id": str(user["_id"]),
             "username": user["username"],
             "email": user["email"],
-            "name": user.get("name", user["username"]),
+            "name": user["name"],
+            "email_verified": user.get("is_verified", False),
+            "role": user.get("role", "user"),
             "created_at": user["created_at"].isoformat() if user.get("created_at") else None,
             "avatar": user.get("avatar"),
             "subscription": user.get("subscription", {"type": "free"}),
@@ -214,128 +160,193 @@ def register():
             })
         }
 
-        response = jsonify({
+        return jsonify({
+            "success": True,
             "message": "User registered successfully",
-            "user": user_data,
+            "user": user_data_response,
             "access_token": access_token,
             "refresh_token": refresh_token
         }), 201
 
-        # Set HTTP-only cookies (optional, for web)
-        # set_access_cookies(response, access_token)
-        # set_refresh_cookies(response, refresh_token)
-        
-        return response
-
     except Exception as e:
         current_app.logger.error(f"Registration error: {str(e)}")
-        return jsonify({"error": "Internal server error"}), 500
+        return jsonify({
+            "success": False,
+            "message": "Internal server error",
+            "error": str(e)
+        }), 500
 
 
 @auth_bp.route("/login", methods=["POST"])
 def login():
-    data = request.json
-    mongo = current_app.mongo
-
-    # Validate required fields
-    if not data or "email" not in data or "password" not in data:
-        return jsonify({"error": "Missing email or password"}), 400
-
-    email = data["email"].strip().lower()
-    password = data["password"]
-
+    """Authenticate user"""
     try:
-        # Attempt login
-        user_id = login_user(mongo, email, password)
+        data = request.get_json()
+        mongo = current_app.mongo
+        
+        if not data:
+            return jsonify({
+                "success": False,
+                "message": "No data provided"
+            }), 400
 
-        if not user_id:
-            return jsonify({"error": "Invalid credentials"}), 401
+        # Validate required fields
+        if "email" not in data or "password" not in data:
+            return jsonify({
+                "success": False,
+                "message": "Missing email or password"
+            }), 400
+
+        email = data["email"].strip().lower()
+        password = data["password"]
+
+        # Find user
+        user = mongo.db.users.find_one({
+            "email": email,
+            "is_active": True
+        })
+        
+        if not user:
+            return jsonify({
+                "success": False,
+                "message": "Invalid email or password"
+            }), 401
+
+        # Check password
+        if not check_password_hash(user["password_hash"], password):
+            return jsonify({
+                "success": False,
+                "message": "Invalid email or password"
+            }), 401
+
+        # Update last login
+        mongo.db.users.update_one(
+            {"_id": user["_id"]},
+            {"$set": {"last_login": datetime.utcnow()}}
+        )
 
         # Generate tokens
-        access_token = create_access_token(identity=str(user_id))
-        refresh_token = create_refresh_token(identity=str(user_id))
+        access_token = create_access_token(
+            identity=str(user["_id"]),
+            expires_delta=timedelta(hours=24)
+        )
+        refresh_token = create_refresh_token(identity=str(user["_id"]))
 
-        # Get user data (excluding password)
-        user = mongo.db.users.find_one({"_id": user_id})
-        if not user:
-            return jsonify({"error": "User not found"}), 404
-
+        # Prepare user data
         user_data = {
             "id": str(user["_id"]),
             "username": user["username"],
             "email": user["email"],
             "name": user.get("name", user["username"]),
+            "email_verified": user.get("is_verified", False),
+            "role": user.get("role", "user"),
             "created_at": user["created_at"].isoformat() if user.get("created_at") else None,
             "avatar": user.get("avatar"),
             "subscription": user.get("subscription", {"type": "free"}),
             "preferences": user.get("preferences", {
                 "notifications": True,
                 "email_updates": True
-            })
+            }),
+            "last_login": user.get("last_login", ""),
+            "is_active": user.get("is_active", True)
         }
 
-        response = jsonify({
+        return jsonify({
+            "success": True,
             "message": "Login successful",
             "user": user_data,
             "access_token": access_token,
             "refresh_token": refresh_token
         }), 200
 
-        # Set HTTP-only cookies (optional, for web)
-        # set_access_cookies(response, access_token)
-        # set_refresh_cookies(response, refresh_token)
-        
-        return response
-
     except Exception as e:
         current_app.logger.error(f"Login error: {str(e)}")
-        return jsonify({"error": "Internal server error"}), 500
+        return jsonify({
+            "success": False,
+            "message": "Internal server error",
+            "error": str(e)
+        }), 500
 
 
 @auth_bp.route("/refresh", methods=["POST"])
 def refresh():
     """Refresh access token using refresh token"""
     try:
-        data = request.json
+        data = request.get_json()
         if not data or "refresh_token" not in data:
-            return jsonify({"error": "Refresh token required"}), 400
+            return jsonify({
+                "success": False,
+                "message": "Refresh token required"
+            }), 400
 
         refresh_token = data["refresh_token"]
-        user_id = verify_refresh_token(refresh_token)
-
-        if not user_id:
-            return jsonify({"error": "Invalid refresh token"}), 401
-
-        # Generate new access token
-        new_access_token = create_access_token(identity=user_id)
         
-        return jsonify({
-            "access_token": new_access_token
-        }), 200
+        try:
+            # Decode refresh token
+            decoded = decode_token(refresh_token)
+            user_id = decoded['sub']
+            
+            # Verify user exists and is active
+            mongo = current_app.mongo
+            user = mongo.db.users.find_one({
+                "_id": ObjectId(user_id),
+                "is_active": True
+            })
+            
+            if not user:
+                return jsonify({
+                    "success": False,
+                    "message": "User not found or inactive"
+                }), 401
+            
+            # Generate new access token
+            new_access_token = create_access_token(
+                identity=user_id,
+                expires_delta=timedelta(hours=24)
+            )
+            
+            return jsonify({
+                "success": True,
+                "access_token": new_access_token
+            }), 200
+            
+        except Exception as decode_error:
+            current_app.logger.error(f"Token decode error: {str(decode_error)}")
+            return jsonify({
+                "success": False,
+                "message": "Invalid refresh token"
+            }), 401
 
     except Exception as e:
         current_app.logger.error(f"Token refresh error: {str(e)}")
-        return jsonify({"error": "Token refresh failed"}), 500
+        return jsonify({
+            "success": False,
+            "message": "Token refresh failed"
+        }), 500
 
 
 @auth_bp.route("/logout", methods=["POST"])
 @jwt_required()
 def logout():
-    """Logout user (client should delete token)"""
+    """Logout user"""
     try:
+        # Get token and add to blacklist if needed
         jti = get_jwt()["jti"]
-        # In production: Add token to blacklist if using token revocation
+        
+        # In production: Add token to blacklist
         # current_app.redis.setex(jti, timedelta(hours=24), "revoked")
         
-        response = jsonify({"message": "Logged out successfully"}), 200
+        return jsonify({
+            "success": True,
+            "message": "Logged out successfully"
+        }), 200
         
-        # Clear cookies if using them
-        # unset_jwt_cookies(response)
-        
-        return response
     except Exception as e:
         current_app.logger.error(f"Logout error: {str(e)}")
-        return jsonify({"error": "Logout failed"}), 500
+        return jsonify({
+            "success": False,
+            "message": "Logout failed"
+        }), 500
 
 
 @auth_bp.route("/me", methods=["GET"])
@@ -346,189 +357,126 @@ def get_profile():
         user_id = get_jwt_identity()
         mongo = current_app.mongo
         
-        user = get_user_by_id(mongo, ObjectId(user_id))
+        user = mongo.db.users.find_one({
+            "_id": ObjectId(user_id),
+            "is_active": True
+        })
         
         if not user:
-            return jsonify({"error": "User not found"}), 404
+            return jsonify({
+                "success": False,
+                "message": "User not found"
+            }), 404
+
+        user_data = {
+            "id": str(user["_id"]),
+            "username": user["username"],
+            "email": user["email"],
+            "name": user.get("name", user["username"]),
+            "avatar": user.get("avatar"),
+            "email_verified": user.get("is_verified", False),
+            "role": user.get("role", "user"),
+            "created_at": user["created_at"].isoformat() if user.get("created_at") else None,
+            "subscription": user.get("subscription", {"type": "free"}),
+            "preferences": user.get("preferences", {
+                "notifications": True,
+                "email_updates": True
+            }),
+            "last_login": user.get("last_login", ""),
+            "is_active": user.get("is_active", True)
+        }
 
         return jsonify({
-            "user": {
-                "id": str(user["_id"]),
-                "username": user["username"],
-                "email": user["email"],
-                "name": user.get("name", user["username"]),
-                "avatar": user.get("avatar"),
-                "created_at": user["created_at"].isoformat() if user.get("created_at") else None,
-                "subscription": user.get("subscription", {"type": "free"}),
-                "preferences": user.get("preferences", {
-                    "notifications": True,
-                    "email_updates": True
-                }),
-                "last_login": user.get("last_login", ""),
-                "is_verified": user.get("is_verified", False)
-            }
+            "success": True,
+            "user": user_data
         }), 200
 
     except Exception as e:
         current_app.logger.error(f"Profile error: {str(e)}")
-        return jsonify({"error": "Failed to fetch profile"}), 500
+        return jsonify({
+            "success": False,
+            "message": "Failed to fetch profile"
+        }), 500
 
 
-@auth_bp.route("/me", methods=["PUT"])
-@jwt_required()
-def update_profile():
-    """Update user profile"""
+@auth_bp.route("/check-availability", methods=["POST"])
+def check_availability():
+    """Check if username or email is available"""
     try:
-        user_id = get_jwt_identity()
-        data = request.json
+        data = request.get_json()
         mongo = current_app.mongo
-
-        # Fields that can be updated
-        updatable_fields = ["name", "avatar", "preferences"]
-        update_data = {}
         
-        for field in updatable_fields:
-            if field in data:
-                update_data[field] = data[field]
-
-        # If updating email or username, check for duplicates
-        if "email" in data:
-            email = data["email"].strip().lower()
-            if not validate_email(email):
-                return jsonify({"error": "Invalid email format"}), 400
-            
-            existing = mongo.db.users.find_one({
-                "email": email,
-                "_id": {"$ne": ObjectId(user_id)}
-            })
-            if existing:
-                return jsonify({"error": "Email already in use"}), 409
-            update_data["email"] = email
-
+        if not data:
+            return jsonify({
+                "success": False,
+                "message": "No data provided"
+            }), 400
+        
+        result = {"available": True, "messages": []}
+        
+        # Check username
         if "username" in data:
             username = data["username"].strip()
             username_valid, username_error = validate_username(username)
+            
             if not username_valid:
-                return jsonify({"error": username_error}), 400
-            
-            existing = mongo.db.users.find_one({
-                "username": username,
-                "_id": {"$ne": ObjectId(user_id)}
-            })
-            if existing:
-                return jsonify({"error": "Username already in use"}), 409
-            update_data["username"] = username
-
-        # Update password separately (requires old password)
-        if "password" in data:
-            if "old_password" not in data:
-                return jsonify({"error": "Old password required"}), 400
-            
-            user = mongo.db.users.find_one({"_id": ObjectId(user_id)})
-            if not user or not check_password_hash(user["password_hash"], data["old_password"]):
-                return jsonify({"error": "Old password is incorrect"}), 401
-            
-            password_valid, password_error = validate_password(data["password"])
-            if not password_valid:
-                return jsonify({"error": password_error}), 400
-            
-            update_data["password_hash"] = generate_password_hash(data["password"])
-
-        if not update_data:
-            return jsonify({"error": "No valid fields to update"}), 400
-
-        # Update user
-        success = update_user_profile(mongo, ObjectId(user_id), update_data)
+                result["available"] = False
+                result["messages"].append(f"Username: {username_error}")
+            else:
+                existing = mongo.db.users.find_one({"username": username})
+                if existing:
+                    result["available"] = False
+                    result["messages"].append("Username already taken")
         
-        if not success:
-            return jsonify({"error": "Failed to update profile"}), 500
-
-        # Get updated user
-        updated_user = get_user_by_id(mongo, ObjectId(user_id))
+        # Check email
+        if "email" in data:
+            email = data["email"].strip().lower()
+            if not validate_email(email):
+                result["available"] = False
+                result["messages"].append("Invalid email format")
+            else:
+                existing = mongo.db.users.find_one({"email": email})
+                if existing:
+                    result["available"] = False
+                    result["messages"].append("Email already registered")
         
         return jsonify({
-            "message": "Profile updated successfully",
-            "user": {
-                "id": str(updated_user["_id"]),
-                "username": updated_user["username"],
-                "email": updated_user["email"],
-                "name": updated_user.get("name", updated_user["username"]),
-                "avatar": updated_user.get("avatar"),
-                "subscription": updated_user.get("subscription", {"type": "free"}),
-                "preferences": updated_user.get("preferences", {
-                    "notifications": True,
-                    "email_updates": True
-                })
-            }
-        }), 200
-
-    except Exception as e:
-        current_app.logger.error(f"Profile update error: {str(e)}")
-        return jsonify({"error": "Failed to update profile"}), 500
-
-
-@auth_bp.route("/check-username/<username>", methods=["GET"])
-def check_username(username):
-    """Check if username is available"""
-    try:
-        mongo = current_app.mongo
-        username = username.strip()
-        
-        username_valid, username_error = validate_username(username)
-        if not username_valid:
-            return jsonify({"available": False, "message": username_error}), 200
-        
-        existing = mongo.db.users.find_one({"username": username})
-        
-        return jsonify({
-            "available": existing is None,
-            "message": "Username is available" if existing is None else "Username already taken"
+            "success": True,
+            "available": result["available"],
+            "messages": result["messages"]
         }), 200
         
     except Exception as e:
-        current_app.logger.error(f"Username check error: {str(e)}")
-        return jsonify({"error": "Internal server error"}), 500
-
-
-@auth_bp.route("/check-email/<email>", methods=["GET"])
-def check_email(email):
-    """Check if email is available"""
-    try:
-        mongo = current_app.mongo
-        email = email.strip().lower()
-        
-        if not validate_email(email):
-            return jsonify({"available": False, "message": "Invalid email format"}), 200
-        
-        existing = mongo.db.users.find_one({"email": email})
-        
+        current_app.logger.error(f"Availability check error: {str(e)}")
         return jsonify({
-            "available": existing is None,
-            "message": "Email is available" if existing is None else "Email already registered"
-        }), 200
-        
-    except Exception as e:
-        current_app.logger.error(f"Email check error: {str(e)}")
-        return jsonify({"error": "Internal server error"}), 500
+            "success": False,
+            "message": "Internal server error"
+        }), 500
 
 
 @auth_bp.route("/forgot-password", methods=["POST"])
 def forgot_password():
-    """Initiate password reset (send reset email)"""
+    """Initiate password reset"""
     try:
-        data = request.json
+        data = request.get_json()
         if not data or "email" not in data:
-            return jsonify({"error": "Email required"}), 400
+            return jsonify({
+                "success": False,
+                "message": "Email required"
+            }), 400
         
         email = data["email"].strip().lower()
         mongo = current_app.mongo
         
         # Check if user exists
-        user = mongo.db.users.find_one({"email": email})
+        user = mongo.db.users.find_one({
+            "email": email,
+            "is_active": True
+        })
         
         # Always return success to prevent email enumeration
         if user:
-            # Generate reset token
+            # Generate reset token (valid for 1 hour)
             reset_token = create_access_token(
                 identity=str(user["_id"]),
                 expires_delta=timedelta(hours=1)
@@ -537,43 +485,63 @@ def forgot_password():
             # In production: Send email with reset link
             # send_reset_email(user["email"], reset_token)
             
-            current_app.logger.info(f"Password reset token for {email}: {reset_token}")
-        
-        return jsonify({
-            "message": "If an account exists with this email, you will receive reset instructions"
-        }), 200
+            current_app.logger.info(f"Password reset token generated for {email}")
+            
+            # For development/testing, include token in response
+            return jsonify({
+                "success": True,
+                "message": "If an account exists with this email, you will receive reset instructions",
+                "reset_token": reset_token  # Remove in production
+            }), 200
+        else:
+            # Still return success to prevent email enumeration
+            return jsonify({
+                "success": True,
+                "message": "If an account exists with this email, you will receive reset instructions"
+            }), 200
         
     except Exception as e:
         current_app.logger.error(f"Forgot password error: {str(e)}")
-        return jsonify({"error": "Internal server error"}), 500
+        return jsonify({
+            "success": False,
+            "message": "Internal server error"
+        }), 500
 
 
 @auth_bp.route("/reset-password", methods=["POST"])
 def reset_password():
     """Reset password using reset token"""
     try:
-        data = request.json
+        data = request.get_json()
         required = ["token", "new_password"]
         for field in required:
             if field not in data:
-                return jsonify({"error": f"Missing required field: {field}"}), 400
+                return jsonify({
+                    "success": False,
+                    "message": f"Missing required field: {field}"
+                }), 400
         
         reset_token = data["token"]
         new_password = data["new_password"]
         
         try:
             # Decode token to get user ID
-            from flask_jwt_extended import decode_token
             decoded = decode_token(reset_token)
             user_id = decoded['sub']
         except Exception as e:
             current_app.logger.error(f"Invalid reset token: {str(e)}")
-            return jsonify({"error": "Invalid or expired reset token"}), 401
+            return jsonify({
+                "success": False,
+                "message": "Invalid or expired reset token"
+            }), 401
         
         # Validate new password
         password_valid, password_error = validate_password(new_password)
         if not password_valid:
-            return jsonify({"error": password_error}), 400
+            return jsonify({
+                "success": False,
+                "message": password_error
+            }), 400
         
         mongo = current_app.mongo
         
@@ -584,65 +552,68 @@ def reset_password():
         }
         
         result = mongo.db.users.update_one(
-            {"_id": ObjectId(user_id)},
+            {"_id": ObjectId(user_id), "is_active": True},
             {"$set": update_data}
         )
         
         if result.modified_count == 0:
-            return jsonify({"error": "Failed to reset password"}), 500
+            return jsonify({
+                "success": False,
+                "message": "Failed to reset password"
+            }), 500
         
-        return jsonify({"message": "Password reset successfully"}), 200
-        
-    except Exception as e:
-        current_app.logger.error(f"Reset password error: {str(e)}")
-        return jsonify({"error": "Internal server error"}), 500
-
-
-# Additional endpoints
-@auth_bp.route("/verify-email", methods=["POST"])
-def verify_email():
-    """Verify user email (mock implementation)"""
-    try:
-        data = request.json
-        if not data or "token" not in data:
-            return jsonify({"error": "Verification token required"}), 400
-        
-        token = data["token"]
-        
-        # In production: Verify email token
-        # For now, mock verification
         return jsonify({
-            "message": "Email verified successfully",
-            "verified": True
+            "success": True,
+            "message": "Password reset successfully"
         }), 200
         
     except Exception as e:
-        current_app.logger.error(f"Email verification error: {str(e)}")
-        return jsonify({"error": "Email verification failed"}), 500
+        current_app.logger.error(f"Reset password error: {str(e)}")
+        return jsonify({
+            "success": False,
+            "message": "Internal server error"
+        }), 500
 
 
-@auth_bp.route("/stats", methods=["GET"])
+@auth_bp.route("/validate-token", methods=["GET"])
 @jwt_required()
-def get_user_stats():
-    """Get user statistics"""
+def validate_token():
+    """Validate JWT token"""
     try:
         user_id = get_jwt_identity()
         mongo = current_app.mongo
         
-        # Mock stats - in production, calculate from user's identifications
-        stats = {
-            "identifications": 0,
-            "correct_identifications": 0,
-            "favorite_species": [],
-            "total_identifications": 0,
-            "accuracy_rate": 0
+        user = mongo.db.users.find_one({
+            "_id": ObjectId(user_id),
+            "is_active": True
+        })
+        
+        if not user:
+            return jsonify({
+                "success": False,
+                "message": "User not found"
+            }), 401
+        
+        user_data = {
+            "id": str(user["_id"]),
+            "username": user["username"],
+            "email": user["email"],
+            "name": user.get("name", user["username"])
         }
         
-        return jsonify({"stats": stats}), 200
+        return jsonify({
+            "success": True,
+            "user": user_data,
+            "valid": True
+        }), 200
         
     except Exception as e:
-        current_app.logger.error(f"Stats error: {str(e)}")
-        return jsonify({"error": "Failed to get stats"}), 500
+        current_app.logger.error(f"Token validation error: {str(e)}")
+        return jsonify({
+            "success": False,
+            "valid": False,
+            "message": "Invalid token"
+        }), 401
 
 
 @auth_bp.route("/health", methods=["GET"])
@@ -653,10 +624,16 @@ def auth_health():
         # Test database connection
         mongo.db.command('ping')
         
+        # Check users collection exists
+        collections = mongo.db.list_collection_names()
+        
         return jsonify({
+            "success": True,
             "status": "healthy",
             "service": "auth",
             "timestamp": datetime.utcnow().isoformat(),
+            "database": "connected",
+            "collections": collections,
             "endpoints": [
                 "/auth/register",
                 "/auth/login",
@@ -664,11 +641,14 @@ def auth_health():
                 "/auth/me",
                 "/auth/refresh",
                 "/auth/forgot-password",
-                "/auth/reset-password"
+                "/auth/reset-password",
+                "/auth/check-availability",
+                "/auth/validate-token"
             ]
         }), 200
     except Exception as e:
         return jsonify({
+            "success": False,
             "status": "unhealthy",
             "service": "auth",
             "error": str(e),
@@ -676,12 +656,26 @@ def auth_health():
         }), 503
 
 
-# Error handler for auth routes
+# Error handlers
 @auth_bp.errorhandler(404)
 def not_found(error):
-    return jsonify({"error": "Auth endpoint not found"}), 404
+    return jsonify({
+        "success": False,
+        "message": "Auth endpoint not found"
+    }), 404
 
 
 @auth_bp.errorhandler(405)
 def method_not_allowed(error):
-    return jsonify({"error": "Method not allowed for this endpoint"}), 405
+    return jsonify({
+        "success": False,
+        "message": "Method not allowed for this endpoint"
+    }), 405
+
+
+@auth_bp.errorhandler(500)
+def internal_server_error(error):
+    return jsonify({
+        "success": False,
+        "message": "Internal server error"
+    }), 500

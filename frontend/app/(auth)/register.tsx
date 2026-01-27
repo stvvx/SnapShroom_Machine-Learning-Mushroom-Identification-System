@@ -47,36 +47,48 @@ export default function RegisterScreen() {
   };
 
   const handleRegister = async () => {
-    if (!validateForm()) return;
+  if (!validateForm()) return;
 
-    clearError();
-    setIsLoading(true);
+  clearError();
+  setIsLoading(true);
 
-    try {
-      await signup({ 
-        email, 
-        password, 
-        name: username, 
-        confirmPassword 
-      });
-      
+  try {
+    console.log('Starting registration...');
+    
+    await signup({ 
+      email: email.trim().toLowerCase(),
+      password, 
+      username: username.trim(),
+      name: username.trim(),
+      confirmPassword 
+    });
+    
+    console.log('Registration successful');
+    
+    Alert.alert(
+      'Registration Successful!',
+      'Your account has been created successfully.',
+      [
+        {
+          text: 'Continue',
+          onPress: () => router.replace('/')
+        }
+      ]
+    );
+  } catch (error: any) {
+    console.error('Registration error details:', error);
+    
+    // Check if error was already shown by AuthContext
+    if (error.message && !error.message.includes('Registration failed')) {
       Alert.alert(
-        'Registration Successful!',
-        'Your account has been created successfully.',
-        [
-          {
-            text: 'Continue',
-            onPress: () => router.replace('/')
-          }
-        ]
+        'Registration Failed',
+        error.message || 'An error occurred during registration. Please try again.'
       );
-    } catch (error: any) {
-      // Error is handled by AuthContext
-      console.error('Registration error:', error);
-    } finally {
-      setIsLoading(false);
     }
-  };
+  } finally {
+    setIsLoading(false);
+  }
+};
 
   const handleBackToLogin = () => {
     router.back();

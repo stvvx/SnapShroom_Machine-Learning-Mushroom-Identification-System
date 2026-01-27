@@ -15,8 +15,9 @@ class Config:
     # ===============================
     # MongoDB Configuration - UPDATED for snapshroom_db
     # ===============================
-    MONGO_URI = os.environ.get('MONGO_URI') or "mongodb://localhost:27017/snapshroom_db"
-    MONGO_DBNAME = os.environ.get('MONGO_DBNAME') or 'snapshroom_db'
+    # Use DB_URI from .env for MongoDB Atlas connection
+    MONGO_URI = os.environ.get('DB_URI') or os.environ.get('MONGO_URI') or "mongodb://localhost:27017/snapshroom_db"
+    MONGO_DBNAME = 'snapshroom_db'  # Always use snapshroom_db as per your .env
     MONGO_CONNECT_TIMEOUT_MS = 20000
     MONGO_SOCKET_TIMEOUT_MS = 20000
     MONGO_SERVER_SELECTION_TIMEOUT_MS = 30000
@@ -118,8 +119,6 @@ class Config:
 class DevelopmentConfig(Config):
     """Development configuration"""
     DEBUG = True
-    MONGO_URI = os.environ.get('MONGO_URI') or "mongodb://localhost:27017/snapshroom_dev"
-    MONGO_DBNAME = 'snapshroom_dev'
     
     # Development-specific settings
     JWT_COOKIE_SECURE = False
@@ -152,14 +151,13 @@ class ProductionConfig(Config):
     TESTING = False
     
     # Production security
-    SECRET_KEY = os.environ.get('SECRET_KEY')
-    JWT_SECRET_KEY = os.environ.get('JWT_SECRET_KEY')
     JWT_COOKIE_SECURE = True  # HTTPS only
     JWT_COOKIE_CSRF_PROTECT = True
     
-    # MongoDB
-    MONGO_URI = os.environ.get('MONGO_URI')
-    MONGO_DBNAME = os.environ.get('MONGO_DBNAME', 'snapshroom_prod')
+    # Use environment variables for production
+    SECRET_KEY = os.environ.get('SECRET_KEY') or Config.SECRET_KEY
+    JWT_SECRET_KEY = os.environ.get('JWT_SECRET_KEY') or Config.JWT_SECRET_KEY
+    MONGO_URI = os.environ.get('DB_URI') or os.environ.get('MONGO_URI') or Config.MONGO_URI
     
     # CORS - restrict in production
     CORS_ORIGINS = os.environ.get('CORS_ORIGINS', '').split(',')
@@ -214,9 +212,20 @@ if __name__ == '__main__':
     current_env = os.environ.get('FLASK_ENV', 'development')
     config_dict = get_config_dict(current_env)
     
+    # Override with environment variables for display
+    if os.environ.get('DB_URI'):
+        config_dict['MONGO_URI'] = os.environ.get('DB_URI')
+    
     for key, value in sorted(config_dict.items()):
-        if key in ['SECRET_KEY', 'JWT_SECRET_KEY']:
-            print(f"{key:30} = {'*' * 20}")
+        if key in ['SECRET_KEY', 'JWT_SECRET_KEY'] and value:
+            print(f"{key:30} = {'*' * 20} (set from env)")
+        elif key == 'MONGO_URI' and value:
+            # Truncate long MongoDB URIs for display
+            if 'mongodb+srv://' in str(value):
+                display_value = 'mongodb+srv://*****:*****@cluster0.*****.mongodb.net/...'
+                print(f"{key:30} = {display_value}")
+            else:
+                print(f"{key:30} = {value}")
         else:
             print(f"{key:30} = {value}")
     
@@ -224,3 +233,9 @@ if __name__ == '__main__':
     print(f"Environment: {current_env}")
     print(f"Database: {config_dict.get('MONGO_DBNAME')}")
     print(f"Running on: http://{config_dict.get('HOST')}:{config_dict.get('PORT')}")
+    
+    # Check if .env variables are loaded
+    print(f"\nEnvironment Variables Check:")
+    print(f"  DB_URI loaded: {'Yes' if os.environ.get('DB_URI') else 'No'}")
+    print(f"  JWT_SECRET_KEY loaded: {'Yes' if os.environ.get('JWT_SECRET_KEY') else 'No'}")
+    print(f"  SECRET_KEY loaded: {'Yes' if os.environ.get('SECRET_KEY') else 'No'}")

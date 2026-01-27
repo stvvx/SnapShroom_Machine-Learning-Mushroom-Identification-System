@@ -5,6 +5,13 @@ from flask_jwt_extended import JWTManager
 import os
 import sys
 
+# Load environment variables FIRST
+from dotenv import load_dotenv
+
+# Load .env file from the backend directory
+env_path = os.path.join(os.path.dirname(__file__), '.env')
+load_dotenv(env_path)
+
 # Add the current directory to Python path
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
@@ -24,6 +31,16 @@ def create_app(config_name='development'):
     # Load configuration
     config_obj = get_config(config_name)
     app.config.from_object(config_obj)
+
+    # Override with environment variables if they exist
+    if os.getenv('DB_URI'):
+        app.config['MONGO_URI'] = os.getenv('DB_URI')
+    
+    if os.getenv('JWT_SECRET_KEY'):
+        app.config['JWT_SECRET_KEY'] = os.getenv('JWT_SECRET_KEY')
+    
+    if os.getenv('SECRET_KEY'):
+        app.config['SECRET_KEY'] = os.getenv('SECRET_KEY')
 
     # Enable CORS
     CORS(app, origins=config_obj.CORS_ORIGINS, supports_credentials=True)
@@ -163,7 +180,8 @@ def create_app(config_name='development'):
             "host": app.config.get('HOST', '0.0.0.0'),
             "port": app.config.get('PORT', 5000),
             "jwt_enabled": app.config.get('JWT_SECRET_KEY') is not None,
-            "cors_enabled": bool(app.config.get('CORS_ORIGINS'))
+            "cors_enabled": bool(app.config.get('CORS_ORIGINS')),
+            "mongo_uri_configured": bool(app.config.get('MONGO_URI'))
         }
         health_status["config"] = config_info
 
@@ -194,6 +212,8 @@ def create_app(config_name='development'):
             return {"status": "SERVICE_UNAVAILABLE", "database": "disconnected"}, 503
 
     # Error handlers
+    from flask import request
+    
     @app.errorhandler(404)
     def not_found(error):
         return jsonify({
@@ -213,7 +233,7 @@ def create_app(config_name='development'):
     print(f"✅ SnapShroom API initialized successfully!")
     print(f"   Environment: {config_name}")
     print(f"   API Base URL: http://{app.config['HOST']}:{app.config['PORT']}")
-    print(f"   MongoDB URI: {app.config.get('MONGO_URI', 'Not configured')}")
+    print(f"   MongoDB configured: {'Yes' if app.config.get('MONGO_URI') else 'No'}")
     
     return app
 
@@ -326,7 +346,8 @@ if __name__ == "__main__":
         print(f"   Host: {config_obj.HOST}")
         print(f"   Port: {config_obj.PORT}")
         print(f"   Debug: {config_obj.DEBUG}")
-        print(f"   Database: {config_obj.MONGO_DBNAME}")
+        print(f"   Database URI configured: {'Yes' if os.getenv('DB_URI') else 'No'}")
+        print(f"   JWT Secret configured: {'Yes' if os.getenv('JWT_SECRET_KEY') else 'No'}")
         
         # Run the application
         app.run(
@@ -339,8 +360,8 @@ if __name__ == "__main__":
     except Exception as e:
         print(f"\n❌ Failed to start server: {e}")
         print("\nTroubleshooting tips:")
-        print("1. Check if MongoDB is running: mongod --version")
-        print("2. Start MongoDB: sudo service mongod start (Linux) or brew services start mongodb-community (Mac)")
-        print("3. Check if port 5000 is available")
-        print("4. Verify your .env file has correct configurations")
+        print("1. Check if .env file exists in backend directory")
+        print("2. Check if MongoDB URI is correctly set in .env")
+        print("3. Verify your .env file has correct configurations")
+        print("4. Check if port 5000 is available")
         sys.exit(1)
