@@ -1,6 +1,5 @@
 import { Image } from 'expo-image';
 import { TouchableOpacity, Platform, StyleSheet, Alert, ScrollView, View, Dimensions } from 'react-native';
-
 import { HelloWave } from '@/components/hello-wave';
 import ParallaxScrollView from '@/components/parallax-scroll-view';
 import { ThemedText } from '@/components/themed-text';
@@ -8,7 +7,9 @@ import { ThemedView } from '@/components/themed-view';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { testConnection } from '@/utils/api';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useAuth } from '@/contexts/AuthContext'; 
 
 const { width } = Dimensions.get('window');
 const isSmallScreen = width < 768;
@@ -39,8 +40,53 @@ export default function HomeScreen() {
   const router = useRouter();
   const [connectionStatus, setConnectionStatus] = useState<'idle' | 'testing' | 'connected' | 'failed'>('idle');
   const [connectionMessage, setConnectionMessage] = useState('');
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+
+  // Check login status on component mount
+  useEffect(() => {
+    checkLoginStatus();
+  }, []);
+
+  const checkLoginStatus = async () => {
+    try {
+      const token = await AsyncStorage.getItem('userToken');
+      const userData = await AsyncStorage.getItem('userData');
+      
+      if (token && userData) {
+        setIsLoggedIn(true);
+      } else {
+        // If not logged in, redirect to login screen
+        router.replace('/login');
+      }
+    } catch (error) {
+      console.error('Error checking login status:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // If using AuthContext (recommended approach)
+  // const { user, loading } = useAuth();
+  
+  // useEffect(() => {
+  //   if (!loading && !user) {
+  //     router.replace('/login');
+  //   }
+  // }, [user, loading]);
 
   const handleCameraPress = () => {
+    if (!isLoggedIn) {
+      Alert.alert(
+        'Login Required',
+        'Please log in to use the camera feature',
+        [
+          { text: 'Cancel', style: 'cancel' },
+          { text: 'Login', onPress: () => router.push('/login') }
+        ]
+      );
+      return;
+    }
     router.push('/camera');
   };
 
@@ -53,6 +99,11 @@ export default function HomeScreen() {
   };
 
   const handleTestConnection = async () => {
+    if (!isLoggedIn) {
+      Alert.alert('Login Required', 'Please log in to test the connection');
+      return;
+    }
+    
     setConnectionStatus('testing');
     setConnectionMessage('Testing connection to backend...');
     
@@ -72,8 +123,57 @@ export default function HomeScreen() {
   };
 
   const handleBlogPress = (blogId: number) => {
+    if (!isLoggedIn) {
+      Alert.alert(
+        'Login Required',
+        'Please log in to access blog posts',
+        [
+          { text: 'Cancel', style: 'cancel' },
+          { text: 'Login', onPress: () => router.push('/login') }
+        ]
+      );
+      return;
+    }
     Alert.alert('Blog Post', `Opening blog post ${blogId}...`, [{ text: 'OK' }]);
   };
+
+  const handleLogout = async () => {
+    Alert.alert(
+      'Logout',
+      'Are you sure you want to logout?',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        { 
+          text: 'Logout', 
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await AsyncStorage.clear();
+              setIsLoggedIn(false);
+              router.replace('/login');
+            } catch (error) {
+              console.error('Error logging out:', error);
+            }
+          }
+        }
+      ]
+    );
+  };
+
+  // Show loading screen while checking auth
+  if (isLoading) {
+    return (
+      <View style={styles.loadingContainer}>
+        <Ionicons name="leaf" size={64} color="#7BA05B" />
+        <ThemedText style={styles.loadingText}>Loading SnapShroom...</ThemedText>
+      </View>
+    );
+  }
+
+  // Don't render the home screen if not logged in
+  if (!isLoggedIn) {
+    return null;
+  }
 
   return (
     <ScrollView style={styles.container}>
@@ -90,9 +190,18 @@ export default function HomeScreen() {
           <TouchableOpacity onPress={handleCameraPress}>
             <ThemedText style={styles.navItem}>Identify</ThemedText>
           </TouchableOpacity>
+          <TouchableOpacity onPress={handleLogout}>
+            <ThemedText style={styles.navItem}>Logout</ThemedText>
+          </TouchableOpacity>
         </View>
       </View>
 
+      {/* Welcome Message */}
+      <View style={styles.welcomeSection}>
+        <ThemedText style={styles.welcomeText}>Welcome back! Ready to identify some mushrooms?</ThemedText>
+      </View>
+
+      {/* Rest of your existing components remain the same */}
       {/* Hero Banner */}
       <View style={styles.heroBanner}>
         <View style={styles.heroContent}>
@@ -262,6 +371,17 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#FDFCFA',
   },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#FDFCFA',
+  },
+  loadingText: {
+    fontSize: 18,
+    color: '#4A5D3E',
+    marginTop: 16,
+  },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -291,10 +411,25 @@ const styles = StyleSheet.create({
     fontWeight: '500',
     color: '#5C6F51',
   },
+  welcomeSection: {
+    backgroundColor: '#E8EFE3',
+    padding: isSmallScreen ? 16 : 20,
+    marginHorizontal: isSmallScreen ? 16 : 20,
+    marginTop: isSmallScreen ? 16 : 20,
+    borderRadius: 12,
+  },
+  welcomeText: {
+    fontSize: isSmallScreen ? 16 : 18,
+    fontWeight: '600',
+    color: '#4A5D3E',
+    textAlign: 'center',
+  },
+  // ... rest of your existing styles remain the same
   heroBanner: {
     backgroundColor: '#E8EFE3',
     paddingVertical: isSmallScreen ? 30 : 60,
     paddingHorizontal: isSmallScreen ? 16 : 20,
+    marginTop: isSmallScreen ? 16 : 20,
   },
   heroContent: {
     flexDirection: isSmallScreen ? 'column' : 'row',
