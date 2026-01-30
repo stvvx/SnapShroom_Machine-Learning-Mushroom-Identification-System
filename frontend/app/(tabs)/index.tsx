@@ -1,5 +1,5 @@
 import { Image } from 'expo-image';
-import { TouchableOpacity, Platform, StyleSheet, Alert, ScrollView, View, Dimensions } from 'react-native';
+import { TouchableOpacity, StyleSheet, Alert, ScrollView, View, Dimensions, ImageBackground } from 'react-native';
 import { HelloWave } from '@/components/hello-wave';
 import ParallaxScrollView from '@/components/parallax-scroll-view';
 import { ThemedText } from '@/components/themed-text';
@@ -8,31 +8,33 @@ import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { testConnection } from '@/utils/api';
 import { useState, useEffect } from 'react';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useAuth } from '@/contexts/AuthContext'; 
 
 const { width } = Dimensions.get('window');
 const isSmallScreen = width < 768;
 
-// Blog data
+// Mushroom-themed background
+const MUSHROOM_BG = 'https://images.unsplash.com/photo-1578662996442-48f60103fc96?w=1200&q=60';
+
+// Blog / explore cards – mushroom-themed images
 const blogs = [
   {
     id: 1,
     title: "Mushroom Spawn",
     subtitle: "Grow your own mushrooms",
-    image: "https://images.unsplash.com/photo-1598244829089-c81c44449371?w=800&q=80",
+    image: "https://images.unsplash.com/photo-1618375569909-3c8616cf7733?w=800&q=80",
   },
   {
     id: 2,
     title: "Fruiting Kits",
     subtitle: "Grow mushrooms at home",
-    image: "https://images.unsplash.com/photo-1595587637401-f8f5e1e5d0f3?w=800&q=80",
+    image: "https://images.unsplash.com/photo-1544367567-0f2fcb009e0b?w=800&q=80",
   },
   {
     id: 3,
     title: "Workshops & Certifications",
     subtitle: "Learn with experts",
-    image: "https://images.unsplash.com/photo-1611917775446-bdf8c27929ea?w=800&q=80",
+    image: "https://images.unsplash.com/photo-1584515933487-779824d29309?w=800&q=80",
   },
 ];
 
@@ -40,40 +42,20 @@ export default function HomeScreen() {
   const router = useRouter();
   const [connectionStatus, setConnectionStatus] = useState<'idle' | 'testing' | 'connected' | 'failed'>('idle');
   const [connectionMessage, setConnectionMessage] = useState('');
-  const [isLoggedIn, setIsLoggedIn] = useState(false);
-  const [isLoading, setIsLoading] = useState(true);
+  const { user, isLoading: authLoading, logout, accessToken } = useAuth();
+  const isLoggedIn = !!user;
 
-  // Check login status on component mount
+  // Redirect to landing (Register/Login tabs) when not authenticated
   useEffect(() => {
-    checkLoginStatus();
-  }, []);
-
-  const checkLoginStatus = async () => {
-    try {
-      const token = await AsyncStorage.getItem('userToken');
-      const userData = await AsyncStorage.getItem('userData');
-      
-      if (token && userData) {
-        setIsLoggedIn(true);
-      } else {
-        // If not logged in, redirect to login screen
-        router.replace('/login');
-      }
-    } catch (error) {
-      console.error('Error checking login status:', error);
-    } finally {
-      setIsLoading(false);
+    console.log('🟢 HOME useEffect: authLoading=', authLoading, 'user=', user ? user.email : 'null');
+    if (authLoading) return;
+    if (!user) {
+      console.log('🟢 HOME: User is null, redirecting to /(auth)/login');
+      setTimeout(() => {
+        router.replace('/(auth)/login');
+      }, 100);
     }
-  };
-
-  // If using AuthContext (recommended approach)
-  // const { user, loading } = useAuth();
-  
-  // useEffect(() => {
-  //   if (!loading && !user) {
-  //     router.replace('/login');
-  //   }
-  // }, [user, loading]);
+  }, [user, authLoading, router]);
 
   const handleCameraPress = () => {
     if (!isLoggedIn) {
@@ -82,12 +64,12 @@ export default function HomeScreen() {
         'Please log in to use the camera feature',
         [
           { text: 'Cancel', style: 'cancel' },
-          { text: 'Login', onPress: () => router.push('/login') }
+          { text: 'Login', onPress: () => router.replace('/(auth)') }
         ]
       );
       return;
     }
-    router.push('/camera');
+    router.push('/(tabs)/camera');
   };
 
   const handleInfoPress = () => {
@@ -129,7 +111,7 @@ export default function HomeScreen() {
         'Please log in to access blog posts',
         [
           { text: 'Cancel', style: 'cancel' },
-          { text: 'Login', onPress: () => router.push('/login') }
+          { text: 'Login', onPress: () => router.push('/(auth)/login') }
         ]
       );
       return;
@@ -137,31 +119,28 @@ export default function HomeScreen() {
     Alert.alert('Blog Post', `Opening blog post ${blogId}...`, [{ text: 'OK' }]);
   };
 
+  const performLogout = async () => {
+    console.log('🔴 LOGOUT: Starting logout...');
+    try {
+      await logout();
+      console.log('🔴 LOGOUT: Logout complete, user state should be null now');
+      // Don't redirect here - the useEffect will handle it when user becomes null
+    } catch (err) {
+      console.error('🔴 LOGOUT ERROR:', err);
+    }
+  };
+
   const handleLogout = async () => {
-    Alert.alert(
-      'Logout',
-      'Are you sure you want to logout?',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        { 
-          text: 'Logout', 
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              await AsyncStorage.clear();
-              setIsLoggedIn(false);
-              router.replace('/login');
-            } catch (error) {
-              console.error('Error logging out:', error);
-            }
-          }
-        }
-      ]
-    );
+    console.log('🔴 handleLogout: Button clicked');
+    try {
+      await performLogout();
+    } catch (err) {
+      console.error('🔴 handleLogout: Error', err);
+    }
   };
 
   // Show loading screen while checking auth
-  if (isLoading) {
+  if (authLoading) {
     return (
       <View style={styles.loadingContainer}>
         <Ionicons name="leaf" size={64} color="#7BA05B" />
@@ -176,61 +155,65 @@ export default function HomeScreen() {
   }
 
   return (
-    <ScrollView style={styles.container}>
-      {/* Header Navigation */}
-      <View style={styles.header}>
-        <View style={styles.logoContainer}>
-          <Ionicons name="leaf" size={28} color="#7BA05B" />
-          <ThemedText style={styles.logoText}>SnapShroom</ThemedText>
-        </View>
-        <View style={styles.navMenu}>
-          <TouchableOpacity onPress={handleInfoPress}>
-            <ThemedText style={styles.navItem}>About</ThemedText>
-          </TouchableOpacity>
-          <TouchableOpacity onPress={handleCameraPress}>
-            <ThemedText style={styles.navItem}>Identify</ThemedText>
-          </TouchableOpacity>
-          <TouchableOpacity onPress={handleLogout}>
-            <ThemedText style={styles.navItem}>Logout</ThemedText>
-          </TouchableOpacity>
-        </View>
-      </View>
-
-      {/* Welcome Message */}
-      <View style={styles.welcomeSection}>
-        <ThemedText style={styles.welcomeText}>Welcome back! Ready to identify some mushrooms?</ThemedText>
-      </View>
-
-      {/* Rest of your existing components remain the same */}
-      {/* Hero Banner */}
-      <View style={styles.heroBanner}>
-        <View style={styles.heroContent}>
-          <View style={styles.heroTextSection}>
-            <ThemedText style={styles.heroTitle}>
-              Welcome to SnapShroom's AI-powered mushroom identification app
-            </ThemedText>
-            <ThemedText style={styles.heroSubtitle}>
-              Here you'll find resources to safely identify and learn about mushrooms using cutting-edge AI technology
-            </ThemedText>
-            <TouchableOpacity style={styles.heroButton} onPress={handleCameraPress}>
-              <Ionicons name="camera" size={20} color="white" />
-              <ThemedText style={styles.heroButtonText}>Start Identifying</ThemedText>
+    <ImageBackground source={{ uri: MUSHROOM_BG }} style={styles.bgImage} imageStyle={styles.bgImageStyle}>
+      <View style={styles.bgOverlay} />
+      <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
+        {/* Header Navigation */}
+        <View style={styles.header}>
+          <View style={styles.logoContainer}>
+            <Ionicons name="leaf" size={28} color="#5A7D4A" />
+            <ThemedText style={styles.logoText}>SnapShroom</ThemedText>
+          </View>
+          <View style={styles.navMenu}>
+            <TouchableOpacity onPress={handleInfoPress}>
+              <ThemedText style={styles.navItem}>About</ThemedText>
+            </TouchableOpacity>
+            <TouchableOpacity onPress={handleCameraPress}>
+              <ThemedText style={styles.navItem}>Identify</ThemedText>
+            </TouchableOpacity>
+            <TouchableOpacity onPress={handleLogout}>
+              <ThemedText style={styles.navItem}>Logout</ThemedText>
             </TouchableOpacity>
           </View>
-          {!isSmallScreen && (
-            <View style={styles.heroImageSection}>
-              <Image 
-                source={{ uri: "https://images.unsplash.com/photo-1509440159596-0249088772ff?w=800&q=80" }} 
-                style={styles.heroImage}
-                contentFit="cover"
-              />
-            </View>
-          )}
         </View>
-      </View>
 
-      {/* Blog Section */}
-      <View style={styles.blogSection}>
+        {/* Welcome Message – personalized for logged-in user */}
+        <View style={styles.welcomeSection}>
+          <ThemedText style={styles.welcomeText}>
+            Welcome, {user?.name || user?.username || 'User'}!
+          </ThemedText>
+          <ThemedText style={styles.welcomeSubtext}>Ready to identify some mushrooms?</ThemedText>
+        </View>
+
+        {/* Hero Banner – mushroom theme */}
+        <View style={styles.heroBanner}>
+          <View style={styles.heroContent}>
+            <View style={styles.heroTextSection}>
+              <ThemedText style={styles.heroTitle}>
+                Welcome to SnapShroom's AI-powered mushroom identification app
+              </ThemedText>
+              <ThemedText style={styles.heroSubtitle}>
+                Here you'll find resources to safely identify and learn about mushrooms using cutting-edge AI technology
+              </ThemedText>
+              <TouchableOpacity style={styles.heroButton} onPress={handleCameraPress}>
+                <Ionicons name="camera" size={20} color="white" />
+                <ThemedText style={styles.heroButtonText}>Start Identifying</ThemedText>
+              </TouchableOpacity>
+            </View>
+            {!isSmallScreen && (
+              <View style={styles.heroImageSection}>
+                <Image 
+                  source={{ uri: "https://images.unsplash.com/photo-1618375569909-3c8616cf7733?w=800&q=80" }} 
+                  style={styles.heroImage}
+                  contentFit="cover"
+                />
+              </View>
+            )}
+          </View>
+        </View>
+
+        {/* Blog Section */}
+        <View style={styles.blogSection}>
         <ThemedText style={styles.sectionTitle}>Explore Mushroom Knowledge</ThemedText>
         <View style={styles.blogGrid}>
           {blogs.map((blog) => (
@@ -251,10 +234,10 @@ export default function HomeScreen() {
             </TouchableOpacity>
           ))}
         </View>
-      </View>
+        </View>
 
-      {/* Features Section */}
-      <View style={styles.featuresSection}>
+        {/* Features Section */}
+        <View style={styles.featuresSection}>
         <ThemedText style={styles.sectionTitle}>Why Choose SnapShroom?</ThemedText>
         <View style={styles.featureGrid}>
           <View style={styles.featureCard}>
@@ -281,10 +264,10 @@ export default function HomeScreen() {
             </ThemedText>
           </View>
         </View>
-      </View>
+        </View>
 
-      {/* Connection Test */}
-      <View style={styles.connectionSection}>
+        {/* Connection Test */}
+        <View style={styles.connectionSection}>
         <Ionicons 
           name={connectionStatus === 'connected' ? 'checkmark-circle' : 'wifi'} 
           size={28} 
@@ -310,10 +293,10 @@ export default function HomeScreen() {
             {connectionStatus === 'testing' ? 'Testing...' : 'Test Connection'}
           </ThemedText>
         </TouchableOpacity>
-      </View>
+        </View>
 
-      {/* Safety Warning */}
-      <View style={styles.warningSection}>
+        {/* Safety Warning */}
+        <View style={styles.warningSection}>
         <Ionicons name="alert-circle-outline" size={28} color="#D4A373" />
         <ThemedText style={styles.warningTitle}>Important Safety Notice</ThemedText>
         <ThemedText style={styles.warningText}>
@@ -322,10 +305,10 @@ export default function HomeScreen() {
         <TouchableOpacity style={styles.warningButton} onPress={handleInfoPress}>
           <ThemedText style={styles.warningButtonText}>Learn More</ThemedText>
         </TouchableOpacity>
-      </View>
+        </View>
 
-      {/* Getting Started */}
-      <View style={styles.stepsSection}>
+        {/* Getting Started */}
+        <View style={styles.stepsSection}>
         <ThemedText style={styles.sectionTitle}>How It Works</ThemedText>
         <View style={styles.stepsList}>
           <View style={styles.stepCard}>
@@ -358,18 +341,29 @@ export default function HomeScreen() {
             </ThemedText>
           </View>
         </View>
-      </View>
+        </View>
 
-      {/* Footer Spacing */}
-      <View style={styles.footer} />
-    </ScrollView>
+        {/* Footer Spacing */}
+        <View style={styles.footer} />
+      </ScrollView>
+    </ImageBackground>
   );
 }
 
 const styles = StyleSheet.create({
+  bgImage: {
+    flex: 1,
+  },
+  bgImageStyle: {
+    opacity: 0.35,
+  },
+  bgOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(253, 252, 250, 0.88)',
+  },
   container: {
     flex: 1,
-    backgroundColor: '#FDFCFA',
+    backgroundColor: 'transparent',
   },
   loadingContainer: {
     flex: 1,
@@ -423,6 +417,12 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#4A5D3E',
     textAlign: 'center',
+  },
+  welcomeSubtext: {
+    fontSize: isSmallScreen ? 14 : 15,
+    color: '#5C6F51',
+    textAlign: 'center',
+    marginTop: 4,
   },
   // ... rest of your existing styles remain the same
   heroBanner: {

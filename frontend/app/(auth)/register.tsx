@@ -46,7 +46,7 @@ export default function RegisterScreen() {
       return false;
     }
 
-    if (password !== confirmPassword) {
+    if (password.trim() !== confirmPassword.trim()) {
       Alert.alert('Error', 'Passwords do not match');
       return false;
     }
@@ -64,8 +64,8 @@ export default function RegisterScreen() {
     try {
       await signup({
         email: email.trim(),
-        password,
-        confirmPassword, // frontend-only validation
+        password: password.trim(),
+        confirmPassword: confirmPassword.trim(),
         username: username.trim(),
         name: username.trim(),
       });
@@ -76,7 +76,7 @@ export default function RegisterScreen() {
         [
           {
             text: 'Continue',
-            onPress: () => router.replace('/'),
+            onPress: () => router.replace('/(tabs)'),
           },
         ]
       );

@@ -48,6 +48,7 @@ interface AuthContextType {
   login: (credentials: LoginCredentials) => Promise<void>;
   signup: (data: SignupData) => Promise<void>;
   logout: () => Promise<void>;
+  refreshUser: () => Promise<void>;
   clearError: () => void;
 }
 
@@ -70,6 +71,29 @@ const api = axios.create({
   headers: { 'Content-Type': 'application/json' },
 });
 
+// Add request interceptor to include Authorization header
+api.interceptors.request.use(
+  (config) => {
+    const token = config.headers.Authorization?.replace('Bearer ', '');
+    if (token) {
+      console.log('Sending request with Authorization header');
+    }
+    return config;
+  },
+  (error) => Promise.reject(error)
+);
+
+// Add response interceptor for error handling
+api.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    if (error.response?.status === 401) {
+      console.warn('Unauthorized - token may be invalid');
+    }
+    return Promise.reject(error);
+  }
+);
+
 // ================= PROVIDER =================
 
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
@@ -78,49 +102,71 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // ---------- INIT ----------
-  useEffect(() => {
-    const init = async () => {
-      try {
-        const token = await AsyncStorage.getItem(STORAGE_KEYS.TOKEN);
-        const userStr = await AsyncStorage.getItem(STORAGE_KEYS.USER);
-
-        if (token && userStr) {
-          setAccessToken(token);
-          setUser(JSON.parse(userStr));
-          api.defaults.headers.common.Authorization = `Bearer ${token}`;
-        }
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    init();
-  }, []);
-
   // ---------- HELPERS ----------
+  const clearAuth = async () => {
+    // Clear state immediately to prevent race conditions
+    setUser(null);
+    setAccessToken(null);
+    delete api.defaults.headers.common.Authorization;
+    
+    // Then clear storage asynchronously
+    await AsyncStorage.multiRemove([
+      STORAGE_KEYS.TOKEN,
+      STORAGE_KEYS.USER,
+    ]);
+  };
+
   const storeAuth = async (token: string, userData: User) => {
+    console.log('Storing auth with token:', token?.substring(0, 20) + '...');
+    
     await AsyncStorage.setItem(STORAGE_KEYS.TOKEN, token);
     await AsyncStorage.setItem(
       STORAGE_KEYS.USER,
       JSON.stringify(userData)
     );
 
+    // Set authorization header
     api.defaults.headers.common.Authorization = `Bearer ${token}`;
+    console.log('Authorization header set:', api.defaults.headers.common.Authorization?.substring(0, 30) + '...');
+    
     setAccessToken(token);
     setUser(userData);
     setError(null);
+    console.log('Auth state updated');
   };
 
-  const clearAuth = async () => {
-    await AsyncStorage.multiRemove([
-      STORAGE_KEYS.TOKEN,
-      STORAGE_KEYS.USER,
-    ]);
-    delete api.defaults.headers.common.Authorization;
-    setUser(null);
-    setAccessToken(null);
-  };
+  // ---------- INIT ----------
+  // Restore auth from storage on app start/refresh
+  useEffect(() => {
+    const restoreAuth = async () => {
+      try {
+        const token = await AsyncStorage.getItem(STORAGE_KEYS.TOKEN);
+        const userStr = await AsyncStorage.getItem(STORAGE_KEYS.USER);
+
+        if (token && userStr) {
+          const userData = JSON.parse(userStr);
+          console.log('Restored auth from storage:', userData.email);
+          
+          // Set authorization header
+          api.defaults.headers.common.Authorization = `Bearer ${token}`;
+          
+          setAccessToken(token);
+          setUser(userData);
+          setError(null);
+        } else {
+          console.log('No auth data in storage');
+        }
+      } catch (err) {
+        console.error('Error restoring auth:', err);
+        // Clear state if there's an error
+        await clearAuth();
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    restoreAuth();
+  }, []);
 
   // ---------- LOGIN ----------
   const login = async ({ email, password }: LoginCredentials) => {
@@ -128,6 +174,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     setError(null);
 
     try {
+      // Ensure clean state before login - remove any old authorization headers
+      delete api.defaults.headers.common.Authorization;
+      
       const res = await api.post('/auth/login', {
         email: email.trim().toLowerCase(),
         password,
@@ -160,8 +209,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     try {
       const res = await api.post('/auth/register', {
         email: data.email.trim().toLowerCase(),
-        password: data.password,
-        confirm_password: data.confirmPassword,
+        password: data.password.trim(),
+        confirmPassword: data.confirmPassword.trim(),
         username: data.username.trim(),
         name: data.name || data.username.trim(),
       });
@@ -191,9 +240,40 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   // ---------- LOGOUT ----------
   const logout = async () => {
+    console.log('🔴 LOGOUT: user state before =', user ? user.email : 'null');
     setIsLoading(true);
-    await clearAuth();
-    setIsLoading(false);
+    try {
+      await clearAuth();
+      console.log('🔴 LOGOUT: clearAuth completed');
+    } catch (err) {
+      console.error('🔴 LOGOUT ERROR:', err);
+    } finally {
+      setIsLoading(false);
+      console.log('🔴 LOGOUT: Complete - user state after =', user ? user.email : 'null');
+    }
+  };
+
+  // ---------- REFRESH USER ----------
+  const refreshUser = async () => {
+    try {
+      if (!accessToken) {
+        console.log('No access token, skipping user refresh');
+        return;
+      }
+
+      const res = await api.get('/auth/me');
+      if (res.data.success && res.data.user) {
+        console.log('User refreshed:', res.data.user.email);
+        setUser(res.data.user);
+        // Update stored user data
+        await AsyncStorage.setItem(
+          STORAGE_KEYS.USER,
+          JSON.stringify(res.data.user)
+        );
+      }
+    } catch (err) {
+      console.error('Error refreshing user:', err);
+    }
   };
 
   const clearError = () => setError(null);
@@ -209,6 +289,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         login,
         signup,
         logout,
+        refreshUser,
         clearError,
       }}
     >
@@ -226,3 +307,7 @@ export const useAuth = () => {
   }
   return ctx;
 };
+
+// ================= EXPORTS =================
+
+export { api };

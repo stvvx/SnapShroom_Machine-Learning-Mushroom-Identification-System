@@ -41,7 +41,7 @@ export default function LoginScreen() {
 
     try {
       await login({ email, password });
-      router.replace('/');
+      router.replace('/(tabs)');
     } catch {
       // ❗ error already handled by AuthContext
     }
@@ -141,7 +141,7 @@ export default function LoginScreen() {
             style={styles.switchMode}
             onPress={() => {
               clearError();
-              router.push('/register');
+              router.push('/(auth)/register');
             }}
             disabled={isLoading}
           >
@@ -158,7 +158,7 @@ export default function LoginScreen() {
 
           <TouchableOpacity
             style={styles.guestButton}
-            onPress={() => router.replace('/')}
+            onPress={() => router.replace('/(tabs)')}
             disabled={isLoading}
           >
             <ThemedText style={styles.guestButtonText}>

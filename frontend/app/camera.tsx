@@ -74,7 +74,7 @@ export default function CameraScreen() {
   if (hasPermission === false) {
     return (
       <View style={styles.container}>
-        <Ionicons name="camera-off" size={80} color="#666" />
+        <Ionicons name="camera-outline" size={80} color="#666" />
         <Text style={styles.title}>Camera Access Required</Text>
         <Text style={styles.text}>
           This app needs camera access to identify mushrooms from photos.

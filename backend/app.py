@@ -155,6 +155,13 @@ def register_blueprints(app):
         print("✅ Auth routes loaded")
     except Exception as e:
         print("⚠️ Blueprint error:", e)
+    
+    try:
+        from routes.admin_routes import admin_bp
+        app.register_blueprint(admin_bp, url_prefix="/api/admin")
+        print("✅ Admin routes loaded")
+    except Exception as e:
+        print("⚠️ Admin blueprint error:", e)
 
 
 # ==================================================
@@ -167,6 +174,7 @@ if __name__ == "__main__":
     app.run(
         host=cfg.HOST,
         port=cfg.PORT,
-        debug=cfg.DEBUG,
+        debug=False,  # Disable debug mode to prevent socket errors on Windows
         threaded=True,
+        use_reloader=False,  # Disable reloader to prevent threading issues
     )

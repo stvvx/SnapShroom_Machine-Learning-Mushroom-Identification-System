@@ -1,4 +1,4 @@
-from flask import Blueprint, request, jsonify, current_app
+from flask import Blueprint, request, jsonify, current_app, make_response
 from flask_jwt_extended import (
     jwt_required,
     get_jwt_identity,
@@ -40,9 +40,9 @@ def register():
         mongo = current_app.mongo
 
         email = data.get("email", "").lower().strip()
-        password = data.get("password", "")
-        confirm_password = data.get("confirmPassword", "")
-        name = data.get("name", "").strip()
+        password = (data.get("password") or "").strip()
+        confirm_password = (data.get("confirmPassword") or data.get("confirm_password") or "").strip()
+        name = (data.get("name") or "").strip()
 
         if not email or not password or not name:
             return jsonify({"success": False, "message": "All fields are required"}), 400
@@ -70,7 +70,11 @@ def register():
             "created_at": datetime.utcnow(),
             "is_active": True,
             "role": "user",
-            "avatar": None
+            "avatar": None,
+            "access_token": None,
+            "refresh_token": None,
+            "token_created_at": None,
+            "token_expires_at": None
         }
 
         result = mongo.db.users.insert_one(user)
@@ -80,6 +84,17 @@ def register():
             expires_delta=timedelta(hours=24)
         )
         refresh_token = create_refresh_token(identity=str(result.inserted_id))
+
+        # Store tokens in database immediately after creating user
+        mongo.db.users.update_one(
+            {"_id": result.inserted_id},
+            {"$set": {
+                "access_token": access_token,
+                "refresh_token": refresh_token,
+                "token_created_at": datetime.utcnow(),
+                "token_expires_at": datetime.utcnow() + timedelta(hours=24)
+            }}
+        )
 
         return jsonify({
             "success": True,
@@ -129,6 +144,17 @@ def login():
         )
         refresh_token = create_refresh_token(identity=str(user["_id"]))
 
+        # Store tokens in database
+        mongo.db.users.update_one(
+            {"_id": user["_id"]},
+            {"$set": {
+                "access_token": access_token,
+                "refresh_token": refresh_token,
+                "token_created_at": datetime.utcnow(),
+                "token_expires_at": datetime.utcnow() + timedelta(hours=24)
+            }}
+        )
+
         return jsonify({
             "success": True,
             "message": "Login successful",
@@ -162,12 +188,33 @@ def refresh():
 
 
 # --------------------
+# --------------------
 # LOGOUT
 # --------------------
 @auth_bp.route("/logout", methods=["POST"])
 @jwt_required()
 def logout():
-    return jsonify({"success": True, "message": "Logged out"}), 200
+    mongo = current_app.mongo
+    user_id = get_jwt_identity()
+    
+    # Clear tokens from database
+    mongo.db.users.update_one(
+        {"_id": ObjectId(user_id)},
+        {"$set": {
+            "access_token": None,
+            "refresh_token": None,
+            "token_expires_at": None
+        }}
+    )
+    
+    response = make_response(
+        jsonify({"success": True, "message": "Logged out"}),
+        200
+    )
+    # Clear JWT cookies
+    response.delete_cookie('access_token_cookie', path='/')
+    response.delete_cookie('refresh_token_cookie', path='/')
+    return response
 
 
 # --------------------
@@ -192,3 +239,92 @@ def me():
             "username": user["username"]
         }
     }), 200
+
+
+# --------------------
+# UPDATE PROFILE (Name)
+# --------------------
+@auth_bp.route("/update-name", methods=["PUT"])
+@jwt_required()
+def update_name():
+    mongo = current_app.mongo
+    user_id = get_jwt_identity()
+
+    try:
+        data = request.get_json()
+        name = (data.get("name") or "").strip()
+
+        if not name:
+            return jsonify({"success": False, "message": "Name is required"}), 400
+
+        user = mongo.db.users.find_one({"_id": ObjectId(user_id), "is_active": True})
+        if not user:
+            return jsonify({"success": False, "message": "User not found"}), 404
+
+        mongo.db.users.update_one(
+            {"_id": ObjectId(user_id)},
+            {"$set": {"name": name}}
+        )
+
+        return jsonify({
+            "success": True,
+            "message": "Name updated successfully",
+            "user": {
+                "id": str(user["_id"]),
+                "email": user["email"],
+                "name": name,
+                "username": user["username"]
+            }
+        }), 200
+
+    except Exception as e:
+        return jsonify({"success": False, "message": str(e)}), 500
+
+
+# --------------------
+# UPDATE PASSWORD
+# --------------------
+@auth_bp.route("/update-password", methods=["PUT"])
+@jwt_required()
+def update_password():
+    mongo = current_app.mongo
+    user_id = get_jwt_identity()
+
+    try:
+        data = request.get_json()
+        old_password = (data.get("oldPassword") or data.get("old_password") or "").strip()
+        new_password = (data.get("newPassword") or data.get("new_password") or "").strip()
+        confirm_password = (data.get("confirmPassword") or data.get("confirm_password") or "").strip()
+
+        if not old_password or not new_password or not confirm_password:
+            return jsonify({"success": False, "message": "All fields are required"}), 400
+
+        if new_password != confirm_password:
+            return jsonify({"success": False, "message": "New passwords do not match"}), 400
+
+        valid, msg = validate_password(new_password)
+        if not valid:
+            return jsonify({"success": False, "message": msg}), 400
+
+        user = mongo.db.users.find_one({"_id": ObjectId(user_id), "is_active": True})
+        if not user:
+            return jsonify({"success": False, "message": "User not found"}), 404
+
+        if not check_password_hash(user["password_hash"], old_password):
+            return jsonify({"success": False, "message": "Current password is incorrect"}), 401
+
+        if old_password == new_password:
+            return jsonify({"success": False, "message": "New password must be different from current password"}), 400
+
+        mongo.db.users.update_one(
+            {"_id": ObjectId(user_id)},
+            {"$set": {"password_hash": generate_password_hash(new_password)}}
+        )
+
+        return jsonify({
+            "success": True,
+            "message": "Password updated successfully"
+        }), 200
+
+    except Exception as e:
+        return jsonify({"success": False, "message": str(e)}), 500

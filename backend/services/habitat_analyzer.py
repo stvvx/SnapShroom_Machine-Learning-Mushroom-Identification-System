@@ -321,7 +321,7 @@ class HabitatAnalyzer:
         if not species_data.get("wild", True):
             risk_factors.append("Species is typically cultivated, may be treated with chemicals")
 
-        return {
+    return {
             "level": risk_level,
             "factors": risk_factors
         }
