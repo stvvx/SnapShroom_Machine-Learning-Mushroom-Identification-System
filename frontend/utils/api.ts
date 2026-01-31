@@ -13,7 +13,8 @@
 
 // IMPORTANT: Always use your computer's IP address, NOT localhost!
 // localhost only works on the same device, not from phone
-const API_BASE_URL = 'http://192.168.1.102:5000'; // ⚠️ CHANGE THIS to your computer's IP address!
+const API_BASE_URL = process.env.EXPO_PUBLIC_API_URL || 'http://192.168.254.112:5000';
+ // ⚠️ CHANGE THIS to your computer's IP address!
 
 export interface MushroomAnalysisRequest {
   image_base64: string;

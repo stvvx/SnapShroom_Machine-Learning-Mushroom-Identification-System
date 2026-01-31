@@ -46,14 +46,12 @@ def create_app(config_name="development"):
     # ==================================================
     CORS(
         app,
-        resources={
-            r"/api/*": {
-                "origins": [
-                    "http://localhost:8081",
-                    "http://127.0.0.1:8081"
-                ]
-            }
-        },
+        resources={r"/api/*": {"origins": [
+            "http://localhost:8081",
+            "http://127.0.0.1:8081",
+            "http://192.168.254.112:8081",
+            "https://ruthie-unablative-amiya.ngrok-free.dev"
+        ]}},
         supports_credentials=True,
         allow_headers=[
             "Content-Type",
@@ -62,6 +60,8 @@ def create_app(config_name="development"):
         ],
         methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"]
     )
+
+
 
     # ==================================================
     # INIT EXTENSIONS

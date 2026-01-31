@@ -1,40 +1,55 @@
 import { Image } from 'expo-image';
-import { TouchableOpacity, StyleSheet, Alert, ScrollView, View, Dimensions, ImageBackground } from 'react-native';
-import { HelloWave } from '@/components/hello-wave';
-import ParallaxScrollView from '@/components/parallax-scroll-view';
+import { TouchableOpacity, StyleSheet, Alert, ScrollView, View, Dimensions, Animated } from 'react-native';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { testConnection } from '@/utils/api';
-import { useState, useEffect } from 'react';
-import { useAuth } from '@/contexts/AuthContext'; 
+import { useState, useEffect, useRef } from 'react';
+import { useAuth } from '@/contexts/AuthContext';
+import { LinearGradient } from 'expo-linear-gradient';
+import { BlurView } from 'expo-blur';
 
-const { width } = Dimensions.get('window');
+const { width, height } = Dimensions.get('window');
 const isSmallScreen = width < 768;
 
-// Mushroom-themed background
-const MUSHROOM_BG = 'https://images.unsplash.com/photo-1578662996442-48f60103fc96?w=1200&q=60';
+// Hero carousel images
+const HERO_SLIDES = [
+  { uri: 'https://www.researchgate.net/publication/341757075/figure/fig2/AS:896856825536518@1590838738580/Copelandia-Panaeolus-cyanescens.ppm' },
+  { uri: 'https://upload.wikimedia.org/wikipedia/commons/0/08/Copelandia_cyanescens.jpg' },
+  { uri: 'https://images.unsplash.com/photo-1528518290605-1fcc8dcca204?q=80&w=1200&auto=format&fit=crop' },
+  { uri: 'https://i.ytimg.com/vi/_q1qCJ39fS0/maxresdefault.jpg' },
+];
 
-// Blog / explore cards – mushroom-themed images
-const blogs = [
+// Feature cards
+const FEATURES = [
   {
     id: 1,
-    title: "Mushroom Spawn",
-    subtitle: "Grow your own mushrooms",
-    image: "https://images.unsplash.com/photo-1618375569909-3c8616cf7733?w=800&q=80",
+    icon: 'camera',
+    title: 'AI Recognition',
+    description: 'Instant mushroom identification using advanced AI',
+    color: '#7BA05B',
   },
   {
     id: 2,
-    title: "Fruiting Kits",
-    subtitle: "Grow mushrooms at home",
-    image: "https://images.unsplash.com/photo-1544367567-0f2fcb009e0b?w=800&q=80",
+    icon: 'shield-checkmark',
+    title: 'Safety First',
+    description: 'Comprehensive safety information for every species',
+    color: '#5A8040',
   },
   {
     id: 3,
-    title: "Workshops & Certifications",
-    subtitle: "Learn with experts",
-    image: "https://images.unsplash.com/photo-1584515933487-779824d29309?w=800&q=80",
+    icon: 'library',
+    title: '10K+ Species',
+    description: 'Extensive database with detailed information',
+    color: '#8FB569',
+  },
+  {
+    id: 4,
+    icon: 'trending-up',
+    title: '99% Accuracy',
+    description: 'Trained on millions of mushroom images',
+    color: '#6B9449',
   },
 ];
 
@@ -42,15 +57,38 @@ export default function HomeScreen() {
   const router = useRouter();
   const [connectionStatus, setConnectionStatus] = useState<'idle' | 'testing' | 'connected' | 'failed'>('idle');
   const [connectionMessage, setConnectionMessage] = useState('');
-  const { user, isLoading: authLoading, logout, accessToken } = useAuth();
+  const { user, isLoading: authLoading, logout } = useAuth();
   const isLoggedIn = !!user;
 
-  // Redirect to landing (Register/Login tabs) when not authenticated
+  // Hero carousel
+  const [currentSlide, setCurrentSlide] = useState(0);
+  const fadeAnim = useRef(new Animated.Value(1)).current;
+  const scrollY = useRef(new Animated.Value(0)).current;
+
+  // Auto-slide effect
   useEffect(() => {
-    console.log('🟢 HOME useEffect: authLoading=', authLoading, 'user=', user ? user.email : 'null');
+    const interval = setInterval(() => {
+      Animated.timing(fadeAnim, {
+        toValue: 0,
+        duration: 500,
+        useNativeDriver: true,
+      }).start(() => {
+        setCurrentSlide((prev) => (prev + 1) % HERO_SLIDES.length);
+        Animated.timing(fadeAnim, {
+          toValue: 1,
+          duration: 500,
+          useNativeDriver: true,
+        }).start();
+      });
+    }, 5000);
+
+    return () => clearInterval(interval);
+  }, []);
+
+  // Redirect to login when not authenticated
+  useEffect(() => {
     if (authLoading) return;
     if (!user) {
-      console.log('🟢 HOME: User is null, redirecting to /(auth)/login');
       setTimeout(() => {
         router.replace('/(auth)/login');
       }, 100);
@@ -75,635 +113,805 @@ export default function HomeScreen() {
   const handleInfoPress = () => {
     Alert.alert(
       'About SnapShroom',
-      'SnapShroom is an AI-powered mushroom identification app that helps you safely identify edible and poisonous mushrooms using your phone camera.\n\nFeatures:\n• Real-time species identification\n• Toxicity analysis\n• Habitat suitability assessment\n• Comprehensive risk evaluation\n• Safety recommendations\n\n⚠️ WARNING: This app is for educational purposes only. Always consult with mycological experts before consuming wild mushrooms.',
+      'SnapShroom is an AI-powered mushroom identification app that helps you safely identify mushrooms using your phone camera.\n\n⚠️ WARNING: This app is for educational purposes only. Never consume mushrooms based solely on app identification.',
       [{ text: 'OK' }]
     );
   };
 
   const handleTestConnection = async () => {
-    if (!isLoggedIn) {
-      Alert.alert('Login Required', 'Please log in to test the connection');
-      return;
-    }
-    
+    if (!isLoggedIn) return;
     setConnectionStatus('testing');
-    setConnectionMessage('Testing connection to backend...');
-    
+    setConnectionMessage('Testing connection...');
     try {
       const connected = await testConnection();
-      if (connected) {
-        setConnectionStatus('connected');
-        setConnectionMessage('✅ Backend connection successful!');
-      } else {
-        setConnectionStatus('failed');
-        setConnectionMessage('❌ Backend not responding. Check if server is running.');
-      }
+      setConnectionStatus(connected ? 'connected' : 'failed');
+      setConnectionMessage(connected ? 'Backend connection successful' : 'Backend not responding');
     } catch (error: any) {
       setConnectionStatus('failed');
-      setConnectionMessage(`❌ Connection failed: ${error.message || 'Cannot reach backend server'}`);
-    }
-  };
-
-  const handleBlogPress = (blogId: number) => {
-    if (!isLoggedIn) {
-      Alert.alert(
-        'Login Required',
-        'Please log in to access blog posts',
-        [
-          { text: 'Cancel', style: 'cancel' },
-          { text: 'Login', onPress: () => router.push('/(auth)/login') }
-        ]
-      );
-      return;
-    }
-    Alert.alert('Blog Post', `Opening blog post ${blogId}...`, [{ text: 'OK' }]);
-  };
-
-  const performLogout = async () => {
-    console.log('🔴 LOGOUT: Starting logout...');
-    try {
-      await logout();
-      console.log('🔴 LOGOUT: Logout complete, user state should be null now');
-      // Don't redirect here - the useEffect will handle it when user becomes null
-    } catch (err) {
-      console.error('🔴 LOGOUT ERROR:', err);
+      setConnectionMessage(`Connection failed: ${error.message}`);
     }
   };
 
   const handleLogout = async () => {
-    console.log('🔴 handleLogout: Button clicked');
-    try {
-      await performLogout();
-    } catch (err) {
-      console.error('🔴 handleLogout: Error', err);
+    try { 
+      await logout(); 
+    } catch (err) { 
+      console.error('Logout error:', err); 
     }
   };
 
-  // Show loading screen while checking auth
+  // Header opacity based on scroll
+  const headerOpacity = scrollY.interpolate({
+    inputRange: [0, 100],
+    outputRange: [0, 1],
+    extrapolate: 'clamp',
+  });
+
   if (authLoading) {
     return (
       <View style={styles.loadingContainer}>
-        <Ionicons name="leaf" size={64} color="#7BA05B" />
-        <ThemedText style={styles.loadingText}>Loading SnapShroom...</ThemedText>
+        <LinearGradient colors={['#7BA05B', '#5A8040']} style={styles.loadingGradient}>
+          <Ionicons name="leaf" size={64} color="#FFFFFF" />
+          <ThemedText style={styles.loadingText}>Loading SnapShroom...</ThemedText>
+        </LinearGradient>
       </View>
     );
   }
 
-  // Don't render the home screen if not logged in
-  if (!isLoggedIn) {
-    return null;
-  }
+  if (!isLoggedIn) return null;
 
   return (
-    <ImageBackground source={{ uri: MUSHROOM_BG }} style={styles.bgImage} imageStyle={styles.bgImageStyle}>
-      <View style={styles.bgOverlay} />
-      <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
-        {/* Header Navigation */}
-        <View style={styles.header}>
+    <View style={styles.container}>
+      {/* Floating Header */}
+      <Animated.View style={[styles.floatingHeader, { backgroundColor: headerOpacity.interpolate({
+        inputRange: [0, 1],
+        outputRange: ['rgba(255, 255, 255, 0)', 'rgba(255, 255, 255, 0.98)'],
+      }) }]}>
+        <View style={styles.headerContent}>
           <View style={styles.logoContainer}>
-            <Ionicons name="leaf" size={28} color="#5A7D4A" />
+            <View style={styles.logoIconWrapper}>
+              <Ionicons name="camera" size={20} color="#FFFFFF" />
+            </View>
             <ThemedText style={styles.logoText}>SnapShroom</ThemedText>
           </View>
           <View style={styles.navMenu}>
-            <TouchableOpacity onPress={handleInfoPress}>
-              <ThemedText style={styles.navItem}>About</ThemedText>
-            </TouchableOpacity>
-            <TouchableOpacity onPress={handleCameraPress}>
-              <ThemedText style={styles.navItem}>Identify</ThemedText>
-            </TouchableOpacity>
-            <TouchableOpacity onPress={handleLogout}>
-              <ThemedText style={styles.navItem}>Logout</ThemedText>
+            {!isSmallScreen && (
+              <TouchableOpacity onPress={handleInfoPress} style={styles.navButton}>
+                <Ionicons name="information-circle-outline" size={24} color="#3A4D33" />
+              </TouchableOpacity>
+            )}
+            <TouchableOpacity onPress={handleLogout} style={styles.logoutButton}>
+              <Ionicons name="log-out-outline" size={18} color="#FFFFFF" />
+              {!isSmallScreen && <ThemedText style={styles.logoutText}>Logout</ThemedText>}
             </TouchableOpacity>
           </View>
         </View>
+      </Animated.View>
 
-        {/* Welcome Message – personalized for logged-in user */}
-        <View style={styles.welcomeSection}>
-          <ThemedText style={styles.welcomeText}>
-            Welcome, {user?.name || user?.username || 'User'}!
-          </ThemedText>
-          <ThemedText style={styles.welcomeSubtext}>Ready to identify some mushrooms?</ThemedText>
-        </View>
+      <Animated.ScrollView 
+        style={styles.scrollView}
+        showsVerticalScrollIndicator={false}
+        onScroll={Animated.event(
+          [{ nativeEvent: { contentOffset: { y: scrollY } } }],
+          { useNativeDriver: false }
+        )}
+        scrollEventThrottle={16}
+      >
+        {/* Hero Section */}
+        <View style={styles.heroSection}>
+          <Animated.View style={[styles.heroImageContainer, { opacity: fadeAnim }]}>
+            <Image 
+              source={HERO_SLIDES[currentSlide]}
+              style={styles.heroImage}
+              contentFit="cover"
+              transition={500}
+            />
+            <LinearGradient
+              colors={['rgba(0,0,0,0)', 'rgba(0,0,0,0.4)', 'rgba(0,0,0,0.7)']}
+              style={styles.heroGradient}
+            />
+          </Animated.View>
 
-        {/* Hero Banner – mushroom theme */}
-        <View style={styles.heroBanner}>
           <View style={styles.heroContent}>
-            <View style={styles.heroTextSection}>
-              <ThemedText style={styles.heroTitle}>
-                Welcome to SnapShroom's AI-powered mushroom identification app
+            <View style={styles.welcomeBadge}>
+              <Ionicons name="sparkles" size={14} color="#FFD700" />
+              <ThemedText style={styles.welcomeText} numberOfLines={1}>
+                Welcome, {user?.name || user?.username || 'Explorer'}
               </ThemedText>
-              <ThemedText style={styles.heroSubtitle}>
-                Here you'll find resources to safely identify and learn about mushrooms using cutting-edge AI technology
-              </ThemedText>
-              <TouchableOpacity style={styles.heroButton} onPress={handleCameraPress}>
-                <Ionicons name="camera" size={20} color="white" />
-                <ThemedText style={styles.heroButtonText}>Start Identifying</ThemedText>
+            </View>
+
+            <ThemedText style={styles.heroTitle}>
+              Discover & Identify{'\n'}Mushrooms with AI
+            </ThemedText>
+            
+            <ThemedText style={styles.heroSubtitle}>
+              Explore 10,000+ species with 99% accuracy using machine learning
+            </ThemedText>
+
+            <View style={styles.heroActions}>
+              <TouchableOpacity style={styles.primaryButton} onPress={handleCameraPress}>
+                <LinearGradient colors={['#7BA05B', '#5A8040']} style={styles.buttonGradient}>
+                  <Ionicons name="camera" size={20} color="white" />
+                  <ThemedText style={styles.primaryButtonText}>Start Identifying</ThemedText>
+                </LinearGradient>
+              </TouchableOpacity>
+
+              <TouchableOpacity style={styles.secondaryButton} onPress={handleInfoPress}>
+                <ThemedText style={styles.secondaryButtonText}>Learn More</ThemedText>
+                <Ionicons name="arrow-forward" size={16} color="#FFFFFF" />
               </TouchableOpacity>
             </View>
-            {!isSmallScreen && (
-              <View style={styles.heroImageSection}>
-                <Image 
-                  source={{ uri: "https://images.unsplash.com/photo-1618375569909-3c8616cf7733?w=800&q=80" }} 
-                  style={styles.heroImage}
-                  contentFit="cover"
+
+            {/* Slide Indicators */}
+            <View style={styles.slideIndicators}>
+              {HERO_SLIDES.map((_, index) => (
+                <View 
+                  key={index} 
+                  style={[
+                    styles.indicator, 
+                    currentSlide === index && styles.activeIndicator
+                  ]} 
                 />
-              </View>
-            )}
+              ))}
+            </View>
           </View>
         </View>
 
-        {/* Blog Section */}
-        <View style={styles.blogSection}>
-        <ThemedText style={styles.sectionTitle}>Explore Mushroom Knowledge</ThemedText>
-        <View style={styles.blogGrid}>
-          {blogs.map((blog) => (
-            <TouchableOpacity 
-              key={blog.id} 
-              style={styles.blogCard}
-              onPress={() => handleBlogPress(blog.id)}
-            >
-              <Image 
-                source={{ uri: blog.image }} 
-                style={styles.blogImage}
-                contentFit="cover"
-              />
-              <View style={styles.blogTextOverlay}>
-                <ThemedText style={styles.blogTitle}>{blog.title}</ThemedText>
-                <ThemedText style={styles.blogSubtitle}>{blog.subtitle}</ThemedText>
-              </View>
-            </TouchableOpacity>
-          ))}
-        </View>
+        {/* Stats Bar */}
+        <View style={styles.statsBar}>
+          <View style={styles.statItem}>
+            <ThemedText style={styles.statNumber}>10K+</ThemedText>
+            <ThemedText style={styles.statLabel}>Species</ThemedText>
+          </View>
+          <View style={styles.statDivider} />
+          <View style={styles.statItem}>
+            <ThemedText style={styles.statNumber}>99%</ThemedText>
+            <ThemedText style={styles.statLabel}>Accuracy</ThemedText>
+          </View>
+          <View style={styles.statDivider} />
+          <View style={styles.statItem}>
+            <ThemedText style={styles.statNumber}>1M+</ThemedText>
+            <ThemedText style={styles.statLabel}>Users</ThemedText>
+          </View>
         </View>
 
         {/* Features Section */}
         <View style={styles.featuresSection}>
-        <ThemedText style={styles.sectionTitle}>Why Choose SnapShroom?</ThemedText>
-        <View style={styles.featureGrid}>
-          <View style={styles.featureCard}>
-            <Ionicons name="leaf" size={36} color="#7BA05B" />
-            <ThemedText style={styles.featureTitle}>Species ID</ThemedText>
-            <ThemedText style={styles.featureText}>
-              Identify thousands of mushroom species instantly with AI
+          <View style={styles.sectionHeader}>
+            <ThemedText style={styles.sectionLabel}>FEATURES</ThemedText>
+            <ThemedText style={styles.sectionTitle}>Why Choose SnapShroom</ThemedText>
+            <ThemedText style={styles.sectionDescription}>
+              Advanced AI technology meets comprehensive mushroom knowledge
             </ThemedText>
           </View>
 
-          <View style={styles.featureCard}>
-            <Ionicons name="shield-checkmark" size={36} color="#7BA05B" />
-            <ThemedText style={styles.featureTitle}>Safety First</ThemedText>
-            <ThemedText style={styles.featureText}>
-              Get detailed edibility and toxicity assessments
-            </ThemedText>
+          <View style={styles.featuresGrid}>
+            {FEATURES.map((feature, index) => (
+              <View 
+                key={feature.id} 
+                style={styles.featureCard}
+              >
+                <View style={[styles.featureIconContainer, { backgroundColor: `${feature.color}15` }]}>
+                  <Ionicons name={feature.icon as any} size={24} color={feature.color} />
+                </View>
+                <ThemedText style={styles.featureTitle}>{feature.title}</ThemedText>
+                <ThemedText style={styles.featureDescription}>{feature.description}</ThemedText>
+              </View>
+            ))}
+          </View>
+        </View>
+
+        {/* How It Works Section */}
+        <View style={styles.howItWorksSection}>
+          <View style={styles.sectionHeader}>
+            <ThemedText style={styles.sectionLabel}>HOW IT WORKS</ThemedText>
+            <ThemedText style={styles.sectionTitle}>Three Simple Steps</ThemedText>
           </View>
 
-          <View style={styles.featureCard}>
-            <Ionicons name="location" size={36} color="#7BA05B" />
-            <ThemedText style={styles.featureTitle}>Habitat Info</ThemedText>
-            <ThemedText style={styles.featureText}>
-              Learn about environmental conditions and regions
-            </ThemedText>
+          <View style={styles.stepsContainer}>
+            {[
+              {
+                number: '1',
+                title: 'Take a Photo',
+                description: 'Capture clear images of the mushroom from multiple angles'
+              },
+              {
+                number: '2',
+                title: 'AI Analysis',
+                description: 'Our AI instantly analyzes and identifies the species'
+              },
+              {
+                number: '3',
+                title: 'Learn & Explore',
+                description: 'Get detailed information, safety tips, and more'
+              }
+            ].map((step) => (
+              <View key={step.number} style={styles.stepCard}>
+                <View style={styles.stepNumber}>
+                  <ThemedText style={styles.stepNumberText}>{step.number}</ThemedText>
+                </View>
+                <View style={styles.stepContent}>
+                  <ThemedText style={styles.stepTitle}>{step.title}</ThemedText>
+                  <ThemedText style={styles.stepDescription}>{step.description}</ThemedText>
+                </View>
+              </View>
+            ))}
           </View>
         </View>
-        </View>
 
-        {/* Connection Test */}
-        <View style={styles.connectionSection}>
-        <Ionicons 
-          name={connectionStatus === 'connected' ? 'checkmark-circle' : 'wifi'} 
-          size={28} 
-          color={connectionStatus === 'connected' ? '#7BA05B' : '#A8B89D'} 
-        />
-        <ThemedText style={styles.connectionTitle}>Backend Connection Status</ThemedText>
-        {connectionMessage ? (
-          <ThemedText style={styles.connectionMessage}>{connectionMessage}</ThemedText>
-        ) : (
-          <ThemedText style={styles.connectionText}>
-            Test if your device can reach the backend server
-          </ThemedText>
-        )}
-        <TouchableOpacity 
-          style={[
-            styles.testButton, 
-            connectionStatus === 'testing' && styles.testButtonDisabled
-          ]} 
-          onPress={handleTestConnection}
-          disabled={connectionStatus === 'testing'}
-        >
-          <ThemedText style={styles.testButtonText}>
-            {connectionStatus === 'testing' ? 'Testing...' : 'Test Connection'}
-          </ThemedText>
-        </TouchableOpacity>
-        </View>
-
-        {/* Safety Warning */}
-        <View style={styles.warningSection}>
-        <Ionicons name="alert-circle-outline" size={28} color="#D4A373" />
-        <ThemedText style={styles.warningTitle}>Important Safety Notice</ThemedText>
-        <ThemedText style={styles.warningText}>
-          This app provides AI-assisted identification but is not infallible. Always consult with certified mycologists before consuming wild mushrooms. Some poisonous species can be deadly.
-        </ThemedText>
-        <TouchableOpacity style={styles.warningButton} onPress={handleInfoPress}>
-          <ThemedText style={styles.warningButtonText}>Learn More</ThemedText>
-        </TouchableOpacity>
-        </View>
-
-        {/* Getting Started */}
-        <View style={styles.stepsSection}>
-        <ThemedText style={styles.sectionTitle}>How It Works</ThemedText>
-        <View style={styles.stepsList}>
-          <View style={styles.stepCard}>
-            <View style={styles.stepNumber}>
-              <ThemedText style={styles.stepNumberText}>1</ThemedText>
+        {/* Safety Notice */}
+        <View style={styles.safetySection}>
+          <LinearGradient colors={['#FEF3C7', '#FDE68A']} style={styles.safetyCard}>
+            <View style={styles.safetyIconContainer}>
+              <Ionicons name="warning" size={28} color="#D97706" />
             </View>
-            <ThemedText style={styles.stepTitle}>Capture</ThemedText>
-            <ThemedText style={styles.stepText}>
-              Take a clear photo of the mushroom in natural lighting
-            </ThemedText>
-          </View>
-
-          <View style={styles.stepCard}>
-            <View style={styles.stepNumber}>
-              <ThemedText style={styles.stepNumberText}>2</ThemedText>
+            <View style={styles.safetyContent}>
+              <ThemedText style={styles.safetyTitle}>Safety First</ThemedText>
+              <ThemedText style={styles.safetyText}>
+                Never consume any mushroom based solely on app identification. Always consult multiple sources and experts before consuming wild mushrooms.
+              </ThemedText>
             </View>
-            <ThemedText style={styles.stepTitle}>Analyze</ThemedText>
-            <ThemedText style={styles.stepText}>
-              Our AI processes the image and identifies the species
-            </ThemedText>
-          </View>
+          </LinearGradient>
+        </View>
 
-          <View style={styles.stepCard}>
-            <View style={styles.stepNumber}>
-              <ThemedText style={styles.stepNumberText}>3</ThemedText>
+        {/* System Status */}
+        <View style={styles.systemSection}>
+          <View style={styles.systemCard}>
+            <View style={styles.systemHeader}>
+              <View style={styles.systemTitleContainer}>
+                <Ionicons name="pulse" size={22} color="#7BA05B" />
+                <ThemedText style={styles.systemTitle}>System Status</ThemedText>
+              </View>
+              <View style={[
+                styles.statusBadge,
+                connectionStatus === 'connected' && styles.statusConnected,
+                connectionStatus === 'failed' && styles.statusFailed,
+              ]}>
+                <View style={[
+                  styles.statusDot,
+                  connectionStatus === 'connected' && styles.dotConnected,
+                  connectionStatus === 'failed' && styles.dotFailed,
+                ]} />
+                <ThemedText style={styles.statusText}>
+                  {connectionStatus === 'connected' ? 'Online' : 
+                   connectionStatus === 'failed' ? 'Offline' : 'Ready'}
+                </ThemedText>
+              </View>
             </View>
-            <ThemedText style={styles.stepTitle}>Learn</ThemedText>
-            <ThemedText style={styles.stepText}>
-              Get detailed information about edibility and safety
+
+            {connectionMessage ? (
+              <ThemedText style={styles.systemMessage}>{connectionMessage}</ThemedText>
+            ) : null}
+
+            <TouchableOpacity 
+              style={styles.testButton} 
+              onPress={handleTestConnection}
+              disabled={connectionStatus === 'testing'}
+            >
+              <ThemedText style={styles.testButtonText}>
+                {connectionStatus === 'testing' ? 'Testing...' : 'Test Connection'}
+              </ThemedText>
+            </TouchableOpacity>
+          </View>
+        </View>
+
+        {/* Footer */}
+        <View style={styles.footer}>
+          <View style={styles.footerContent}>
+            <View style={styles.footerBrand}>
+              <Ionicons name="leaf" size={28} color="#7BA05B" />
+              <ThemedText style={styles.footerTitle}>SnapShroom</ThemedText>
+              <ThemedText style={styles.footerTagline}>
+                AI-Powered Mushroom Identification
+              </ThemedText>
+            </View>
+
+            <ThemedText style={styles.copyright}>
+              © 2026 SnapShroom. All rights reserved.
             </ThemedText>
           </View>
         </View>
-        </View>
-
-        {/* Footer Spacing */}
-        <View style={styles.footer} />
-      </ScrollView>
-    </ImageBackground>
+      </Animated.ScrollView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  bgImage: {
-    flex: 1,
-  },
-  bgImageStyle: {
-    opacity: 0.35,
-  },
-  bgOverlay: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(253, 252, 250, 0.88)',
-  },
   container: {
     flex: 1,
-    backgroundColor: 'transparent',
+    backgroundColor: '#FDFCFA',
   },
   loadingContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#FDFCFA',
+  },
+  loadingGradient: {
+    padding: 40,
+    borderRadius: 24,
+    alignItems: 'center',
+    gap: 16,
   },
   loadingText: {
     fontSize: 18,
-    color: '#4A5D3E',
-    marginTop: 16,
+    color: '#FFFFFF',
+    fontWeight: '600',
   },
-  header: {
+  scrollView: {
+    flex: 1,
+  },
+
+  // Floating Header
+  floatingHeader: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    zIndex: 1000,
+    paddingTop: isSmallScreen ? 50 : 50,
+    paddingBottom: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(0,0,0,0.05)',
+  },
+  headerContent: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     paddingHorizontal: isSmallScreen ? 16 : 20,
-    paddingVertical: 14,
-    backgroundColor: '#FFFFFF',
-    borderBottomWidth: 1,
-    borderBottomColor: '#E8E5DF',
   },
   logoContainer: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
+    flex: 1,
+    maxWidth: '50%',
+  },
+  logoIconWrapper: {
+    width: 30,
+    height: 30,
+    borderRadius: 15,
+    backgroundColor: '#7BA05B',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   logoText: {
-    fontSize: isSmallScreen ? 20 : 24,
-    fontWeight: '700',
-    color: '#4A5D3E',
+    fontSize: isSmallScreen ? 17 : 20,
+    fontWeight: '800',
+    color: '#3A4D33',
+    letterSpacing: -0.5,
   },
   navMenu: {
     flexDirection: 'row',
-    gap: isSmallScreen ? 16 : 24,
-  },
-  navItem: {
-    fontSize: isSmallScreen ? 14 : 16,
-    fontWeight: '500',
-    color: '#5C6F51',
-  },
-  welcomeSection: {
-    backgroundColor: '#E8EFE3',
-    padding: isSmallScreen ? 16 : 20,
-    marginHorizontal: isSmallScreen ? 16 : 20,
-    marginTop: isSmallScreen ? 16 : 20,
-    borderRadius: 12,
-  },
-  welcomeText: {
-    fontSize: isSmallScreen ? 16 : 18,
-    fontWeight: '600',
-    color: '#4A5D3E',
-    textAlign: 'center',
-  },
-  welcomeSubtext: {
-    fontSize: isSmallScreen ? 14 : 15,
-    color: '#5C6F51',
-    textAlign: 'center',
-    marginTop: 4,
-  },
-  // ... rest of your existing styles remain the same
-  heroBanner: {
-    backgroundColor: '#E8EFE3',
-    paddingVertical: isSmallScreen ? 30 : 60,
-    paddingHorizontal: isSmallScreen ? 16 : 20,
-    marginTop: isSmallScreen ? 16 : 20,
-  },
-  heroContent: {
-    flexDirection: isSmallScreen ? 'column' : 'row',
     alignItems: 'center',
-    gap: isSmallScreen ? 20 : 30,
+    gap: 6,
   },
-  heroTextSection: {
-    flex: 1,
+  navButton: {
+    padding: 8,
   },
-  heroTitle: {
-    fontSize: isSmallScreen ? 22 : 32,
-    fontWeight: '700',
-    color: '#3A4D33',
-    lineHeight: isSmallScreen ? 30 : 42,
-    marginBottom: 12,
-  },
-  heroSubtitle: {
-    fontSize: isSmallScreen ? 14 : 16,
-    color: '#5C6F51',
-    lineHeight: isSmallScreen ? 20 : 24,
-    marginBottom: isSmallScreen ? 20 : 28,
-  },
-  heroButton: {
+  logoutButton: {
     flexDirection: 'row',
-    backgroundColor: '#7BA05B',
-    paddingVertical: 12,
-    paddingHorizontal: 24,
-    borderRadius: 30,
     alignItems: 'center',
-    gap: 8,
-    alignSelf: isSmallScreen ? 'stretch' : 'flex-start',
-    justifyContent: 'center',
+    gap: 4,
+    backgroundColor: '#7BA05B',
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    borderRadius: 16,
   },
-  heroButtonText: {
+  logoutText: {
     color: '#FFFFFF',
-    fontSize: 15,
+    fontSize: 13,
     fontWeight: '600',
   },
-  heroImageSection: {
-    width: 280,
-    height: 280,
-    borderRadius: 20,
-    overflow: 'hidden',
+
+  // Hero Section
+  heroSection: {
+    height: isSmallScreen ? height * 0.82 : height * 0.85,
+    position: 'relative',
+  },
+  heroImageContainer: {
+    ...StyleSheet.absoluteFillObject,
   },
   heroImage: {
     width: '100%',
     height: '100%',
   },
-  blogSection: {
-    paddingVertical: isSmallScreen ? 30 : 60,
-    paddingHorizontal: isSmallScreen ? 16 : 20,
-    backgroundColor: '#FDFCFA',
+  heroGradient: {
+    ...StyleSheet.absoluteFillObject,
+  },
+  heroContent: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    paddingHorizontal: isSmallScreen ? 16 : 24,
+    paddingBottom: isSmallScreen ? 60 : 50,
+  },
+  welcomeBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    alignSelf: 'flex-start',
+    backgroundColor: 'rgba(255, 255, 255, 0.25)',
+    paddingVertical: isSmallScreen ? 6 : 8,
+    paddingHorizontal: isSmallScreen ? 10 : 12,
+    borderRadius: 20,
+    marginBottom: 16,
+    maxWidth: isSmallScreen ? '90%' : '85%',
+  },
+  welcomeText: {
+    color: '#FFFFFF',
+    fontSize: isSmallScreen ? 12 : 13,
+    fontWeight: '600',
+    flexShrink: 1,
+  },
+  heroTitle: {
+    fontSize: isSmallScreen ? 30 : 48,
+    fontWeight: '900',
+    color: '#FFFFFF',
+    lineHeight: isSmallScreen ? 36 : 56,
+    marginBottom: 12,
+    textShadowColor: 'rgba(0, 0, 0, 0.5)',
+    textShadowOffset: { width: 0, height: 2 },
+    textShadowRadius: 10,
+  },
+  heroSubtitle: {
+    fontSize: isSmallScreen ? 14 : 16,
+    color: 'rgba(255, 255, 255, 0.95)',
+    lineHeight: isSmallScreen ? 20 : 24,
+    marginBottom: 20,
+    maxWidth: '95%',
+  },
+  heroActions: {
+    flexDirection: 'column',
+    gap: 12,
+    marginBottom: 20,
+  },
+  primaryButton: {
+    borderRadius: 25,
+    overflow: 'hidden',
+  },
+  buttonGradient: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: isSmallScreen ? 15 : 16,
+    paddingHorizontal: 24,
+    gap: 8,
+  },
+  primaryButtonText: {
+    color: '#FFFFFF',
+    fontSize: isSmallScreen ? 16 : 16,
+    fontWeight: '700',
+  },
+  secondaryButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    paddingVertical: isSmallScreen ? 15 : 16,
+    paddingHorizontal: 24,
+    borderRadius: 25,
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    borderWidth: 2,
+    borderColor: 'rgba(255, 255, 255, 0.4)',
+  },
+  secondaryButtonText: {
+    color: '#FFFFFF',
+    fontSize: isSmallScreen ? 16 : 16,
+    fontWeight: '600',
+  },
+  slideIndicators: {
+    flexDirection: 'row',
+    gap: 6,
+    justifyContent: 'center',
+  },
+  indicator: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: 'rgba(255, 255, 255, 0.3)',
+  },
+  activeIndicator: {
+    backgroundColor: '#FFFFFF',
+    width: 24,
+  },
+
+  // Stats Bar
+  statsBar: {
+    flexDirection: 'row',
+    backgroundColor: '#FFFFFF',
+    paddingVertical: isSmallScreen ? 24 : 32,
+    paddingHorizontal: isSmallScreen ? 16 : 24,
+    justifyContent: 'space-around',
+    borderBottomWidth: 1,
+    borderBottomColor: '#F0F0F0',
+  },
+  statItem: {
+    alignItems: 'center',
+  },
+  statNumber: {
+    fontSize: isSmallScreen ? 26 : 32,
+    fontWeight: '800',
+    color: '#3A4D33',
+    marginBottom: 4,
+  },
+  statLabel: {
+    fontSize: isSmallScreen ? 11 : 13,
+    color: '#6B7C61',
+    fontWeight: '500',
+  },
+  statDivider: {
+    width: 1,
+    backgroundColor: '#E5E5E5',
+  },
+
+  // Features Section
+  featuresSection: {
+    paddingVertical: isSmallScreen ? 40 : 60,
+    paddingHorizontal: isSmallScreen ? 16 : 24,
+    backgroundColor: '#F8FAF6',
+  },
+  sectionHeader: {
+    alignItems: 'center',
+    marginBottom: isSmallScreen ? 32 : 48,
+    paddingHorizontal: isSmallScreen ? 10 : 0,
+  },
+  sectionLabel: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#7BA05B',
+    letterSpacing: 2,
+    marginBottom: 10,
   },
   sectionTitle: {
-    fontSize: isSmallScreen ? 22 : 28,
-    fontWeight: '700',
+    fontSize: isSmallScreen ? 26 : 32,
+    fontWeight: '800',
     color: '#3A4D33',
-    marginBottom: isSmallScreen ? 20 : 32,
+    marginBottom: 10,
     textAlign: 'center',
   },
-  blogGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    justifyContent: isSmallScreen ? 'center' : 'space-between',
-    gap: isSmallScreen ? 16 : 20,
+  sectionDescription: {
+    fontSize: isSmallScreen ? 14 : 16,
+    color: '#6B7C61',
+    textAlign: 'center',
+    maxWidth: isSmallScreen ? '100%' : 500,
+    lineHeight: isSmallScreen ? 20 : 24,
+    paddingHorizontal: isSmallScreen ? 10 : 0,
   },
-  blogCard: {
-    width: isSmallScreen ? '100%' : '31%',
-    minWidth: isSmallScreen ? 280 : 200,
-    height: isSmallScreen ? 240 : 280,
-    borderRadius: 12,
-    overflow: 'hidden',
+  featuresGrid: {
+    gap: 12,
+  },
+  featureCard: {
+    width: '100%',
     backgroundColor: '#FFFFFF',
+    padding: isSmallScreen ? 20 : 24,
+    borderRadius: 16,
+    alignItems: 'center',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.08,
     shadowRadius: 8,
     elevation: 3,
   },
-  blogImage: {
-    width: '100%',
-    height: '100%',
-  },
-  blogTextOverlay: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
-    backgroundColor: 'rgba(255, 255, 255, 0.95)',
-    padding: 16,
-  },
-  blogTitle: {
-    fontSize: isSmallScreen ? 16 : 18,
-    fontWeight: '700',
-    color: '#3A4D33',
-    marginBottom: 4,
-  },
-  blogSubtitle: {
-    fontSize: isSmallScreen ? 13 : 14,
-    color: '#5C6F51',
-  },
-  featuresSection: {
-    paddingVertical: isSmallScreen ? 30 : 60,
-    paddingHorizontal: isSmallScreen ? 16 : 20,
-    backgroundColor: '#F7F5F0',
-  },
-  featureGrid: {
-    flexDirection: 'row',
-    justifyContent: isSmallScreen ? 'center' : 'space-around',
-    flexWrap: 'wrap',
-    gap: isSmallScreen ? 16 : 20,
-  },
-  featureCard: {
-    width: isSmallScreen ? '100%' : '30%',
-    minWidth: isSmallScreen ? 280 : 180,
-    backgroundColor: '#FFFFFF',
-    padding: isSmallScreen ? 24 : 30,
-    borderRadius: 12,
+  featureIconContainer: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    justifyContent: 'center',
     alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.06,
-    shadowRadius: 8,
-    elevation: 2,
+    marginBottom: 12,
   },
   featureTitle: {
     fontSize: isSmallScreen ? 16 : 18,
     fontWeight: '700',
     color: '#3A4D33',
-    marginTop: 12,
-    marginBottom: 8,
+    marginBottom: 6,
     textAlign: 'center',
   },
-  featureText: {
-    fontSize: isSmallScreen ? 13 : 14,
+  featureDescription: {
+    fontSize: 13,
     color: '#6B7C61',
     textAlign: 'center',
-    lineHeight: isSmallScreen ? 18 : 20,
+    lineHeight: 18,
   },
-  connectionSection: {
-    backgroundColor: '#EDF5E8',
-    marginHorizontal: isSmallScreen ? 16 : 20,
-    marginVertical: isSmallScreen ? 20 : 30,
-    padding: isSmallScreen ? 20 : 30,
-    borderRadius: 12,
-    alignItems: 'center',
+
+  // How It Works Section
+  howItWorksSection: {
+    paddingVertical: isSmallScreen ? 40 : 60,
+    paddingHorizontal: isSmallScreen ? 16 : 24,
+    backgroundColor: '#FFFFFF',
   },
-  connectionTitle: {
-    fontSize: isSmallScreen ? 17 : 20,
-    fontWeight: '700',
-    color: '#4A5D3E',
-    marginTop: 12,
-    marginBottom: 8,
-    textAlign: 'center',
-  },
-  connectionText: {
-    fontSize: isSmallScreen ? 13 : 14,
-    color: '#6B7C61',
-    textAlign: 'center',
-    marginBottom: 16,
-  },
-  connectionMessage: {
-    fontSize: isSmallScreen ? 13 : 14,
-    color: '#4A5D3E',
-    textAlign: 'center',
-    marginBottom: 16,
-    fontWeight: '600',
-  },
-  testButton: {
-    backgroundColor: '#7BA05B',
-    paddingVertical: 12,
-    paddingHorizontal: isSmallScreen ? 24 : 32,
-    borderRadius: 24,
-    width: isSmallScreen ? '100%' : 'auto',
-  },
-  testButtonDisabled: {
-    backgroundColor: '#B5C9A7',
-  },
-  testButtonText: {
-    color: '#FFFFFF',
-    fontSize: 15,
-    fontWeight: '600',
-    textAlign: 'center',
-  },
-  warningSection: {
-    backgroundColor: '#FFF8ED',
-    marginHorizontal: isSmallScreen ? 16 : 20,
-    marginVertical: isSmallScreen ? 16 : 20,
-    padding: isSmallScreen ? 20 : 30,
-    borderRadius: 12,
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: '#F0DFC5',
-  },
-  warningTitle: {
-    fontSize: isSmallScreen ? 17 : 20,
-    fontWeight: '700',
-    color: '#9B6B3F',
-    marginTop: 12,
-    marginBottom: 12,
-    textAlign: 'center',
-  },
-  warningText: {
-    fontSize: isSmallScreen ? 13 : 14,
-    color: '#7D6854',
-    lineHeight: isSmallScreen ? 20 : 22,
-    textAlign: 'center',
-    marginBottom: 16,
-  },
-  warningButton: {
-    backgroundColor: '#D4A373',
-    paddingVertical: 10,
-    paddingHorizontal: 24,
-    borderRadius: 24,
-    width: isSmallScreen ? '100%' : 'auto',
-  },
-  warningButtonText: {
-    color: '#FFFFFF',
-    fontSize: 14,
-    fontWeight: '600',
-    textAlign: 'center',
-  },
-  stepsSection: {
-    paddingVertical: isSmallScreen ? 30 : 60,
-    paddingHorizontal: isSmallScreen ? 16 : 20,
-    backgroundColor: '#FDFCFA',
-  },
-  stepsList: {
-    flexDirection: 'row',
-    justifyContent: isSmallScreen ? 'center' : 'space-between',
-    flexWrap: 'wrap',
-    gap: isSmallScreen ? 16 : 20,
+  stepsContainer: {
+    gap: 16,
   },
   stepCard: {
-    width: isSmallScreen ? '100%' : '30%',
-    minWidth: isSmallScreen ? 280 : 180,
-    backgroundColor: '#FFFFFF',
-    padding: isSmallScreen ? 20 : 24,
-    borderRadius: 12,
-    alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.06,
-    shadowRadius: 8,
-    elevation: 2,
+    flexDirection: 'row',
+    gap: isSmallScreen ? 14 : 20,
+    padding: isSmallScreen ? 18 : 24,
+    backgroundColor: '#F8FAF6',
+    borderRadius: 14,
+    borderLeftWidth: 3,
+    borderLeftColor: '#7BA05B',
   },
   stepNumber: {
-    backgroundColor: '#E8EFE3',
-    width: 46,
-    height: 46,
-    borderRadius: 23,
+    width: 42,
+    height: 42,
+    borderRadius: 21,
+    backgroundColor: '#7BA05B',
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: 14,
+    flexShrink: 0,
   },
   stepNumberText: {
-    fontSize: 22,
-    fontWeight: '700',
-    color: '#7BA05B',
+    fontSize: 18,
+    fontWeight: '800',
+    color: '#FFFFFF',
+  },
+  stepContent: {
+    flex: 1,
   },
   stepTitle: {
     fontSize: isSmallScreen ? 16 : 18,
     fontWeight: '700',
     color: '#3A4D33',
-    marginBottom: 8,
-    textAlign: 'center',
+    marginBottom: 4,
   },
-  stepText: {
-    fontSize: isSmallScreen ? 13 : 14,
+  stepDescription: {
+    fontSize: 13,
     color: '#6B7C61',
-    textAlign: 'center',
-    lineHeight: isSmallScreen ? 18 : 20,
+    lineHeight: 18,
   },
+
+  // Safety Section
+  safetySection: {
+    paddingVertical: isSmallScreen ? 32 : 40,
+    paddingHorizontal: isSmallScreen ? 16 : 24,
+    backgroundColor: '#F8FAF6',
+  },
+  safetyCard: {
+    flexDirection: 'row',
+    padding: isSmallScreen ? 18 : 24,
+    borderRadius: 16,
+    gap: isSmallScreen ? 14 : 20,
+    shadowColor: '#D97706',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 6,
+    elevation: 2,
+  },
+  safetyIconContainer: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: 'rgba(217, 119, 6, 0.1)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    flexShrink: 0,
+  },
+  safetyContent: {
+    flex: 1,
+  },
+  safetyTitle: {
+    fontSize: isSmallScreen ? 16 : 18,
+    fontWeight: '700',
+    color: '#92400E',
+    marginBottom: 6,
+  },
+  safetyText: {
+    fontSize: 13,
+    color: '#92400E',
+    lineHeight: 18,
+  },
+
+  // System Section
+  systemSection: {
+    paddingVertical: isSmallScreen ? 32 : 40,
+    paddingHorizontal: isSmallScreen ? 16 : 24,
+    backgroundColor: '#FFFFFF',
+  },
+  systemCard: {
+    backgroundColor: '#F8FAF6',
+    padding: isSmallScreen ? 18 : 24,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: '#E5EDE0',
+  },
+  systemHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 14,
+    flexWrap: 'wrap',
+    gap: 10,
+  },
+  systemTitleContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  systemTitle: {
+    fontSize: isSmallScreen ? 16 : 18,
+    fontWeight: '700',
+    color: '#3A4D33',
+  },
+  statusBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingVertical: 5,
+    paddingHorizontal: 10,
+    borderRadius: 10,
+    backgroundColor: 'rgba(107, 124, 97, 0.1)',
+  },
+  statusConnected: {
+    backgroundColor: 'rgba(34, 197, 94, 0.1)',
+  },
+  statusFailed: {
+    backgroundColor: 'rgba(239, 68, 68, 0.1)',
+  },
+  statusDot: {
+    width: 7,
+    height: 7,
+    borderRadius: 3.5,
+    backgroundColor: '#6B7C61',
+  },
+  dotConnected: {
+    backgroundColor: '#22C55E',
+  },
+  dotFailed: {
+    backgroundColor: '#EF4444',
+  },
+  statusText: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: '#6B7C61',
+  },
+  systemMessage: {
+    fontSize: 13,
+    color: '#6B7C61',
+    marginBottom: 14,
+    lineHeight: 18,
+  },
+  testButton: {
+    backgroundColor: '#7BA05B',
+    paddingVertical: 13,
+    borderRadius: 10,
+    alignItems: 'center',
+  },
+  testButtonText: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: '600',
+  },
+
+  // Footer
   footer: {
-    height: 30,
+    backgroundColor: '#3A4D33',
+    paddingVertical: isSmallScreen ? 36 : 48,
+    paddingHorizontal: isSmallScreen ? 16 : 24,
+  },
+  footerContent: {
+    alignItems: 'center',
+  },
+  footerBrand: {
+    alignItems: 'center',
+    marginBottom: 20,
+  },
+  footerTitle: {
+    fontSize: isSmallScreen ? 20 : 24,
+    fontWeight: '800',
+    color: '#FFFFFF',
+    marginTop: 10,
+    marginBottom: 6,
+  },
+  footerTagline: {
+    fontSize: 13,
+    color: 'rgba(255, 255, 255, 0.7)',
+    textAlign: 'center',
+  },
+  copyright: {
+    fontSize: 12,
+    color: 'rgba(255, 255, 255, 0.6)',
+    textAlign: 'center',
   },
 });

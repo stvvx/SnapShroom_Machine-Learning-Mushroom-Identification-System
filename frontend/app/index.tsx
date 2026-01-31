@@ -37,7 +37,6 @@ export default function IndexScreen() {
       <View style={styles.container}>
         <Ionicons name="leaf" size={64} color="#7BA05B" style={styles.icon} />
         <Text style={styles.title}>SnapShroom</Text>
-        <Text style={styles.subtitle}>AI-powered mushroom identification</Text>
         <TouchableOpacity style={styles.signUpButton} onPress={handleSignUp} activeOpacity={0.8}>
           <Text style={styles.signUpButtonText}>Sign Up</Text>
         </TouchableOpacity>

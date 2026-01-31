@@ -7,14 +7,21 @@ import React, {
   useEffect,
 } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import axios, { AxiosError } from 'axios';
+import axios from 'axios';
 
-// API URL
+// ==================================================
+// ENV & API URL
+// ==================================================
 const API_URL =
-  process.env.EXPO_PUBLIC_API_URL || 'http://localhost:5000/api';
+  process.env.EXPO_PUBLIC_API_URL?.endsWith('/api')
+    ? process.env.EXPO_PUBLIC_API_URL
+    : `${process.env.EXPO_PUBLIC_API_URL || 'http://192.168.254.112:5000'}/api`;
 
-// ================= TYPES =================
+console.log('Using API URL:', API_URL);
 
+// ==================================================
+// TYPES
+// ==================================================
 export interface User {
   id: string;
   email: string;
@@ -52,30 +59,28 @@ interface AuthContextType {
   clearError: () => void;
 }
 
-// ================= CONTEXT =================
-
-const AuthContext = createContext<AuthContextType | undefined>(undefined);
-
-// ================= STORAGE KEYS =================
-
+// ==================================================
+// STORAGE KEYS
+// ==================================================
 const STORAGE_KEYS = {
   TOKEN: 'snapshroom_access_token',
   USER: 'snapshroom_user',
 };
 
-// ================= AXIOS =================
-
-const api = axios.create({
+// ==================================================
+// AXIOS INSTANCE
+// ==================================================
+export const api = axios.create({
   baseURL: API_URL,
   timeout: 10000,
   headers: { 'Content-Type': 'application/json' },
 });
 
-// Add request interceptor to include Authorization header
+// Request interceptor (fixed TS issue)
 api.interceptors.request.use(
   (config) => {
-    const token = config.headers.Authorization?.replace('Bearer ', '');
-    if (token) {
+    const authHeader = config.headers?.['Authorization'] as string | undefined;
+    if (authHeader) {
       console.log('Sending request with Authorization header');
     }
     return config;
@@ -83,7 +88,7 @@ api.interceptors.request.use(
   (error) => Promise.reject(error)
 );
 
-// Add response interceptor for error handling
+// Response interceptor
 api.interceptors.response.use(
   (response) => response,
   (error) => {
@@ -94,7 +99,10 @@ api.interceptors.response.use(
   }
 );
 
-// ================= PROVIDER =================
+// ==================================================
+// CONTEXT
+// ==================================================
+const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
@@ -102,41 +110,29 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // ---------- HELPERS ----------
+  // -------------------------
+  // Helpers
+  // -------------------------
   const clearAuth = async () => {
-    // Clear state immediately to prevent race conditions
     setUser(null);
     setAccessToken(null);
     delete api.defaults.headers.common.Authorization;
-    
-    // Then clear storage asynchronously
-    await AsyncStorage.multiRemove([
-      STORAGE_KEYS.TOKEN,
-      STORAGE_KEYS.USER,
-    ]);
+    await AsyncStorage.multiRemove([STORAGE_KEYS.TOKEN, STORAGE_KEYS.USER]);
   };
 
   const storeAuth = async (token: string, userData: User) => {
-    console.log('Storing auth with token:', token?.substring(0, 20) + '...');
-    
     await AsyncStorage.setItem(STORAGE_KEYS.TOKEN, token);
-    await AsyncStorage.setItem(
-      STORAGE_KEYS.USER,
-      JSON.stringify(userData)
-    );
+    await AsyncStorage.setItem(STORAGE_KEYS.USER, JSON.stringify(userData));
 
-    // Set authorization header
     api.defaults.headers.common.Authorization = `Bearer ${token}`;
-    console.log('Authorization header set:', api.defaults.headers.common.Authorization?.substring(0, 30) + '...');
-    
     setAccessToken(token);
     setUser(userData);
     setError(null);
-    console.log('Auth state updated');
   };
 
-  // ---------- INIT ----------
-  // Restore auth from storage on app start/refresh
+  // -------------------------
+  // Restore auth on start
+  // -------------------------
   useEffect(() => {
     const restoreAuth = async () => {
       try {
@@ -145,20 +141,14 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
         if (token && userStr) {
           const userData = JSON.parse(userStr);
-          console.log('Restored auth from storage:', userData.email);
-          
-          // Set authorization header
           api.defaults.headers.common.Authorization = `Bearer ${token}`;
-          
           setAccessToken(token);
           setUser(userData);
           setError(null);
-        } else {
-          console.log('No auth data in storage');
+          console.log('Restored auth from storage:', userData.email);
         }
       } catch (err) {
         console.error('Error restoring auth:', err);
-        // Clear state if there's an error
         await clearAuth();
       } finally {
         setIsLoading(false);
@@ -168,32 +158,29 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     restoreAuth();
   }, []);
 
-  // ---------- LOGIN ----------
+  // -------------------------
+  // LOGIN
+  // -------------------------
   const login = async ({ email, password }: LoginCredentials) => {
     setIsLoading(true);
     setError(null);
 
     try {
-      // Ensure clean state before login - remove any old authorization headers
       delete api.defaults.headers.common.Authorization;
-      
+
       const res = await api.post('/auth/login', {
         email: email.trim().toLowerCase(),
         password,
+      }, {
+        withCredentials: true,
       });
 
-      if (!res.data.success) {
-        throw new Error(res.data.message);
-      }
+      if (!res.data.success) throw new Error(res.data.message);
 
       await storeAuth(res.data.access_token, res.data.user);
-    } catch (err) {
+    } catch (err: any) {
       let msg = 'Login failed';
-
-      if (axios.isAxiosError(err)) {
-        msg = err.response?.data?.message || msg;
-      }
-
+      if (axios.isAxiosError(err)) msg = err.response?.data?.message || msg;
       setError(msg);
       throw new Error(msg);
     } finally {
@@ -201,7 +188,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }
   };
 
-  // ---------- SIGNUP ----------
+  // -------------------------
+  // SIGNUP
+  // -------------------------
   const signup = async (data: SignupData) => {
     setIsLoading(true);
     setError(null);
@@ -213,24 +202,17 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         confirmPassword: data.confirmPassword.trim(),
         username: data.username.trim(),
         name: data.name || data.username.trim(),
+      }, {
+        withCredentials: true,
       });
 
-      if (!res.data.success) {
-        throw new Error(res.data.message);
-      }
+      if (!res.data.success) throw new Error(res.data.message);
 
       // auto login
-      await login({
-        email: data.email,
-        password: data.password,
-      });
-    } catch (err) {
+      await login({ email: data.email, password: data.password });
+    } catch (err: any) {
       let msg = 'Registration failed';
-
-      if (axios.isAxiosError(err)) {
-        msg = err.response?.data?.message || msg;
-      }
-
+      if (axios.isAxiosError(err)) msg = err.response?.data?.message || msg;
       setError(msg);
       throw new Error(msg);
     } finally {
@@ -238,38 +220,31 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }
   };
 
-  // ---------- LOGOUT ----------
+  // -------------------------
+  // LOGOUT
+  // -------------------------
   const logout = async () => {
-    console.log('🔴 LOGOUT: user state before =', user ? user.email : 'null');
     setIsLoading(true);
     try {
       await clearAuth();
-      console.log('🔴 LOGOUT: clearAuth completed');
     } catch (err) {
-      console.error('🔴 LOGOUT ERROR:', err);
+      console.error('Logout error:', err);
     } finally {
       setIsLoading(false);
-      console.log('🔴 LOGOUT: Complete - user state after =', user ? user.email : 'null');
     }
   };
 
-  // ---------- REFRESH USER ----------
+  // -------------------------
+  // REFRESH USER
+  // -------------------------
   const refreshUser = async () => {
     try {
-      if (!accessToken) {
-        console.log('No access token, skipping user refresh');
-        return;
-      }
+      if (!accessToken) return;
 
       const res = await api.get('/auth/me');
       if (res.data.success && res.data.user) {
-        console.log('User refreshed:', res.data.user.email);
         setUser(res.data.user);
-        // Update stored user data
-        await AsyncStorage.setItem(
-          STORAGE_KEYS.USER,
-          JSON.stringify(res.data.user)
-        );
+        await AsyncStorage.setItem(STORAGE_KEYS.USER, JSON.stringify(res.data.user));
       }
     } catch (err) {
       console.error('Error refreshing user:', err);
@@ -278,6 +253,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   const clearError = () => setError(null);
 
+  // -------------------------
+  // PROVIDER
+  // -------------------------
   return (
     <AuthContext.Provider
       value={{
@@ -298,16 +276,11 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   );
 };
 
-// ================= HOOK =================
-
+// ==================================================
+// HOOK
+// ==================================================
 export const useAuth = () => {
   const ctx = useContext(AuthContext);
-  if (!ctx) {
-    throw new Error('useAuth must be used inside AuthProvider');
-  }
+  if (!ctx) throw new Error('useAuth must be used inside AuthProvider');
   return ctx;
 };
-
-// ================= EXPORTS =================
-
-export { api };
