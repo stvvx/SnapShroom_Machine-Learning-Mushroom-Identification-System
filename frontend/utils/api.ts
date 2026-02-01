@@ -1,20 +1,37 @@
 // API configuration and utilities for SnapShroom frontend
-
-// IMPORTANT: Update this with your actual backend IP address
-// For phone testing: Use your computer's local IP (e.g., 'http://192.168.1.XXX:5000')
-// Find your IP: Windows: ipconfig | Mac/Linux: ifconfig
-// 
-// STEP 1: Find your IP address:
-//   Windows: Open Command Prompt, type: ipconfig
-//   Look for "IPv4 Address" (e.g., 192.168.1.102)
+// =======================================================
 //
-// STEP 2: Replace the IP below with YOUR computer's IP address
-// STEP 3: Make sure phone and computer are on the SAME WiFi network
+// CONNECTION MODES (IMPORTANT):
+//
+// ✅ NGROK MODE (RECOMMENDED for phone + Expo):
+//    Set EXPO_PUBLIC_API_URL to your ACTIVE ngrok HTTPS URL
+//
+// ❌ LAN MODE (optional, same WiFi only):
+//    Use http://<YOUR_LOCAL_IP>:5000
+//
+// ⚠️ DO NOT mix ngrok + LAN instructions
+// =======================================================
 
-// IMPORTANT: Always use your computer's IP address, NOT localhost!
-// localhost only works on the same device, not from phone
-const API_BASE_URL = process.env.EXPO_PUBLIC_API_URL || 'http://192.168.254.112:5000';
- // ⚠️ CHANGE THIS to your computer's IP address!
+// -------------------------------------------------------
+// BASE URL RESOLUTION
+// -------------------------------------------------------
+
+// 1️⃣ Primary: Expo public env (BEST for ngrok)
+const ENV_API_URL = process.env.EXPO_PUBLIC_API_URL;
+
+// 2️⃣ Fallback: local LAN (only if env not set)
+const FALLBACK_LAN_URL = 'http://192.168.1.12:5000'; // ← optional, dev only
+
+// 3️⃣ Final resolved base URL
+const API_BASE_URL = ENV_API_URL || FALLBACK_LAN_URL;
+
+// Debug (very helpful)
+console.log('🔗 API_BASE_URL:', API_BASE_URL);
+
+
+// -------------------------------------------------------
+// TYPES
+// -------------------------------------------------------
 
 export interface MushroomAnalysisRequest {
   image_base64: string;
@@ -42,23 +59,34 @@ export interface MushroomAnalysisResponse {
   safety_actions: string[];
 }
 
+
+// -------------------------------------------------------
+// API SERVICE
+// -------------------------------------------------------
+
 class ApiService {
   private baseUrl: string;
 
   constructor(baseUrl: string) {
-    this.baseUrl = baseUrl;
+    this.baseUrl = baseUrl.replace(/\/$/, ''); // remove trailing slash
   }
 
-  async analyzeMushroom(data: MushroomAnalysisRequest): Promise<MushroomAnalysisResponse> {
+  // ---------------------------------------------------
+  // MAIN ANALYSIS
+  // ---------------------------------------------------
+  async analyzeMushroom(
+    data: MushroomAnalysisRequest
+  ): Promise<MushroomAnalysisResponse> {
+    const url = `${this.baseUrl}/api/toxicity/predict`;
+
     try {
-      console.log('API Request URL:', `${this.baseUrl}/api/toxicity/predict`);
-      console.log('Request payload size:', JSON.stringify(data).length, 'bytes');
-      
-      // Create AbortController for timeout (AbortSignal.timeout not available in React Native)
+      console.log('📡 POST', url);
+      console.log('📦 Payload size:', JSON.stringify(data).length, 'bytes');
+
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 60000); // 60 second timeout
-      
-      const response = await fetch(`${this.baseUrl}/api/toxicity/predict`, {
+      const timeoutId = setTimeout(() => controller.abort(), 60000);
+
+      const response = await fetch(url, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -66,125 +94,99 @@ class ApiService {
         body: JSON.stringify(data),
         signal: controller.signal,
       });
-      
-      clearTimeout(timeoutId); // Clear timeout if request succeeds
 
-      console.log('Response status:', response.status, response.statusText);
+      clearTimeout(timeoutId);
+
+      console.log('✅ Response:', response.status, response.statusText);
 
       if (!response.ok) {
-        let errorData;
+        let errorText = response.statusText;
         try {
-          errorData = await response.json();
+          const errJson = await response.json();
+          errorText = errJson.error || JSON.stringify(errJson);
         } catch {
-          const text = await response.text();
-          throw new Error(`Server error (${response.status}): ${text || response.statusText}`);
+          errorText = await response.text();
         }
-        throw new Error(errorData.error || `HTTP ${response.status}: ${response.statusText}`);
+        throw new Error(`Backend error (${response.status}): ${errorText}`);
       }
 
-      const result = await response.json();
-      console.log('Response received successfully');
-      return result;
+      return await response.json();
+
     } catch (error: any) {
-      console.error('API Error:', error);
-      
-      if (error instanceof TypeError) {
-        if (error.message.includes('fetch') || error.message.includes('network') || error.message.includes('Network Request Failed')) {
-          throw new Error(
-            `Cannot connect to backend at ${this.baseUrl}\n\n` +
-            `Troubleshooting steps:\n` +
-            `1. Is backend running? (Run: python app.py in backend folder)\n` +
-            `2. Check IP address in utils/api.ts matches your computer's IP\n` +
-            `3. Find your IP: Windows: ipconfig | Mac/Linux: ifconfig\n` +
-            `4. Phone and computer must be on SAME WiFi network\n` +
-            `5. Test in phone browser: http://YOUR_IP:5000\n` +
-            `6. Check Windows Firewall isn't blocking port 5000`
-          );
-        }
+      console.error('❌ API Error:', error);
+
+      // Network / unreachable backend
+      if (
+        error?.message?.includes('Network') ||
+        error?.message?.includes('Failed') ||
+        error?.name === 'TypeError'
+      ) {
+        throw new Error(
+          `Analysis Failed\n\n` +
+          `Cannot connect to backend at:\n${this.baseUrl}\n\n` +
+          `Checklist:\n` +
+          `• Is Flask running? (python app.py)\n` +
+          `• Is ngrok running RIGHT NOW?\n` +
+          `• Did you update EXPO_PUBLIC_API_URL with the CURRENT ngrok URL?\n` +
+          `• Try opening this in a browser:\n  ${this.baseUrl}/health`
+        );
       }
-      
-      if (error.name === 'AbortError' || error.name === 'TimeoutError') {
-        throw new Error('Request timed out after 60 seconds. The analysis is taking too long. Please try again with a clearer image.');
+
+      // Timeout
+      if (error.name === 'AbortError') {
+        throw new Error(
+          'Request timed out after 60 seconds.\n' +
+          'Try using a clearer image or retry.'
+        );
       }
-      
+
       throw error;
     }
   }
 
-  async getSpeciesList() {
-    try {
-      const response = await fetch(`${this.baseUrl}/api/dataset/species`);
-      if (!response.ok) {
-        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-      }
-      return await response.json();
-    } catch (error) {
-      console.error('Error fetching species list:', error);
-      throw error;
-    }
-  }
-
-  async getSpeciesDetails(speciesName: string) {
-    try {
-      const response = await fetch(`${this.baseUrl}/api/dataset/species/${encodeURIComponent(speciesName)}`);
-      if (!response.ok) {
-        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-      }
-      return await response.json();
-    } catch (error) {
-      console.error('Error fetching species details:', error);
-      throw error;
-    }
-  }
-
-  async getDatasetInfo() {
-    try {
-      const response = await fetch(`${this.baseUrl}/api/dataset/info`);
-      if (!response.ok) {
-        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-      }
-      return await response.json();
-    } catch (error) {
-      console.error('Error fetching dataset info:', error);
-      throw error;
-    }
-  }
-
-  // Test connection to backend
+  // ---------------------------------------------------
+  // HEALTH CHECK
+  // ---------------------------------------------------
   async testConnection(): Promise<boolean> {
+    const url = `${this.baseUrl}/health`;
+
     try {
-      console.log('Testing connection to:', this.baseUrl);
+      console.log('🔍 Testing backend:', url);
+
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 5000);
-      
-      const response = await fetch(`${this.baseUrl}/`, {
+
+      const response = await fetch(url, {
         method: 'GET',
         signal: controller.signal,
       });
-      
+
       clearTimeout(timeoutId);
-      const isOk = response.ok;
-      console.log('Connection test result:', isOk, response.status);
-      return isOk;
+
+      console.log('💚 Health:', response.status);
+      return response.ok;
+
     } catch (error: any) {
-      console.error('Connection test failed:', error);
-      if (error.name === 'AbortError') {
-        throw new Error('Connection timeout - server not responding');
-      }
-      throw new Error(`Cannot connect: ${error.message || 'Network error'}`);
+      console.error('❌ Health check failed:', error);
+      throw new Error(
+        `Backend unreachable at ${this.baseUrl}\n` +
+        `• Is Flask running?\n` +
+        `• Is ngrok active?\n` +
+        `• Is the URL correct?`
+      );
     }
   }
 }
 
-// Create and export the API service instance
+
+// -------------------------------------------------------
+// EXPORTS
+// -------------------------------------------------------
+
 export const apiService = new ApiService(API_BASE_URL);
 
-// Export individual functions for convenience
 export const analyzeMushroom = (data: MushroomAnalysisRequest) =>
   apiService.analyzeMushroom(data);
 
-export const getSpeciesList = () => apiService.getSpeciesList();
-export const getSpeciesDetails = (speciesName: string) =>
-  apiService.getSpeciesDetails(speciesName);
-export const getDatasetInfo = () => apiService.getDatasetInfo();
-export const testConnection = () => apiService.testConnection();
+export const testConnection = () =>
+  apiService.testConnection();

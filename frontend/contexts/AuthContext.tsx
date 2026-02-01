@@ -15,7 +15,7 @@ import axios from 'axios';
 const API_URL =
   process.env.EXPO_PUBLIC_API_URL?.endsWith('/api')
     ? process.env.EXPO_PUBLIC_API_URL
-    : `${process.env.EXPO_PUBLIC_API_URL || 'http://192.168.254.112:5000'}/api`;
+    : `${process.env.EXPO_PUBLIC_API_URL || 'http://192.168.1.12:5000'}/api`;
 
 console.log('Using API URL:', API_URL);
 
