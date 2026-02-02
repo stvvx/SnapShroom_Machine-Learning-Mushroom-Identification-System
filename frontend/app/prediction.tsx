@@ -28,18 +28,321 @@ interface PredictionResult {
   safety_actions: string[];
 }
 
+interface MushroomData {
+  mushroom_id: string;
+  english_name: string;
+  local_name: string;
+  scientific_name: string;
+  edible: string;
+  poisonous: string;
+  location_region: string;
+  location_province: string;
+  habitat: string;
+  cap_color: string;
+  cap_size_cm: string;
+  gills_present: string;
+  gills_color: string;
+  stem_color: string;
+  stem_length_cm: string;
+  size_reference: string;
+  spore_print_color: string;
+  texture: string;
+  season_month: string;
+  cultivated: string;
+  wild: string;
+  notes: string;
+}
+
 export default function PredictionScreen() {
   const { imageUri, imageBase64 } = useLocalSearchParams();
   const router = useRouter();
   const [isAnalyzing, setIsAnalyzing] = useState(true);
   const [result, setResult] = useState<PredictionResult | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [mushroomData, setMushroomData] = useState<MushroomData | null>(null);
 
+  // Load CSV data
+  useEffect(() => {
+    loadMushroomData();
+  }, []);
+
+  // Analyze image once loaded
   useEffect(() => {
     if (imageBase64) {
       analyzeImage();
     }
   }, [imageBase64]);
+
+  // Load and parse CSV when result is available
+  useEffect(() => {
+    if (result?.image_analysis?.species) {
+      matchMushroomFromCSV(result.image_analysis.species.english_name || result.image_analysis.species.species);
+    }
+  }, [result]);
+
+  const loadMushroomData = async () => {
+    // Mushroom data is hardcoded in matchMushroomFromCSV
+    console.log('✅ Mushroom database ready');
+  };
+
+  const matchMushroomFromCSV = (detectedSpeciesName: string) => {
+    // Hardcoded CSV data for matching
+    const mushrooms: MushroomData[] = [
+      {
+        mushroom_id: '1',
+        english_name: 'Wood Ear Mushroom',
+        local_name: 'Tainga ng Daga',
+        scientific_name: 'Auricularia polytricha',
+        edible: 'TRUE',
+        poisonous: 'FALSE',
+        location_region: 'Region 1',
+        location_province: 'Pangasinan',
+        habitat: 'wood',
+        cap_color: 'dark_brown',
+        cap_size_cm: '6',
+        gills_present: 'FALSE',
+        gills_color: 'none',
+        stem_color: 'brown',
+        stem_length_cm: '1',
+        size_reference: 'coin_5peso',
+        spore_print_color: 'white',
+        texture: 'gelatinous',
+        season_month: 'July-October',
+        cultivated: 'TRUE',
+        wild: 'TRUE',
+        notes: 'Ear-shaped grows on dead wood - used in soups and stir-fry'
+      },
+      {
+        mushroom_id: '2',
+        english_name: 'White Oyster Mushroom',
+        local_name: 'Kabute',
+        scientific_name: 'Pleurotus ostreatus',
+        edible: 'TRUE',
+        poisonous: 'FALSE',
+        location_region: 'NCR',
+        location_province: 'Manila',
+        habitat: 'wood',
+        cap_color: 'white',
+        cap_size_cm: '10',
+        gills_present: 'TRUE',
+        gills_color: 'white',
+        stem_color: 'white',
+        stem_length_cm: '3',
+        size_reference: 'coin_10peso',
+        spore_print_color: 'white',
+        texture: 'smooth',
+        season_month: 'All_year',
+        cultivated: 'TRUE',
+        wild: 'TRUE',
+        notes: 'Most commonly cultivated mushroom in Philippines - sold in markets'
+      },
+      {
+        mushroom_id: '3',
+        english_name: 'Enoki Mushroom',
+        local_name: 'Enoki',
+        scientific_name: 'Flammulina velutipes',
+        edible: 'TRUE',
+        poisonous: 'FALSE',
+        location_region: 'Region 2',
+        location_province: 'Isabela',
+        habitat: 'wood',
+        cap_color: 'white',
+        cap_size_cm: '2',
+        gills_present: 'TRUE',
+        gills_color: 'white',
+        stem_color: 'white',
+        stem_length_cm: '10',
+        size_reference: 'coin_1peso',
+        spore_print_color: 'white',
+        texture: 'smooth',
+        season_month: 'All_year',
+        cultivated: 'TRUE',
+        wild: 'FALSE',
+        notes: 'Long thin stems with tiny caps - grows in clusters - popular in Japanese dishes'
+      },
+      {
+        mushroom_id: '4',
+        english_name: 'Shiitake Mushroom',
+        local_name: 'Shiitake',
+        scientific_name: 'Lentinula edodes',
+        edible: 'TRUE',
+        poisonous: 'FALSE',
+        location_region: 'Region 4A',
+        location_province: 'Cavite',
+        habitat: 'wood',
+        cap_color: 'brown',
+        cap_size_cm: '7',
+        gills_present: 'TRUE',
+        gills_color: 'cream',
+        stem_color: 'brown',
+        stem_length_cm: '4',
+        size_reference: 'coin_5peso',
+        spore_print_color: 'white',
+        texture: 'smooth',
+        season_month: 'All_year',
+        cultivated: 'TRUE',
+        wild: 'FALSE',
+        notes: 'Popular cultivated variety - brown umbrella-shaped cap with white scales'
+      },
+      {
+        mushroom_id: '5',
+        english_name: 'Death Cap',
+        local_name: 'Kabuting Nakamamatay',
+        scientific_name: 'Amanita phalloides',
+        edible: 'FALSE',
+        poisonous: 'TRUE',
+        location_region: 'Region 4A',
+        location_province: 'Cavite',
+        habitat: 'forest',
+        cap_color: 'greenish_white',
+        cap_size_cm: '10',
+        gills_present: 'TRUE',
+        gills_color: 'white',
+        stem_color: 'white',
+        stem_length_cm: '12',
+        size_reference: 'coin_10peso',
+        spore_print_color: 'white',
+        texture: 'smooth',
+        season_month: 'June-November',
+        cultivated: 'FALSE',
+        wild: 'TRUE',
+        notes: '⚠️ EXTREMELY DEADLY - Contains amatoxins - Can be confused with edible mushrooms - Causes liver failure - DO NOT EAT'
+      },
+      {
+        mushroom_id: '6',
+        english_name: 'False Morel',
+        local_name: 'Kabuting Utak',
+        scientific_name: 'Gyromitra esculenta',
+        edible: 'FALSE',
+        poisonous: 'TRUE',
+        location_region: 'CAR',
+        location_province: 'Benguet',
+        habitat: 'forest',
+        cap_color: 'reddish_brown',
+        cap_size_cm: '8',
+        gills_present: 'FALSE',
+        gills_color: 'none',
+        stem_color: 'white',
+        stem_length_cm: '5',
+        size_reference: 'coin_10peso',
+        spore_print_color: 'white',
+        texture: 'wrinkled',
+        season_month: 'March-May',
+        cultivated: 'FALSE',
+        wild: 'TRUE',
+        notes: '⚠️ DEADLY - Brain-like wrinkled cap - Contains gyromitrin - Can be fatal even when cooked - Found in pine forests'
+      },
+      {
+        mushroom_id: '7',
+        english_name: 'Jack O Lantern Mushroom',
+        local_name: 'Kabuting Nagniningning',
+        scientific_name: 'Omphalotus olearius',
+        edible: 'FALSE',
+        poisonous: 'TRUE',
+        location_region: 'Region 4B',
+        location_province: 'Quezon',
+        habitat: 'wood',
+        cap_color: 'orange',
+        cap_size_cm: '12',
+        gills_present: 'TRUE',
+        gills_color: 'orange',
+        stem_color: 'orange',
+        stem_length_cm: '8',
+        size_reference: 'hand',
+        spore_print_color: 'cream',
+        texture: 'smooth',
+        season_month: 'June-November',
+        cultivated: 'FALSE',
+        wild: 'TRUE',
+        notes: '⚠️ POISONOUS - Bright orange color - Gills glow in the dark - Causes severe cramps and vomiting - Often confused with chanterelles'
+      },
+      {
+        mushroom_id: '8',
+        english_name: 'Funeral Bell',
+        local_name: 'Kabuting Libing',
+        scientific_name: 'Galerina marginata',
+        edible: 'FALSE',
+        poisonous: 'TRUE',
+        location_region: 'Region 2',
+        location_province: 'Isabela',
+        habitat: 'wood',
+        cap_color: 'brown',
+        cap_size_cm: '4',
+        gills_present: 'TRUE',
+        gills_color: 'brown',
+        stem_color: 'brown',
+        stem_length_cm: '6',
+        size_reference: 'coin_5peso',
+        spore_print_color: 'rusty_brown',
+        texture: 'smooth',
+        season_month: 'All_year',
+        cultivated: 'FALSE',
+        wild: 'TRUE',
+        notes: '⚠️ EXTREMELY DEADLY - Small brown mushroom - Contains same toxins as Death Cap - Often mistaken for edible mushrooms - Grows on decaying wood'
+      },
+      {
+        mushroom_id: '9',
+        english_name: 'Red Cage Fungus',
+        local_name: 'Kabuting Kulungan',
+        scientific_name: 'Clathrus ruber',
+        edible: 'FALSE',
+        poisonous: 'TRUE',
+        location_region: 'Region 6',
+        location_province: 'Iloilo',
+        habitat: 'soil',
+        cap_color: 'red',
+        cap_size_cm: '8',
+        gills_present: 'FALSE',
+        gills_color: 'none',
+        stem_color: 'red',
+        stem_length_cm: '5',
+        size_reference: 'coin_10peso',
+        spore_print_color: 'none',
+        texture: 'latticed',
+        season_month: 'May-October',
+        cultivated: 'FALSE',
+        wild: 'TRUE',
+        notes: '⚠️ NOT EDIBLE - Bright red lattice structure - Foul odor attracts flies - Not technically poisonous but inedible - Very distinctive appearance'
+      },
+      {
+        mushroom_id: '10',
+        english_name: 'Button Mushroom',
+        local_name: 'Kabuting Paris',
+        scientific_name: 'Agaricus bisporus',
+        edible: 'TRUE',
+        poisonous: 'FALSE',
+        location_region: 'Northern Luzon',
+        location_province: 'Rizal',
+        habitat: 'farms',
+        cap_color: 'white-light_brown',
+        cap_size_cm: '3-10',
+        gills_present: 'TRUE',
+        gills_color: 'brown',
+        stem_color: 'white',
+        stem_length_cm: '5',
+        size_reference: 'grocery-grade mushroom',
+        spore_print_color: 'dark_brown',
+        texture: 'smooth',
+        season_month: 'All_year',
+        cultivated: 'TRUE',
+        wild: 'FALSE',
+        notes: 'Most commonly consumed mushroom globally; same species as cremini and portobello at different maturity stages.'
+      }
+    ];
+
+    // Match detected species with CSV data
+    const matched = mushrooms.find(m => 
+      m.english_name.toLowerCase().includes(detectedSpeciesName.toLowerCase()) ||
+      detectedSpeciesName.toLowerCase().includes(m.english_name.toLowerCase())
+    );
+
+    if (matched) {
+      setMushroomData(matched);
+      console.log('✅ Matched mushroom from CSV:', matched.english_name);
+    } else {
+      console.log('⚠️ No match found for:', detectedSpeciesName);
+    }
+  };
 
   const analyzeImage = async () => {
     try {
@@ -56,7 +359,7 @@ export default function PredictionScreen() {
       console.log('Image size:', cleanBase64.length, 'characters');
 
       // Send image to backend for analysis
-      const result = await analyzeMushroom({
+      const backendResult = await analyzeMushroom({
         image_base64: cleanBase64,
         // Add location and date if available
         location: {
@@ -70,8 +373,48 @@ export default function PredictionScreen() {
         }
       });
 
-      console.log('Analysis result received:', result);
-      setResult(result);
+      console.log('Analysis result received:', backendResult);
+
+      // Transform backend response to match PredictionResult interface
+      const transformedResult: PredictionResult = {
+        timestamp: new Date().toISOString(),
+        image_analysis: {
+          species: {
+            english_name: backendResult.classification?.label || 'Unknown',
+            species: backendResult.classification?.label || 'Unknown',
+            scientific_name: '',
+            confidence: backendResult.classification?.confidence || 0,
+            metadata: {
+              edible: backendResult.classification?.label ? !['Death Cap', 'False Morel', 'Jack O Lantern Mushroom', 'Funeral Bell', 'Red Cage Fungus'].includes(backendResult.classification.label) : null,
+              habitat: '',
+              season_month: ''
+            }
+          },
+          toxicity: {
+            edible: backendResult.classification?.label ? !['Death Cap', 'False Morel', 'Jack O Lantern Mushroom', 'Funeral Bell', 'Red Cage Fungus'].includes(backendResult.classification.label) : null,
+            toxicity_status: backendResult.classification?.toxicity_level === 'DANGEROUS' ? 'POISONOUS' : 'EDIBLE',
+            confidence: backendResult.classification?.confidence || 0,
+            warning: backendResult.classification?.toxicity_level === 'DANGEROUS' ? '⚠️ DANGEROUS - Do not consume!' : null
+          },
+          habitat: {}
+        },
+        risk_assessment: {
+          risk_level: backendResult.classification?.toxicity_level?.toLowerCase() === 'dangerous' ? 'extreme' : 'low',
+          overall_risk_score: backendResult.classification?.toxicity_level?.toLowerCase() === 'dangerous' ? 95 : 10,
+          risk_factors: backendResult.classification?.toxicity_level?.toLowerCase() === 'dangerous' ? ['Highly toxic species', 'Can be fatal if consumed', 'Similar appearance to edible species'] : []
+        },
+        recommendations: backendResult.classification?.toxicity_level?.toLowerCase() === 'dangerous' 
+          ? ['Do NOT consume this mushroom', 'Seek expert identification if uncertain', 'Contact poison control if ingested']
+          : ['Verify identification with local expert', 'Consider habitat and season', 'Ensure proper cooking if edible'],
+        safety_actions: backendResult.classification?.toxicity_level?.toLowerCase() === 'dangerous'
+          ? ['⚠️ AVOID - Extremely toxic species', 'Call poison control immediately if ingested: +63-1-522-4444']
+          : ['Safe if properly identified and cooked']
+      };
+
+      setResult(transformedResult);
+      
+      // Match with CSV data using the detected label
+      matchMushroomFromCSV(backendResult.classification?.label || 'Unknown');
     } catch (err: any) {
       console.error('Analysis error:', err);
       console.error('Error details:', JSON.stringify(err, null, 2));
@@ -300,6 +643,139 @@ export default function PredictionScreen() {
     );
   };
 
+  const renderMushroomDetails = () => {
+    if (!mushroomData) return null;
+
+    return (
+      <View style={styles.section}>
+        <View style={styles.sectionHeader}>
+          <Ionicons name="information-circle" size={24} color="#2196F3" />
+          <Text style={styles.sectionTitle}>Mushroom Information (CSV Data)</Text>
+        </View>
+
+        <View style={styles.detailsCard}>
+          {/* Names */}
+          <View style={styles.detailRow}>
+            <Text style={styles.detailLabel}>English Name:</Text>
+            <Text style={styles.detailValue}>{mushroomData.english_name}</Text>
+          </View>
+
+          <View style={styles.detailRow}>
+            <Text style={styles.detailLabel}>Local Name:</Text>
+            <Text style={styles.detailValue}>{mushroomData.local_name}</Text>
+          </View>
+
+          <View style={styles.detailRow}>
+            <Text style={styles.detailLabel}>Scientific Name:</Text>
+            <Text style={styles.detailValue}>{mushroomData.scientific_name}</Text>
+          </View>
+
+          {/* Size Information */}
+          <Text style={styles.categoryTitle}>Physical Characteristics</Text>
+
+          <View style={styles.detailRow}>
+            <Text style={styles.detailLabel}>Cap Size:</Text>
+            <Text style={styles.detailValue}>{mushroomData.cap_size_cm} cm</Text>
+          </View>
+
+          <View style={styles.detailRow}>
+            <Text style={styles.detailLabel}>Cap Color:</Text>
+            <Text style={styles.detailValue}>{mushroomData.cap_color.replace(/_/g, ' ')}</Text>
+          </View>
+
+          <View style={styles.detailRow}>
+            <Text style={styles.detailLabel}>Stem Length:</Text>
+            <Text style={styles.detailValue}>{mushroomData.stem_length_cm} cm</Text>
+          </View>
+
+          <View style={styles.detailRow}>
+            <Text style={styles.detailLabel}>Stem Color:</Text>
+            <Text style={styles.detailValue}>{mushroomData.stem_color.replace(/_/g, ' ')}</Text>
+          </View>
+
+          <View style={styles.detailRow}>
+            <Text style={styles.detailLabel}>Texture:</Text>
+            <Text style={styles.detailValue}>{mushroomData.texture}</Text>
+          </View>
+
+          <View style={styles.detailRow}>
+            <Text style={styles.detailLabel}>Gills Present:</Text>
+            <Text style={styles.detailValue}>{mushroomData.gills_present === 'TRUE' ? 'Yes' : 'No'}</Text>
+          </View>
+
+          {mushroomData.gills_present === 'TRUE' && (
+            <View style={styles.detailRow}>
+              <Text style={styles.detailLabel}>Gills Color:</Text>
+              <Text style={styles.detailValue}>{mushroomData.gills_color}</Text>
+            </View>
+          )}
+
+          <View style={styles.divider} />
+
+          {/* Location Information */}
+          <Text style={styles.categoryTitle}>Location & Habitat</Text>
+
+          <View style={styles.detailRow}>
+            <Text style={styles.detailLabel}>Region:</Text>
+            <Text style={styles.detailValue}>{mushroomData.location_region}</Text>
+          </View>
+
+          <View style={styles.detailRow}>
+            <Text style={styles.detailLabel}>Province:</Text>
+            <Text style={styles.detailValue}>{mushroomData.location_province}</Text>
+          </View>
+
+          <View style={styles.detailRow}>
+            <Text style={styles.detailLabel}>Habitat Type:</Text>
+            <Text style={styles.detailValue}>{mushroomData.habitat.replace(/_/g, ' ')}</Text>
+          </View>
+
+          <View style={styles.detailRow}>
+            <Text style={styles.detailLabel}>Season:</Text>
+            <Text style={styles.detailValue}>{mushroomData.season_month.replace(/_/g, ' ')}</Text>
+          </View>
+
+          <View style={styles.divider} />
+
+          {/* Growing Information */}
+          <Text style={styles.categoryTitle}>Growing Information</Text>
+
+          <View style={styles.detailRow}>
+            <Text style={styles.detailLabel}>Cultivated:</Text>
+            <Text style={styles.detailValue}>{mushroomData.cultivated === 'TRUE' ? 'Yes' : 'No'}</Text>
+          </View>
+
+          <View style={styles.detailRow}>
+            <Text style={styles.detailLabel}>Found in Wild:</Text>
+            <Text style={styles.detailValue}>{mushroomData.wild === 'TRUE' ? 'Yes' : 'No'}</Text>
+          </View>
+
+          <View style={styles.divider} />
+
+          {/* Additional Information */}
+          <Text style={styles.categoryTitle}>Additional Details</Text>
+
+          <View style={styles.detailRow}>
+            <Text style={styles.detailLabel}>Spore Print Color:</Text>
+            <Text style={styles.detailValue}>{mushroomData.spore_print_color.replace(/_/g, ' ')}</Text>
+          </View>
+
+          <View style={styles.detailRow}>
+            <Text style={styles.detailLabel}>Size Reference:</Text>
+            <Text style={styles.detailValue}>{mushroomData.size_reference.replace(/_/g, ' ')}</Text>
+          </View>
+
+          {mushroomData.notes && (
+            <View style={styles.notesContainer}>
+              <Text style={styles.notesLabel}>Notes:</Text>
+              <Text style={styles.notesText}>{mushroomData.notes}</Text>
+            </View>
+          )}
+        </View>
+      </View>
+    );
+  };
+
   if (isAnalyzing) {
     return (
       <View style={styles.loadingContainer}>
@@ -352,6 +828,7 @@ export default function PredictionScreen() {
       {renderRiskAssessment()}
       {renderSpeciesInfo()}
       {renderToxicityInfo()}
+      {renderMushroomDetails()}
       {renderRecommendations()}
       {renderSafetyActions()}
 
@@ -629,6 +1106,65 @@ const styles = StyleSheet.create({
     lineHeight: 20,
     marginLeft: 8,
     flex: 1,
+  },
+  detailsCard: {
+    backgroundColor: 'white',
+    borderRadius: 12,
+    padding: 16,
+    marginHorizontal: 15,
+    marginBottom: 15,
+    borderLeftWidth: 4,
+    borderLeftColor: '#2196F3',
+  },
+  detailRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    paddingVertical: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F0F0F0',
+  },
+  detailLabel: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#666',
+    flex: 0.4,
+  },
+  detailValue: {
+    fontSize: 14,
+    color: '#333',
+    fontWeight: '500',
+    flex: 0.6,
+    textAlign: 'right',
+  },
+  categoryTitle: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: '#2196F3',
+    marginTop: 12,
+    marginBottom: 10,
+  },
+  divider: {
+    height: 1,
+    backgroundColor: '#E0E0E0',
+    marginVertical: 12,
+  },
+  notesContainer: {
+    marginTop: 12,
+    paddingTop: 12,
+    borderTopWidth: 1,
+    borderTopColor: '#F0F0F0',
+  },
+  notesLabel: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#666',
+    marginBottom: 8,
+  },
+  notesText: {
+    fontSize: 13,
+    color: '#555',
+    lineHeight: 20,
   },
   actionButtons: {
     margin: 15,

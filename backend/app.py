@@ -1,10 +1,18 @@
+from dotenv import load_dotenv
+import os
+
+load_dotenv()
+
 from flask import Flask, jsonify, request
 from flask_cors import CORS
 from flask_pymongo import PyMongo
 from flask_jwt_extended import JWTManager
-import os
+
 import sys
-from dotenv import load_dotenv
+
+import cloudinary.uploader
+import cloudinary_config   # this activates config
+
 
 # ==================================================
 # LOAD ENV VARIABLES
@@ -44,21 +52,30 @@ def create_app(config_name="development"):
     # ==================================================
     # CORS (FIXED)
     # ==================================================
+    allowed_origins = [
+        "http://localhost:8081",
+        "http://127.0.0.1:8081",
+        "http://192.168.1.12:8081",
+        "https://eastwardly-retreatal-kerstin.ngrok-free.dev"
+    ]
+    
     CORS(
         app,
-        resources={r"/api/*": {"origins": [
-            "http://localhost:8081",
-            "http://127.0.0.1:8081",
-            "http://192.168.1.12:8081",
-            "https://ruthie-unablative-amiya.ngrok-free.dev"
-        ]}},
+        origins=allowed_origins,
         supports_credentials=True,
         allow_headers=[
             "Content-Type",
             "Authorization",
-            "Access-Control-Allow-Credentials"
+            "Access-Control-Allow-Credentials",
+            "X-Forwarded-Proto",
+            "ngrok-skip-browser-warning"
         ],
-        methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"]
+        expose_headers=[
+            "Content-Type",
+            "Authorization"
+        ],
+        methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+        max_age=3600
     )
 
 
@@ -114,6 +131,16 @@ def create_app(config_name="development"):
         except:
             return {"status": "unhealthy"}, 503
 
+    @app.route("/upload", methods=["POST"])
+    def upload():
+        file = request.files["image"]
+
+        result = cloudinary.uploader.upload(file)
+
+        return {
+            "url": result["secure_url"]
+        }
+
     # ==================================================
     # ERRORS
     # ==================================================
@@ -162,6 +189,13 @@ def register_blueprints(app):
         print("✅ Admin routes loaded")
     except Exception as e:
         print("⚠️ Admin blueprint error:", e)
+    
+    try:
+        from routes.toxicity_routes_custom import toxicity_bp
+        app.register_blueprint(toxicity_bp, url_prefix="/api/toxicity")
+        print("✅ Toxicity/Detection routes loaded (Custom Model)")
+    except Exception as e:
+        print("⚠️ Toxicity blueprint error:", e)
 
 
 # ==================================================

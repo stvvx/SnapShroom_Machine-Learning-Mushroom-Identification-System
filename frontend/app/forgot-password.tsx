@@ -8,7 +8,6 @@ import {
   Alert,
   ScrollView,
   KeyboardAvoidingView,
-  Platform,
   ActivityIndicator,
 } from 'react-native';
 import { ThemedText } from '@/components/themed-text';
@@ -51,11 +50,10 @@ export default function ForgotPasswordScreen() {
   };
 
   return (
-    <KeyboardAvoidingView 
-      style={styles.container}
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-    >
-      <ScrollView contentContainerStyle={styles.scrollContent}>
+    <KeyboardAvoidingView style={styles.container} behavior="padding" enabled keyboardVerticalOffset={10}>
+      <View 
+        style={styles.scrollContent}
+      >
         <TouchableOpacity 
           style={styles.backButton}
           onPress={() => router.back()}
@@ -109,7 +107,7 @@ export default function ForgotPasswordScreen() {
             </ThemedText>
           </TouchableOpacity>
         </ThemedView>
-      </ScrollView>
+      </View>
     </KeyboardAvoidingView>
   );
 }

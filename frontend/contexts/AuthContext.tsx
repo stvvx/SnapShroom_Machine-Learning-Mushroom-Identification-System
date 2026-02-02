@@ -15,7 +15,7 @@ import axios from 'axios';
 const API_URL =
   process.env.EXPO_PUBLIC_API_URL?.endsWith('/api')
     ? process.env.EXPO_PUBLIC_API_URL
-    : `${process.env.EXPO_PUBLIC_API_URL || 'http://192.168.1.12:5000'}/api`;
+    : `${process.env.EXPO_PUBLIC_API_URL || 'http://192.168.1.102:5000'}/api`;
 
 console.log('Using API URL:', API_URL);
 
@@ -30,6 +30,7 @@ export interface User {
   email_verified?: boolean;
   role?: string;
   created_at?: string;
+  profileImage?: string;
 }
 
 export interface LoginCredentials {

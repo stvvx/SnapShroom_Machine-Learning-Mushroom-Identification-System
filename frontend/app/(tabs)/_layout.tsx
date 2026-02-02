@@ -36,7 +36,7 @@ export default function TabLayout() {
         headerShown: false,
         tabBarActiveTintColor: tint,
         tabBarInactiveTintColor: '#A8B89D',
-        tabBarStyle: { backgroundColor: '#2D3E2D' },
+        tabBarStyle: { display: 'none' }, // Hide bottom tab bar - using hamburger menu instead
       }}
     >
       {/* USER HOME - Show only for non-admin users */}
@@ -85,10 +85,39 @@ export default function TabLayout() {
         }}
       />
 
-      {/* HIDDEN ROUTE */}
+      {/* EXPLORE - Available to non-admin users */}
       <Tabs.Screen
         name="explore"
-        options={{ href: false }}
+        options={{
+          title: 'Explore',
+          tabBarIcon: ({ color, size }) => (
+            <Ionicons name="search" size={size ?? 24} color={color} />
+          ),
+          href: isAdmin ? false : undefined,
+        }}
+      />
+
+      {/* ABOUT - Available to all users */}
+      <Tabs.Screen
+        name="about"
+        options={{
+          title: 'About',
+          tabBarIcon: ({ color, size }) => (
+            <Ionicons name="information-circle" size={size ?? 24} color={color} />
+          ),
+        }}
+      />
+
+      {/* ADMIN PANEL - Show only for admin users */}
+      <Tabs.Screen
+        name="admin"
+        options={{
+          title: 'Admin',
+          tabBarIcon: ({ color, size }) => (
+            <Ionicons name="shield" size={size ?? 24} color={color} />
+          ),
+          href: isAdmin ? undefined : false,
+        }}
       />
     </Tabs>
   );

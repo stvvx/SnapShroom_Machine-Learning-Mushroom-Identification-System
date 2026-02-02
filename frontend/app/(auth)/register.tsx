@@ -6,7 +6,6 @@ import {
   Alert,
   ScrollView,
   KeyboardAvoidingView,
-  Platform,
   ActivityIndicator,
   Dimensions,
 } from 'react-native';
@@ -96,10 +95,7 @@ export default function RegisterScreen() {
   };
 
   return (
-    <KeyboardAvoidingView
-      style={styles.container}
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-    >
+    <KeyboardAvoidingView style={styles.container} behavior="padding" enabled keyboardVerticalOffset={10}>
       {/* Background with Gradient */}
       <LinearGradient
         colors={['#F8FAF6', '#E8F0E3', '#F8FAF6']}
@@ -110,9 +106,8 @@ export default function RegisterScreen() {
       <View style={styles.decorativeCircle1} />
       <View style={styles.decorativeCircle2} />
 
-      <ScrollView 
-        contentContainerStyle={styles.scrollContent}
-        showsVerticalScrollIndicator={false}
+      <View 
+        style={styles.scrollContent}
       >
         {/* Logo & Header */}
         <View style={styles.header}>
@@ -358,7 +353,7 @@ export default function RegisterScreen() {
 
         {/* Bottom Spacing */}
         <View style={{ height: 40 }} />
-      </ScrollView>
+      </View>
     </KeyboardAvoidingView>
   );
 }

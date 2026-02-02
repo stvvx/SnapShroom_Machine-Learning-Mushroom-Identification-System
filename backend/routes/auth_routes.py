@@ -328,3 +328,97 @@ def update_password():
 
     except Exception as e:
         return jsonify({"success": False, "message": str(e)}), 500
+
+# --------------------
+# UPDATE PROFILE IMAGE
+# --------------------
+@auth_bp.route("/update-profile-image", methods=["PUT"])
+@jwt_required()
+def update_profile_image():
+    mongo = current_app.mongo
+    user_id = get_jwt_identity()
+
+    try:
+        data = request.get_json()
+        profile_image_url = (data.get("profileImage") or data.get("profile_image") or "").strip()
+
+        if not profile_image_url:
+            return jsonify({"success": False, "message": "Profile image URL is required"}), 400
+
+        user = mongo.db.users.find_one({"_id": ObjectId(user_id), "is_active": True})
+        if not user:
+            return jsonify({"success": False, "message": "User not found"}), 404
+
+        # Update the avatar field in the database
+        result = mongo.db.users.update_one(
+            {"_id": ObjectId(user_id)},
+            {"$set": {"avatar": profile_image_url}}
+        )
+        
+        print(f"✅ Avatar updated for user {user_id}: {profile_image_url}")
+        print(f"Modified count: {result.modified_count}")
+
+        return jsonify({
+            "success": True,
+            "message": "Profile image updated successfully",
+            "user": {
+                "id": str(user["_id"]),
+                "email": user["email"],
+                "name": user["name"],
+                "username": user["username"],
+                "avatar": profile_image_url
+            }
+        }), 200
+
+    except Exception as e:
+        print(f"❌ Error updating avatar: {str(e)}")
+        return jsonify({"success": False, "message": str(e)}), 500
+
+
+# --------------------
+# DELETE ACCOUNT (Soft Delete)
+# --------------------
+@auth_bp.route("/delete-account", methods=["DELETE"])
+@jwt_required()
+def delete_account():
+    mongo = current_app.mongo
+    user_id = get_jwt_identity()
+
+    try:
+        data = request.get_json()
+        password = (data.get("password") or "").strip()
+
+        if not password:
+            return jsonify({"success": False, "message": "Password is required"}), 400
+
+        user = mongo.db.users.find_one({"_id": ObjectId(user_id), "is_active": True})
+        if not user:
+            return jsonify({"success": False, "message": "User not found"}), 404
+
+        # Verify password
+        if not check_password_hash(user["password_hash"], password):
+            return jsonify({"success": False, "message": "Password is incorrect"}), 401
+
+        # Soft delete: set is_active to False
+        mongo.db.users.update_one(
+            {"_id": ObjectId(user_id)},
+            {"$set": {
+                "is_active": False,
+                "deleted_at": datetime.utcnow(),
+                "access_token": None,
+                "refresh_token": None,
+                "token_expires_at": None
+            }}
+        )
+
+        response = make_response(
+            jsonify({"success": True, "message": "Account deleted successfully"}),
+            200
+        )
+        # Clear JWT cookies
+        response.delete_cookie('access_token_cookie', path='/')
+        response.delete_cookie('refresh_token_cookie', path='/')
+        return response
+
+    except Exception as e:
+        return jsonify({"success": False, "message": str(e)}), 500

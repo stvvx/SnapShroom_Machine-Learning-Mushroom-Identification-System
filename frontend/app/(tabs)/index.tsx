@@ -9,6 +9,7 @@ import { useState, useEffect, useRef } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { LinearGradient } from 'expo-linear-gradient';
 import { BlurView } from 'expo-blur';
+import HamburgerMenu from '@/components/HamburgerMenu';
 
 const { width, height } = Dimensions.get('window');
 const isSmallScreen = width < 768;
@@ -162,29 +163,17 @@ export default function HomeScreen() {
 
   return (
     <View style={styles.container}>
-      {/* Floating Header */}
+      {/* Floating Header with Hamburger Menu */}
       <Animated.View style={[styles.floatingHeader, { backgroundColor: headerOpacity.interpolate({
         inputRange: [0, 1],
-        outputRange: ['rgba(255, 255, 255, 0)', 'rgba(255, 255, 255, 0.98)'],
+        outputRange: ['rgba(45, 62, 45, 0)', 'rgba(45, 62, 45, 0.98)'],
       }) }]}>
         <View style={styles.headerContent}>
+          <HamburgerMenu />
           <View style={styles.logoContainer}>
-            <View style={styles.logoIconWrapper}>
-              <Ionicons name="camera" size={20} color="#FFFFFF" />
-            </View>
             <ThemedText style={styles.logoText}>SnapShroom</ThemedText>
           </View>
-          <View style={styles.navMenu}>
-            {!isSmallScreen && (
-              <TouchableOpacity onPress={handleInfoPress} style={styles.navButton}>
-                <Ionicons name="information-circle-outline" size={24} color="#3A4D33" />
-              </TouchableOpacity>
-            )}
-            <TouchableOpacity onPress={handleLogout} style={styles.logoutButton}>
-              <Ionicons name="log-out-outline" size={18} color="#FFFFFF" />
-              {!isSmallScreen && <ThemedText style={styles.logoutText}>Logout</ThemedText>}
-            </TouchableOpacity>
-          </View>
+          <View style={{ width: 40 }} />
         </View>
       </Animated.View>
 
@@ -457,27 +446,19 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingHorizontal: isSmallScreen ? 16 : 20,
+    paddingHorizontal: isSmallScreen ? 8 : 20,
   },
   logoContainer: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
     flex: 1,
-    maxWidth: '50%',
-  },
-  logoIconWrapper: {
-    width: 30,
-    height: 30,
-    borderRadius: 15,
-    backgroundColor: '#7BA05B',
     justifyContent: 'center',
-    alignItems: 'center',
   },
   logoText: {
-    fontSize: isSmallScreen ? 17 : 20,
+    fontSize: isSmallScreen ? 16 : 18,
     fontWeight: '800',
-    color: '#3A4D33',
+    color: '#E6F4FE',
     letterSpacing: -0.5,
   },
   navMenu: {

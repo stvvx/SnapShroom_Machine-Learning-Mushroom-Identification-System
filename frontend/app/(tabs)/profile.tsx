@@ -7,18 +7,27 @@ import {
   Alert,
   ActivityIndicator,
   TextInput,
+  Image,
 } from 'react-native';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { useAuth, api } from '@/contexts/AuthContext';
 import { Ionicons } from '@expo/vector-icons';
+import HamburgerMenu from '@/components/HamburgerMenu';
+import * as ImagePicker from 'expo-image-picker';
 
 type EditMode = 'none' | 'name' | 'password';
+
+const CLOUDINARY_CLOUD_NAME = process.env.CLOUDINARY_CLOUD_NAME || '';
+const CLOUDINARY_UPLOAD_PRESET = process.env.CLOUDINARY_UPLOAD_PRESET || 'snapshroom';
+const CLOUDINARY_API_URL = `https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/image/upload`;
 
 export default function ProfileScreen() {
   const { user, logout, refreshUser } = useAuth();
   const [editMode, setEditMode] = useState<EditMode>('none');
   const [loading, setLoading] = useState(false);
+  const [uploading, setUploading] = useState(false);
+  const [profileImage, setProfileImage] = useState<string | null>(user?.avatar || null);
 
   // Name edit state
   const [newName, setNewName] = useState(user?.name || '');
@@ -128,16 +137,176 @@ export default function ProfileScreen() {
     ]);
   };
 
+  const uploadProfileImage = async () => {
+    try {
+      const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (status !== 'granted') {
+        Alert.alert('Permission required', 'Please allow access to your photos');
+        return;
+      }
+
+      const result = await ImagePicker.launchImageLibraryAsync({
+        allowsEditing: true,
+        aspect: [1, 1],
+        quality: 0.8,
+        base64: true,
+      });
+
+      if (!result.canceled && result.base64) {
+        setUploading(true);
+        const blobData = new Blob(
+          [Buffer.from(result.base64, 'base64')],
+          { type: 'image/jpeg' }
+        );
+
+        const formData = new FormData();
+        formData.append('file', blobData, 'profile.jpg');
+        formData.append('upload_preset', process.env.EXPO_PUBLIC_CLOUDINARY_UPLOAD_PRESET);
+        formData.append('folder', 'snapshroom/profiles');
+        formData.append('tags', 'profile,user');
+
+        const response = await fetch(process.env.EXPO_PUBLIC_CLOUDINARY_API_URL, {
+          method: 'POST',
+          body: formData,
+        });
+
+        if (!response.ok) {
+          throw new Error('Upload failed');
+        }
+
+        const cloudinaryData = await response.json();
+        const imageUrl = cloudinaryData.secure_url;
+        console.log('✅ Cloudinary upload successful:', imageUrl);
+        setProfileImage(imageUrl);
+
+        // Save image URL to MongoDB
+        try {
+          console.log('📤 Sending avatar to backend:', imageUrl);
+          const mongoResponse = await api.put('/auth/update-profile-image', {
+            profileImage: imageUrl,
+          });
+
+          console.log('📥 Backend response:', mongoResponse.data);
+
+          if (mongoResponse.data.success) {
+            console.log('✅ Avatar saved to database, refreshing user...');
+            await refreshUser();
+            Alert.alert('Success', 'Profile picture updated!');
+          }
+        } catch (mongoError: any) {
+          const message = mongoError.response?.data?.message || 'Failed to save profile picture to database';
+          console.error('❌ Error saving avatar:', mongoError);
+          Alert.alert('Warning', message);
+        }
+      }
+    } catch (error: any) {
+      Alert.alert('Error', 'Failed to upload profile picture');
+      console.error('Profile upload error:', error);
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const handleDeleteAccount = async () => {
+    Alert.alert(
+      'Delete Account',
+      'Are you sure you want to delete your account? This action cannot be undone. Your profile will be deactivated permanently.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete Account',
+          style: 'destructive',
+          onPress: () => {
+            // Show password confirmation dialog
+            Alert.prompt(
+              'Confirm Password',
+              'Enter your password to confirm account deletion:',
+              [
+                {
+                  text: 'Cancel',
+                  style: 'cancel',
+                },
+                {
+                  text: 'Delete',
+                  style: 'destructive',
+                  onPress: async (password) => {
+                    if (!password || !password.trim()) {
+                      Alert.alert('Error', 'Password is required');
+                      return;
+                    }
+
+                    setLoading(true);
+                    try {
+                      const response = await api.delete('/auth/delete-account', {
+                        data: { password },
+                      });
+
+                      if (response.data.success) {
+                        Alert.alert('Success', 'Account deleted successfully', [
+                          {
+                            text: 'OK',
+                            onPress: async () => {
+                              await logout();
+                            },
+                          },
+                        ]);
+                      }
+                    } catch (error: any) {
+                      const message = error.response?.data?.message || 'Failed to delete account';
+                      Alert.alert('Error', message);
+                    } finally {
+                      setLoading(false);
+                    }
+                  },
+                },
+              ],
+              'secure-text'
+            );
+          },
+        },
+      ]
+    );
+  };
+
   return (
     <ThemedView style={styles.container}>
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
+      {/* Header */}
+      <View style={styles.profileHeader}>
+        <HamburgerMenu />
+        <ThemedText style={styles.headerTitle}>Profile</ThemedText>
+        <View style={{ width: 40 }} />
+      </View>
+
+      <ScrollView 
+        showsVerticalScrollIndicator={false} 
+        contentContainerStyle={styles.scrollContent}
+        keyboardShouldPersistTaps="handled"
+      >
         {/* Header */}
         <View style={styles.headerSection}>
           <View style={styles.avatarSection}>
-            <View style={styles.avatar}>
-              <Ionicons name="person-circle" size={80} color="#6B7C61" />
+            <View style={styles.avatarContainer}>
+              {profileImage ? (
+                <Image source={{ uri: profileImage }} style={styles.profileImage} />
+              ) : (
+                <View style={styles.avatar}>
+                  <Ionicons name="person-circle" size={80} color="#6B7C61" />
+                </View>
+              )}
+              <TouchableOpacity
+                style={styles.uploadButton}
+                onPress={uploadProfileImage}
+                disabled={uploading}
+              >
+                {uploading ? (
+                  <ActivityIndicator color="white" size="small" />
+                ) : (
+                  <Ionicons name="camera" size={18} color="white" />
+                )}
+              </TouchableOpacity>
             </View>
             <ThemedText style={styles.emailText}>{user.email}</ThemedText>
+            <ThemedText style={styles.userNameText}>{user.name}</ThemedText>
           </View>
         </View>
 
@@ -332,11 +501,20 @@ export default function ProfileScreen() {
           )}
         </View>
 
-        {/* Logout Button */}
+        {/* Logout and Delete Account Buttons */}
         <View style={styles.section}>
           <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
             <Ionicons name="log-out" size={20} color="#D32F2F" />
             <ThemedText style={styles.logoutButtonText}>Logout</ThemedText>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[styles.logoutButton, styles.deleteButton]}
+            onPress={handleDeleteAccount}
+            disabled={loading}
+          >
+            <Ionicons name="trash" size={20} color="#D32F2F" />
+            <ThemedText style={styles.logoutButtonText}>Delete Account</ThemedText>
           </TouchableOpacity>
         </View>
       </ScrollView>
@@ -353,23 +531,64 @@ const styles = StyleSheet.create({
     paddingBottom: 30,
   },
   headerSection: {
-    paddingVertical: 30,
+    paddingVertical: 40,
     paddingHorizontal: 20,
     alignItems: 'center',
-    backgroundColor: '#F5F3EF',
-    borderBottomWidth: 1,
+    backgroundColor: 'linear-gradient(135deg, #F5F3EF 0%, #F9F7F3 100%)',
+    borderBottomWidth: 2,
     borderBottomColor: '#E8E4DE',
   },
   avatarSection: {
     alignItems: 'center',
   },
+  avatarContainer: {
+    position: 'relative',
+    marginBottom: 20,
+  },
   avatar: {
-    marginBottom: 16,
+    width: 100,
+    height: 100,
+    borderRadius: 50,
+    backgroundColor: '#E8E4DE',
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 3,
+    borderColor: '#6B7C61',
+  },
+  profileImage: {
+    width: 100,
+    height: 100,
+    borderRadius: 50,
+    borderWidth: 3,
+    borderColor: '#6B7C61',
+  },
+  uploadButton: {
+    position: 'absolute',
+    bottom: 0,
+    right: 0,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: '#7BA05B',
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 3,
+    borderColor: '#FDFCFA',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
+    elevation: 5,
   },
   emailText: {
     fontSize: 14,
-    color: '#666',
+    color: '#999',
     marginBottom: 4,
+  },
+  userNameText: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#2D3E2D',
   },
   section: {
     paddingHorizontal: 20,
@@ -515,6 +734,9 @@ const styles = StyleSheet.create({
     padding: 16,
     borderWidth: 1,
     borderColor: '#FFD4D4',
+  },
+  deleteButton: {
+    marginTop: 12,
   },
   logoutButtonText: {
     fontSize: 14,
