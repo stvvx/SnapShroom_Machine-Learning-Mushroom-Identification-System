@@ -97,6 +97,18 @@ export default function TabLayout() {
         }}
       />
 
+      {/* MAP - Show mushroom locations across Philippines - Available to all users */}
+      <Tabs.Screen
+        name="map"
+        options={{
+          title: 'Map',
+          tabBarIcon: ({ color, size }) => (
+            <Ionicons name="map" size={size ?? 24} color={color} />
+          ),
+          href: isAdmin ? false : undefined, // Hide from admin, show for non-admin
+        }}
+      />
+
       {/* ABOUT - Available to all users */}
       <Tabs.Screen
         name="about"

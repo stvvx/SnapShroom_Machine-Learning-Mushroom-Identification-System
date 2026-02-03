@@ -31,6 +31,7 @@ export interface User {
   role?: string;
   created_at?: string;
   profileImage?: string;
+  avatar?: string;
 }
 
 export interface LoginCredentials {

@@ -103,7 +103,8 @@ def register():
                 "id": str(result.inserted_id),
                 "email": email,
                 "name": name,
-                "username": username
+                "username": username,
+                "avatar": None
             },
             "access_token": access_token,
             "refresh_token": refresh_token
@@ -162,7 +163,8 @@ def login():
                 "id": str(user["_id"]),
                 "email": user["email"],
                 "name": user["name"],
-                "username": user["username"]
+                "username": user["username"],
+                "avatar": user.get("avatar")
             },
             "access_token": access_token,
             "refresh_token": refresh_token
@@ -236,7 +238,8 @@ def me():
             "id": str(user["_id"]),
             "email": user["email"],
             "name": user["name"],
-            "username": user["username"]
+            "username": user["username"],
+            "avatar": user.get("avatar")
         }
     }), 200
 

@@ -123,7 +123,7 @@ def create_app(config_name="development"):
     def home():
         return {"status": "SnapShroom backend running"}
 
-    @app.route("/health")
+    @app.route("/api/health")
     def health():
         try:
             mongo.db.command("ping")

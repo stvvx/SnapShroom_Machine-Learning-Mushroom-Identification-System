@@ -53,13 +53,37 @@ interface MushroomData {
   notes: string;
 }
 
+interface BackendClassification {
+  label?: string;
+  confidence?: number;
+  toxicity_level?: string;
+}
+
+interface BackendResult {
+  classification?: BackendClassification;
+  [key: string]: any;
+}
+
 export default function PredictionScreen() {
-  const { imageUri, imageBase64 } = useLocalSearchParams();
+  const { imageUri, imageBase64, cloudinaryUrl } = useLocalSearchParams();
   const router = useRouter();
   const [isAnalyzing, setIsAnalyzing] = useState(true);
   const [result, setResult] = useState<PredictionResult | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [mushroomData, setMushroomData] = useState<MushroomData | null>(null);
+  
+  // Ensure URLs are strings (useLocalSearchParams can return string or string[])
+  const normalizeUrl = (url: string | string[] | undefined): string | undefined => {
+    if (Array.isArray(url)) return url[0];
+    return url;
+  };
+
+  const normalizedImageUri = normalizeUrl(imageUri as any);
+  const normalizedImageBase64 = normalizeUrl(imageBase64 as any);
+  const normalizedCloudinaryUrl = normalizeUrl(cloudinaryUrl as any);
+
+  // Use cloudinaryUrl if available (persistent), otherwise fall back to imageUri
+  const displayImageUrl = normalizedCloudinaryUrl || normalizedImageUri;
 
   // Load CSV data
   useEffect(() => {
@@ -68,10 +92,10 @@ export default function PredictionScreen() {
 
   // Analyze image once loaded
   useEffect(() => {
-    if (imageBase64) {
+    if (normalizedImageBase64) {
       analyzeImage();
     }
-  }, [imageBase64]);
+  }, [normalizedImageBase64]);
 
   // Load and parse CSV when result is available
   useEffect(() => {
@@ -350,7 +374,7 @@ export default function PredictionScreen() {
       setError(null);
 
       // Clean base64 string (remove data URI prefix if present)
-      let cleanBase64 = imageBase64 as string;
+      let cleanBase64 = normalizedImageBase64 || '';
       if (cleanBase64.includes(',')) {
         cleanBase64 = cleanBase64.split(',')[1];
       }
@@ -359,7 +383,7 @@ export default function PredictionScreen() {
       console.log('Image size:', cleanBase64.length, 'characters');
 
       // Send image to backend for analysis
-      const backendResult = await analyzeMushroom({
+      const backendResult: BackendResult = await analyzeMushroom({
         image_base64: cleanBase64,
         // Add location and date if available
         location: {
@@ -375,38 +399,44 @@ export default function PredictionScreen() {
 
       console.log('Analysis result received:', backendResult);
 
+      // Extract classification safely
+      const classification = backendResult?.classification;
+      const label = classification?.label || 'Unknown';
+      const confidence = classification?.confidence || 0;
+      const toxicityLevel = classification?.toxicity_level;
+
       // Transform backend response to match PredictionResult interface
       const transformedResult: PredictionResult = {
         timestamp: new Date().toISOString(),
         image_analysis: {
           species: {
-            english_name: backendResult.classification?.label || 'Unknown',
-            species: backendResult.classification?.label || 'Unknown',
+            english_name: label,
+            species: label,
             scientific_name: '',
-            confidence: backendResult.classification?.confidence || 0,
+            confidence: confidence,
             metadata: {
-              edible: backendResult.classification?.label ? !['Death Cap', 'False Morel', 'Jack O Lantern Mushroom', 'Funeral Bell', 'Red Cage Fungus'].includes(backendResult.classification.label) : null,
+              edible: label ? !['Death Cap', 'False Morel', 'Jack O Lantern Mushroom', 'Funeral Bell', 'Red Cage Fungus'].includes(label) : null,
               habitat: '',
               season_month: ''
             }
           },
           toxicity: {
-            edible: backendResult.classification?.label ? !['Death Cap', 'False Morel', 'Jack O Lantern Mushroom', 'Funeral Bell', 'Red Cage Fungus'].includes(backendResult.classification.label) : null,
-            toxicity_status: backendResult.classification?.toxicity_level === 'DANGEROUS' ? 'POISONOUS' : 'EDIBLE',
-            confidence: backendResult.classification?.confidence || 0,
-            warning: backendResult.classification?.toxicity_level === 'DANGEROUS' ? '⚠️ DANGEROUS - Do not consume!' : null
+            edible: label ? !['Death Cap', 'False Morel', 'Jack O Lantern Mushroom', 'Funeral Bell', 'Red Cage Fungus'].includes(label) : null,
+            toxicity_status: toxicityLevel === 'DANGEROUS' ? 'POISONOUS' : 'EDIBLE',
+            confidence: confidence,
+            warning: toxicityLevel === 'DANGEROUS' ? '⚠️ DANGEROUS - Do not consume!' : null
           },
           habitat: {}
         },
         risk_assessment: {
-          risk_level: backendResult.classification?.toxicity_level?.toLowerCase() === 'dangerous' ? 'extreme' : 'low',
-          overall_risk_score: backendResult.classification?.toxicity_level?.toLowerCase() === 'dangerous' ? 95 : 10,
-          risk_factors: backendResult.classification?.toxicity_level?.toLowerCase() === 'dangerous' ? ['Highly toxic species', 'Can be fatal if consumed', 'Similar appearance to edible species'] : []
+          risk_level: toxicityLevel?.toLowerCase() === 'dangerous' ? 'extreme' : 'low',
+          overall_risk_score: toxicityLevel?.toLowerCase() === 'dangerous' ? 95 : 10,
+          risk_factors: toxicityLevel?.toLowerCase() === 'dangerous' ? ['Highly toxic species', 'Can be fatal if consumed', 'Similar appearance to edible species'] : []
         },
-        recommendations: backendResult.classification?.toxicity_level?.toLowerCase() === 'dangerous' 
+        recommendations: toxicityLevel?.toLowerCase() === 'dangerous' 
           ? ['Do NOT consume this mushroom', 'Seek expert identification if uncertain', 'Contact poison control if ingested']
           : ['Verify identification with local expert', 'Consider habitat and season', 'Ensure proper cooking if edible'],
-        safety_actions: backendResult.classification?.toxicity_level?.toLowerCase() === 'dangerous'
+        safety_actions: toxicityLevel?.toLowerCase() === 'dangerous'
           ? ['⚠️ AVOID - Extremely toxic species', 'Call poison control immediately if ingested: +63-1-522-4444']
           : ['Safe if properly identified and cooked']
       };
@@ -414,7 +444,7 @@ export default function PredictionScreen() {
       setResult(transformedResult);
       
       // Match with CSV data using the detected label
-      matchMushroomFromCSV(backendResult.classification?.label || 'Unknown');
+      matchMushroomFromCSV(label);
     } catch (err: any) {
       console.error('Analysis error:', err);
       console.error('Error details:', JSON.stringify(err, null, 2));
@@ -817,9 +847,9 @@ export default function PredictionScreen() {
   return (
     <ScrollView style={styles.container}>
       {/* Captured Image */}
-      {imageUri && (
+      {displayImageUrl && (
         <View style={styles.imageContainer}>
-          <Image source={{ uri: imageUri }} style={styles.capturedImage} />
+          <Image source={{ uri: displayImageUrl }} style={styles.capturedImage} />
           <Text style={styles.imageCaption}>Captured Image</Text>
         </View>
       )}

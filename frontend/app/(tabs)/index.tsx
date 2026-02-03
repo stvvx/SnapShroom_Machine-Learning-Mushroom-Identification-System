@@ -16,10 +16,10 @@ const isSmallScreen = width < 768;
 
 // Hero carousel images
 const HERO_SLIDES = [
-  { uri: 'https://www.researchgate.net/publication/341757075/figure/fig2/AS:896856825536518@1590838738580/Copelandia-Panaeolus-cyanescens.ppm' },
   { uri: 'https://upload.wikimedia.org/wikipedia/commons/0/08/Copelandia_cyanescens.jpg' },
   { uri: 'https://images.unsplash.com/photo-1528518290605-1fcc8dcca204?q=80&w=1200&auto=format&fit=crop' },
   { uri: 'https://i.ytimg.com/vi/_q1qCJ39fS0/maxresdefault.jpg' },
+  { uri: 'https://upload.wikimedia.org/wikipedia/commons/thumb/4/4e/Amanita_phalloides_0062.jpg/1280px-Amanita_phalloides_0062.jpg' },
 ];
 
 // Feature cards
@@ -86,15 +86,18 @@ export default function HomeScreen() {
     return () => clearInterval(interval);
   }, []);
 
-  // Redirect to login when not authenticated
+  // Redirect to login only when not authenticated AND auth has finished loading
   useEffect(() => {
-    if (authLoading) return;
-    if (!user) {
-      setTimeout(() => {
-        router.replace('/(auth)/login');
-      }, 100);
+    // Don't redirect while auth is still loading
+    if (authLoading) {
+      return;
     }
-  }, [user, authLoading, router]);
+    
+    // Only redirect if we've confirmed user is NOT authenticated
+    if (!user) {
+      router.replace('/(auth)/login');
+    }
+  }, [user, authLoading]);
 
   const handleCameraPress = () => {
     if (!isLoggedIn) {
@@ -103,7 +106,7 @@ export default function HomeScreen() {
         'Please log in to use the camera feature',
         [
           { text: 'Cancel', style: 'cancel' },
-          { text: 'Login', onPress: () => router.replace('/(auth)') }
+          { text: 'Login', onPress: () => router.push({ pathname: '/(auth)' } as any) }
         ]
       );
       return;

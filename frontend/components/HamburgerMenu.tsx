@@ -20,6 +20,7 @@ export default function HamburgerMenu() {
     { label: 'Capture', icon: 'camera', route: '/(tabs)/camera' },
     { label: 'Profile', icon: 'person', route: '/(tabs)/profile' },
     { label: 'Explore', icon: 'search', route: '/(tabs)/explore', hidden: isAdmin },
+    { label: 'Map', icon: 'map', route: '/(tabs)/map' },
     { label: 'About', icon: 'information-circle', route: '/(tabs)/about' },
     ...(isAdmin ? [{ label: 'Admin', icon: 'shield', route: '/(tabs)/admin' }] : []),
   ];
