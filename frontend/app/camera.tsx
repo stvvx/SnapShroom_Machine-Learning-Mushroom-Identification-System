@@ -145,6 +145,53 @@ export default function CameraScreen() {
     }
   };
 
+  // Check if image contains a mushroom
+  const checkForMushroom = async (base64: string, photoUri?: string): Promise<{ isMushroom: boolean; confidence: number }> => {
+    try {
+      console.log('🔍 Checking if image contains a mushroom...');
+      
+      let cleanBase64 = base64 || '';
+      if (cleanBase64.includes(',')) {
+        cleanBase64 = cleanBase64.split(',')[1];
+      }
+
+      const apiUrl = process.env.EXPO_PUBLIC_API_URL || 'http://192.168.1.100:5000/api';
+      
+      const response = await fetch(`${apiUrl}/toxicity/detect`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          image_base64: cleanBase64,
+        }),
+      });
+
+      if (!response.ok) {
+        console.warn('⚠️ Mushroom detection failed:', response.status);
+        // If detection fails, allow proceeding (fail-open approach)
+        return { isMushroom: true, confidence: 0.5 };
+      }
+
+      const data = await response.json();
+      console.log('Detection result:', data);
+
+      // Check if detection found objects with mushroom confidence
+      const hasMushroom = data.detection_results?.detected === true || 
+                         (data.objects && data.objects.length > 0);
+      const confidence = data.confidence || 0;
+
+      return {
+        isMushroom: hasMushroom,
+        confidence: confidence
+      };
+    } catch (error) {
+      console.error('❌ Mushroom detection error:', error);
+      // If detection fails, allow proceeding (fail-open approach)
+      return { isMushroom: true, confidence: 0.5 };
+    }
+  };
+
   // Take picture and upload
   const takePicture = async () => {
     if (cameraRef.current && !isLoading) {
@@ -157,6 +204,29 @@ export default function CameraScreen() {
         });
 
         if (photo?.base64 || photo?.uri) {
+          console.log('📸 Photo captured, checking for mushroom...');
+          
+          // Check if image contains a mushroom
+          const { isMushroom, confidence } = await checkForMushroom(photo.base64 || '', photo.uri);
+          
+          if (!isMushroom || confidence < 0.3) {
+            setIsLoading(false);
+            Alert.alert(
+              'No Mushroom Detected',
+              'Please make sure the mushroom is clearly visible in the frame. Tips:\n\n• Focus on the mushroom cap\n• Ensure good lighting\n• Fill most of the frame with the mushroom\n• Avoid blurry photos',
+              [
+                {
+                  text: 'Try Again',
+                  onPress: () => console.log('Retaking photo'),
+                  style: 'default',
+                },
+              ]
+            );
+            return;
+          }
+
+          console.log('✅ Mushroom detected with confidence:', confidence);
+
           // Upload to Cloudinary
           const cloudinaryData = await uploadToCloudinary(photo.base64 || '', photo.uri);
 
