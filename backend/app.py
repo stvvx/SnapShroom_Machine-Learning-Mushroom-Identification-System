@@ -55,7 +55,7 @@ def create_app(config_name="development"):
     allowed_origins = [
         "http://localhost:8081",
         "http://127.0.0.1:8081",
-        "http://192.168.100.26:8081",
+        "http://192.168.1.12:8081",
         "https://ruthie-unablative-amiya.ngrok-free.dev"
     ]
     

@@ -155,7 +155,7 @@ export default function CameraScreen() {
         cleanBase64 = cleanBase64.split(',')[1];
       }
 
-      const apiUrl = process.env.EXPO_PUBLIC_API_URL || 'http://192.168.100.26:5000/api';
+      const apiUrl = process.env.EXPO_PUBLIC_API_URL || 'http://192.168.1.12:5000/api';
       
       const response = await fetch(`${apiUrl}/toxicity/detect`, {
         method: 'POST',
@@ -263,8 +263,13 @@ export default function CameraScreen() {
   if (hasPermission === null) {
     return (
       <View style={styles.container}>
-        <ActivityIndicator size="large" color="#7BA05B" />
-        <Text style={styles.text}>Requesting camera permission...</Text>
+        <View style={styles.loadingContent}>
+          <View style={styles.mushroomIcon}>
+            <Ionicons name="leaf" size={60} color="#7BA05B" />
+          </View>
+          <ActivityIndicator size="large" color="#7BA05B" style={{ marginTop: 20 }} />
+          <Text style={styles.loadingText}>Initializing SnapShroom...</Text>
+        </View>
       </View>
     );
   }
@@ -273,20 +278,26 @@ export default function CameraScreen() {
   if (hasPermission === false) {
     return (
       <View style={styles.container}>
-        <Ionicons name="camera-outline" size={80} color="#666" />
-        <Text style={styles.title}>Camera Access Required</Text>
-        <Text style={styles.text}>
-          This app needs camera access to identify mushrooms from photos.
-        </Text>
-        <TouchableOpacity style={styles.button} onPress={requestPermission}>
-          <Text style={styles.buttonText}>Grant Permission</Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={[styles.button, styles.secondaryButton]}
-          onPress={() => router.back()}
-        >
-          <Text style={styles.secondaryButtonText}>Go Back</Text>
-        </TouchableOpacity>
+        <View style={styles.permissionContent}>
+          <View style={styles.permissionIconContainer}>
+            <Ionicons name="camera-outline" size={80} color="#FF6B6B" />
+          </View>
+          <Text style={styles.permissionTitle}>Camera Access Required</Text>
+          <Text style={styles.permissionText}>
+            SnapShroom needs camera access to identify mushrooms from photos.
+          </Text>
+          <TouchableOpacity style={styles.primaryButton} onPress={requestPermission}>
+            <Ionicons name="camera" size={20} color="white" />
+            <Text style={styles.primaryButtonText}>Grant Camera Access</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={styles.secondaryButton}
+            onPress={() => router.back()}
+          >
+            <Ionicons name="arrow-back" size={20} color="#7BA05B" />
+            <Text style={styles.secondaryButtonText}>Go Back</Text>
+          </TouchableOpacity>
+        </View>
       </View>
     );
   }
@@ -300,42 +311,74 @@ export default function CameraScreen() {
         // Mushroom Examples View
         <View style={styles.examplesContainer}>
           <View style={styles.examplesHeader}>
-            <TouchableOpacity onPress={() => router.back()}>
-              <Ionicons name="arrow-back" size={28} color="#E6F4FE" />
+            <TouchableOpacity onPress={() => router.back()} style={styles.headerButton}>
+              <Ionicons name="arrow-back" size={26} color="#7BA05B" />
             </TouchableOpacity>
-            <Text style={styles.examplesTitle}>Capture Guide</Text>
-            <TouchableOpacity onPress={() => setShowExamples(false)}>
-              <Ionicons name="camera" size={28} color="#7BA05B" />
+            <View style={styles.headerTitleContainer}>
+              <Ionicons name="leaf" size={24} color="#7BA05B" />
+              <Text style={styles.examplesTitle}>Capture Guide</Text>
+            </View>
+            <TouchableOpacity 
+              onPress={() => setShowExamples(false)} 
+              style={styles.headerButton}
+            >
+              <Ionicons name="camera" size={26} color="#7BA05B" />
             </TouchableOpacity>
           </View>
 
           <ScrollView style={styles.examplesScroll} showsVerticalScrollIndicator={false}>
+            {/* Guide Section */}
             <View style={styles.guideSection}>
-              <Text style={styles.guideSectionTitle}>Perfect Capture Tips</Text>
-              <View style={styles.tipItem}>
-                <Ionicons name="checkmark-circle" size={20} color="#7BA05B" />
-                <Text style={styles.tipText}>Good lighting - natural daylight is best</Text>
+              <View style={styles.guideTitleContainer}>
+                <Ionicons name="sparkles" size={24} color="#7BA05B" />
+                <Text style={styles.guideSectionTitle}>Perfect Capture Tips</Text>
               </View>
-              <View style={styles.tipItem}>
-                <Ionicons name="checkmark-circle" size={20} color="#7BA05B" />
-                <Text style={styles.tipText}>Focus clearly on the mushroom cap</Text>
-              </View>
-              <View style={styles.tipItem}>
-                <Ionicons name="checkmark-circle" size={20} color="#7BA05B" />
-                <Text style={styles.tipText}>Include the gills and stem if possible</Text>
-              </View>
-              <View style={styles.tipItem}>
-                <Ionicons name="checkmark-circle" size={20} color="#7BA05B" />
-                <Text style={styles.tipText}>Show surrounding habitat for context</Text>
-              </View>
-              <View style={styles.tipItem}>
-                <Ionicons name="checkmark-circle" size={20} color="#7BA05B" />
-                <Text style={styles.tipText}>Avoid shadows and glare</Text>
+              
+              <View style={styles.tipsContainer}>
+                <View style={styles.tipItem}>
+                  <View style={styles.tipIconContainer}>
+                    <Ionicons name="sunny" size={18} color="#FFD700" />
+                  </View>
+                  <Text style={styles.tipText}>Good lighting - natural daylight is best</Text>
+                </View>
+                
+                <View style={styles.tipItem}>
+                  <View style={styles.tipIconContainer}>
+                    <Ionicons name="eye" size={18} color="#4DA6FF" />
+                  </View>
+                  <Text style={styles.tipText}>Focus clearly on the mushroom cap</Text>
+                </View>
+                
+                <View style={styles.tipItem}>
+                  <View style={styles.tipIconContainer}>
+                    <Ionicons name="grid" size={18} color="#9C27B0" />
+                  </View>
+                  <Text style={styles.tipText}>Include the gills and stem if possible</Text>
+                </View>
+                
+                <View style={styles.tipItem}>
+                  <View style={styles.tipIconContainer}>
+                    <Ionicons name="map" size={18} color="#7BA05B" />
+                  </View>
+                  <Text style={styles.tipText}>Show surrounding habitat for context</Text>
+                </View>
+                
+                <View style={styles.tipItem}>
+                  <View style={styles.tipIconContainer}>
+                    <Ionicons name="moon" size={18} color="#1A1A1A" />
+                  </View>
+                  <Text style={styles.tipText}>Avoid shadows and glare</Text>
+                </View>
               </View>
             </View>
 
+            {/* Examples Grid */}
             <View style={styles.examplesGrid}>
-              <Text style={styles.examplesGridTitle}>Example Captures</Text>
+              <View style={styles.examplesGridTitleContainer}>
+                <Ionicons name="image" size={24} color="#7BA05B" />
+                <Text style={styles.examplesGridTitle}>Example Captures</Text>
+              </View>
+              
               {MUSHROOM_EXAMPLES.map((mushroom) => (
                 <View key={mushroom.id} style={styles.exampleCard}>
                   <Image
@@ -344,18 +387,26 @@ export default function CameraScreen() {
                   />
                   <View style={styles.exampleInfo}>
                     <Text style={styles.exampleTitle}>{mushroom.title}</Text>
-                    <Text style={styles.exampleTip}>💡 {mushroom.tips}</Text>
+                    <View style={styles.exampleTipContainer}>
+                      <Ionicons name="bulb" size={14} color="#FFD700" />
+                      <Text style={styles.exampleTip}>{mushroom.tips}</Text>
+                    </View>
                   </View>
                 </View>
               ))}
             </View>
 
+            {/* Start Button */}
             <TouchableOpacity
               style={styles.startCameraButton}
               onPress={() => setShowExamples(false)}
+              activeOpacity={0.8}
             >
               <Ionicons name="camera" size={24} color="white" />
               <Text style={styles.startCameraButtonText}>Start Capturing</Text>
+              <View style={styles.buttonArrow}>
+                <Ionicons name="arrow-forward" size={20} color="white" />
+              </View>
             </TouchableOpacity>
           </ScrollView>
         </View>
@@ -377,7 +428,10 @@ export default function CameraScreen() {
               >
                 <Ionicons name="arrow-back" size={28} color="white" />
               </TouchableOpacity>
-              <Text style={styles.titleText}>Capture Mushroom</Text>
+              <View style={styles.titleContainer}>
+                <Ionicons name="leaf" size={24} color="#7BA05B" />
+                <Text style={styles.titleText}>SnapShroom</Text>
+              </View>
               <TouchableOpacity
                 style={styles.tipsButton}
                 onPress={() => setShowExamples(true)}
@@ -389,7 +443,11 @@ export default function CameraScreen() {
             {/* Center targeting guide */}
             <View style={styles.targetingGuide}>
               <View style={styles.targetSquare}>
-                <Ionicons name="scan" size={40} color="rgba(255,255,255,0.7)" />
+                <View style={styles.cornerTL} />
+                <View style={styles.cornerTR} />
+                <View style={styles.cornerBL} />
+                <View style={styles.cornerBR} />
+                <Ionicons name="leaf" size={48} color="rgba(123, 160, 91, 0.6)" style={{ marginBottom: 12 }} />
                 <Text style={styles.guideText}>Center the mushroom</Text>
               </View>
             </View>
@@ -397,9 +455,18 @@ export default function CameraScreen() {
             {/* Bottom controls */}
             <View style={styles.bottomBar}>
               <View style={styles.instructions}>
-                <Text style={styles.instructionText}>
-                  📸 Ensure good lighting{'\n'}🎯 Keep mushroom in focus{'\n'}🌿 Include some background
-                </Text>
+                <View style={styles.instructionItem}>
+                  <Ionicons name="sunny" size={16} color="#FFD700" />
+                  <Text style={styles.instructionText}>Good lighting</Text>
+                </View>
+                <View style={styles.instructionItem}>
+                  <Ionicons name="eye" size={16} color="#7BA05B" />
+                  <Text style={styles.instructionText}>Clear focus</Text>
+                </View>
+                <View style={styles.instructionItem}>
+                  <Ionicons name="leaf" size={16} color="#4DA6FF" />
+                  <Text style={styles.instructionText}>Full specimen</Text>
+                </View>
               </View>
 
               <TouchableOpacity
@@ -408,15 +475,19 @@ export default function CameraScreen() {
                 disabled={isLoading}
               >
                 {isLoading ? (
-                  <ActivityIndicator size="large" color="white" />
+                  <View style={styles.loadingContainer}>
+                    <ActivityIndicator size="large" color="white" />
+                    <Text style={styles.loadingButtonText}>Processing...</Text>
+                  </View>
                 ) : (
                   <View style={styles.captureButtonInner}>
-                    <Ionicons name="camera" size={32} color="white" />
+                    <Ionicons name="camera" size={36} color="white" />
                   </View>
                 )}
               </TouchableOpacity>
 
               <View style={styles.captureHint}>
+                <Ionicons name="finger-up" size={16} color="white" />
                 <Text style={styles.hintText}>
                   {isLoading ? 'Processing...' : 'Tap to capture'}
                 </Text>
@@ -432,8 +503,99 @@ export default function CameraScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#1E2D1E',
+    backgroundColor: '#0F1F0F',
   },
+  
+  // Loading & Permission States
+  loadingContent: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  mushroomIcon: {
+    width: 100,
+    height: 100,
+    borderRadius: 50,
+    backgroundColor: 'rgba(123, 160, 91, 0.1)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 2,
+    borderColor: '#7BA05B',
+  },
+  loadingText: {
+    fontSize: 16,
+    color: '#A8B89D',
+    marginTop: 20,
+    fontWeight: '600',
+  },
+  permissionContent: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 30,
+  },
+  permissionIconContainer: {
+    width: 120,
+    height: 120,
+    borderRadius: 60,
+    backgroundColor: 'rgba(255, 107, 107, 0.1)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 30,
+    borderWidth: 2,
+    borderColor: '#FF6B6B',
+  },
+  permissionTitle: {
+    fontSize: 24,
+    fontWeight: '700',
+    color: '#E6F4FE',
+    marginBottom: 12,
+    textAlign: 'center',
+  },
+  permissionText: {
+    fontSize: 14,
+    color: '#A8B89D',
+    textAlign: 'center',
+    marginBottom: 30,
+    lineHeight: 22,
+  },
+  primaryButton: {
+    backgroundColor: '#7BA05B',
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingVertical: 14,
+    paddingHorizontal: 30,
+    borderRadius: 12,
+    marginBottom: 15,
+    width: '100%',
+    gap: 10,
+  },
+  primaryButtonText: {
+    color: 'white',
+    fontSize: 16,
+    fontWeight: '700',
+  },
+  secondaryButton: {
+    backgroundColor: 'transparent',
+    borderWidth: 2,
+    borderColor: '#7BA05B',
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingVertical: 12,
+    paddingHorizontal: 30,
+    borderRadius: 12,
+    width: '100%',
+    gap: 10,
+  },
+  secondaryButtonText: {
+    color: '#7BA05B',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+
+  // Camera Container
   cameraContainer: {
     flex: 1,
     position: 'relative',
@@ -445,7 +607,7 @@ const styles = StyleSheet.create({
   // Examples View Styles
   examplesContainer: {
     flex: 1,
-    backgroundColor: '#1E2D1E',
+    backgroundColor: '#0F1F0F',
     paddingTop: 40,
   },
   examplesHeader: {
@@ -454,8 +616,24 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: 16,
     paddingVertical: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: '#2D3E2D',
+    borderBottomWidth: 2,
+    borderBottomColor: '#1A2D1A',
+    backgroundColor: 'rgba(15, 31, 15, 0.95)',
+  },
+  headerButton: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: 'rgba(123, 160, 91, 0.1)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(123, 160, 91, 0.3)',
+  },
+  headerTitleContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
   },
   examplesTitle: {
     fontSize: 20,
@@ -470,42 +648,72 @@ const styles = StyleSheet.create({
     marginTop: 24,
     marginBottom: 28,
   },
+  guideTitleContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    marginBottom: 16,
+  },
   guideSectionTitle: {
     fontSize: 18,
     fontWeight: '700',
     color: '#A8B89D',
-    marginBottom: 16,
+  },
+  tipsContainer: {
+    gap: 14,
+    backgroundColor: 'rgba(123, 160, 91, 0.05)',
+    padding: 16,
+    borderRadius: 12,
+    borderLeftWidth: 4,
+    borderLeftColor: '#7BA05B',
   },
   tipItem: {
     flexDirection: 'row',
-    alignItems: 'flex-start',
-    marginBottom: 12,
-    paddingHorizontal: 12,
+    alignItems: 'center',
+    gap: 12,
+  },
+  tipIconContainer: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: 'rgba(123, 160, 91, 0.1)',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   tipText: {
     fontSize: 14,
     color: '#C8D8C8',
-    marginLeft: 12,
     flex: 1,
     lineHeight: 20,
+    fontWeight: '500',
   },
   examplesGrid: {
     marginBottom: 28,
+  },
+  examplesGridTitleContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    marginBottom: 16,
   },
   examplesGridTitle: {
     fontSize: 18,
     fontWeight: '700',
     color: '#A8B89D',
-    marginBottom: 16,
   },
   exampleCard: {
     flexDirection: 'row',
-    backgroundColor: '#2D3E2D',
-    borderRadius: 12,
+    backgroundColor: '#1A2D1A',
+    borderRadius: 14,
     overflow: 'hidden',
-    marginBottom: 12,
-    borderWidth: 1,
-    borderColor: '#3D4E3D',
+    marginBottom: 14,
+    borderWidth: 2,
+    borderColor: '#2D3E2D',
+    shadowColor: '#7BA05B',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.15,
+    shadowRadius: 4,
+    elevation: 3,
   },
   exampleImage: {
     width: 120,
@@ -513,7 +721,7 @@ const styles = StyleSheet.create({
   },
   exampleInfo: {
     flex: 1,
-    padding: 12,
+    padding: 14,
     justifyContent: 'center',
   },
   exampleTitle: {
@@ -522,9 +730,15 @@ const styles = StyleSheet.create({
     color: '#E6F4FE',
     marginBottom: 8,
   },
+  exampleTipContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
   exampleTip: {
     fontSize: 13,
     color: '#A8B89D',
+    fontWeight: '500',
   },
   startCameraButton: {
     backgroundColor: '#7BA05B',
@@ -534,18 +748,23 @@ const styles = StyleSheet.create({
     paddingVertical: 16,
     borderRadius: 12,
     marginBottom: 40,
-    gap: 8,
+    gap: 12,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 6,
   },
   startCameraButtonText: {
     color: 'white',
     fontSize: 16,
     fontWeight: '700',
   },
+  buttonArrow: {
+    marginLeft: 4,
+  },
 
   // Camera View Styles
-  camera: {
-    flex: 1,
-  },
   overlay: {
     position: 'absolute',
     top: 0,
@@ -563,27 +782,38 @@ const styles = StyleSheet.create({
     paddingTop: 50,
     paddingHorizontal: 20,
     paddingBottom: 20,
+    backgroundColor: 'rgba(0, 0, 0, 0.3)',
   },
   backButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: 'rgba(0,0,0,0.5)',
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: 'rgba(0,0,0,0.6)',
     justifyContent: 'center',
     alignItems: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(123, 160, 91, 0.3)',
   },
-  tipsButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: 'rgba(123, 160, 91, 0.6)',
-    justifyContent: 'center',
+  titleContainer: {
+    flexDirection: 'row',
     alignItems: 'center',
+    gap: 8,
   },
   titleText: {
     color: 'white',
-    fontSize: 18,
-    fontWeight: '600',
+    fontSize: 20,
+    fontWeight: '700',
+    letterSpacing: 0.5,
+  },
+  tipsButton: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: 'rgba(123, 160, 91, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(123, 160, 91, 0.6)',
   },
   targetingGuide: {
     flex: 1,
@@ -591,115 +821,149 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   targetSquare: {
-    width: 220,
-    height: 220,
-    borderWidth: 2,
-    borderColor: 'rgba(123, 160, 91, 0.8)',
-    borderRadius: 10,
+    width: 240,
+    height: 240,
+    borderWidth: 3,
+    borderColor: 'rgba(123, 160, 91, 0.7)',
+    borderRadius: 16,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: 'rgba(0,0,0,0.1)',
+    backgroundColor: 'rgba(123, 160, 91, 0.05)',
+    position: 'relative',
+  },
+  cornerTL: {
+    position: 'absolute',
+    top: -6,
+    left: -6,
+    width: 30,
+    height: 30,
+    borderTopWidth: 3,
+    borderLeftWidth: 3,
+    borderColor: '#7BA05B',
+    borderTopLeftRadius: 4,
+  },
+  cornerTR: {
+    position: 'absolute',
+    top: -6,
+    right: -6,
+    width: 30,
+    height: 30,
+    borderTopWidth: 3,
+    borderRightWidth: 3,
+    borderColor: '#7BA05B',
+    borderTopRightRadius: 4,
+  },
+  cornerBL: {
+    position: 'absolute',
+    bottom: -6,
+    left: -6,
+    width: 30,
+    height: 30,
+    borderBottomWidth: 3,
+    borderLeftWidth: 3,
+    borderColor: '#7BA05B',
+    borderBottomLeftRadius: 4,
+  },
+  cornerBR: {
+    position: 'absolute',
+    bottom: -6,
+    right: -6,
+    width: 30,
+    height: 30,
+    borderBottomWidth: 3,
+    borderRightWidth: 3,
+    borderColor: '#7BA05B',
+    borderBottomRightRadius: 4,
   },
   guideText: {
     color: 'white',
-    fontSize: 14,
+    fontSize: 15,
     textAlign: 'center',
-    marginTop: 10,
-    fontWeight: '500',
+    fontWeight: '600',
   },
   bottomBar: {
     paddingBottom: 40,
     paddingHorizontal: 20,
     alignItems: 'center',
+    backgroundColor: 'rgba(0, 0, 0, 0.2)',
   },
   instructions: {
     backgroundColor: 'rgba(0,0,0,0.7)',
-    padding: 15,
-    borderRadius: 10,
-    marginBottom: 20,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderRadius: 12,
+    marginBottom: 24,
+    flexDirection: 'row',
+    justifyContent: 'space-around',
     width: '100%',
+    borderWidth: 1,
+    borderColor: 'rgba(123, 160, 91, 0.3)',
+  },
+  instructionItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
   },
   instructionText: {
     color: 'white',
-    fontSize: 13,
-    lineHeight: 20,
-    textAlign: 'left',
+    fontSize: 12,
+    fontWeight: '600',
   },
   captureButton: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
+    width: 90,
+    height: 90,
+    borderRadius: 45,
     backgroundColor: '#7BA05B',
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: 10,
-    shadowColor: '#000',
+    marginBottom: 16,
+    shadowColor: '#7BA05B',
     shadowOffset: {
       width: 0,
-      height: 2,
+      height: 4,
     },
-    shadowOpacity: 0.25,
-    shadowRadius: 3.84,
-    elevation: 5,
+    shadowOpacity: 0.4,
+    shadowRadius: 8,
+    elevation: 8,
+    borderWidth: 3,
+    borderColor: 'rgba(123, 160, 91, 0.3)',
   },
   captureButtonDisabled: {
-    backgroundColor: '#666',
+    backgroundColor: '#556B4F',
+    opacity: 0.6,
   },
   captureButtonInner: {
-    width: 70,
-    height: 70,
-    borderRadius: 35,
-    backgroundColor: 'rgba(255,255,255,0.2)',
+    width: 78,
+    height: 78,
+    borderRadius: 39,
+    backgroundColor: 'rgba(255,255,255,0.15)',
     justifyContent: 'center',
     alignItems: 'center',
   },
+  loadingContainer: {
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  loadingButtonText: {
+    color: 'white',
+    fontSize: 12,
+    marginTop: 8,
+    fontWeight: '600',
+  },
   captureHint: {
-    backgroundColor: 'rgba(0,0,0,0.7)',
+    backgroundColor: 'rgba(0,0,0,0.8)',
     paddingHorizontal: 20,
-    paddingVertical: 8,
-    borderRadius: 20,
+    paddingVertical: 10,
+    borderRadius: 24,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    borderWidth: 1,
+    borderColor: 'rgba(123, 160, 91, 0.4)',
   },
   hintText: {
     color: 'white',
     fontSize: 14,
-    fontWeight: '500',
-  },
-  text: {
-    color: '#666',
-    fontSize: 16,
-    textAlign: 'center',
-    marginHorizontal: 40,
-    marginBottom: 20,
-  },
-  title: {
-    color: '#333',
-    fontSize: 24,
-    fontWeight: 'bold',
-    textAlign: 'center',
-    marginBottom: 10,
-  },
-  button: {
-    backgroundColor: '#7BA05B',
-    paddingHorizontal: 30,
-    paddingVertical: 15,
-    borderRadius: 25,
-    marginBottom: 15,
-    minWidth: 200,
-  },
-  buttonText: {
-    color: 'white',
-    fontSize: 16,
-    fontWeight: '600',
-    textAlign: 'center',
-  },
-  secondaryButton: {
-    backgroundColor: 'transparent',
-    borderWidth: 2,
-    borderColor: '#7BA05B',
-  },
-  secondaryButtonText: {
-    color: '#7BA05B',
-    fontSize: 16,
     fontWeight: '600',
   },
 });
