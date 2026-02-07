@@ -1,5 +1,5 @@
 import { Image } from 'expo-image';
-import { TouchableOpacity, StyleSheet, Alert, ScrollView, View, Dimensions, Animated, Platform, StatusBar } from 'react-native';
+import { TouchableOpacity, StyleSheet, Alert, ScrollView, View, Dimensions, Animated } from 'react-native';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { useRouter } from 'expo-router';
@@ -13,30 +13,34 @@ import HamburgerMenu from '@/components/HamburgerMenu';
 
 const { width, height } = Dimensions.get('window');
 const isSmallScreen = width < 768;
-const isTablet = width >= 768;
-const isLargePhone = width >= 400;
-const statusBarHeight = Platform.OS === 'ios' ? 44 : StatusBar.currentHeight || 44;
 
-// Enhanced color palette
+// Enhanced color palette - More eye-relaxing
 const COLORS = {
+  // Primary greens - softer, more natural
   sage: '#9CAF88',
   moss: '#7D9B6E',
   forest: '#5F7C52',
   olive: '#4A6244',
+  
+  // Accent colors
   cream: '#FAF8F3',
   sand: '#F5F1E8',
   terracotta: '#E89B7C',
   coral: '#F4A896',
+  
+  // Neutrals
   charcoal: '#3F4941',
   stone: '#8B9388',
   cloud: '#E8EBE6',
   white: '#FFFFFF',
+  
+  // Status
   success: '#81C995',
   warning: '#F4B860',
   danger: '#E88B7C',
 };
 
-// Responsive spacing system
+// Reduced spacing system
 const SPACING = {
   xs: 4,
   sm: 8,
@@ -47,25 +51,6 @@ const SPACING = {
   xxxl: 40,
 };
 
-// Responsive font sizes
-const FONT_SIZES = {
-  tiny: isSmallScreen ? 8 : 10,
-  xxs: isSmallScreen ? 9 : 11,
-  xs: isSmallScreen ? 10 : 12,
-  sm: isSmallScreen ? 11 : 13,
-  base: isSmallScreen ? 12 : 14,
-  md: isSmallScreen ? 13 : 15,
-  lg: isSmallScreen ? 14 : 16,
-  xl: isSmallScreen ? 15 : 17,
-  xxl: isSmallScreen ? 16 : 18,
-  xxxl: isSmallScreen ? 18 : 20,
-  displayXs: isSmallScreen ? 20 : 24,
-  displaySm: isSmallScreen ? 22 : 26,
-  displayMd: isSmallScreen ? 24 : 28,
-  displayLg: isSmallScreen ? 28 : 32,
-  displayXl: isSmallScreen ? 32 : 40,
-};
-
 // Hero carousel images
 const HERO_SLIDES = [
   { uri: 'https://upload.wikimedia.org/wikipedia/commons/0/08/Copelandia_cyanescens.jpg' },
@@ -74,7 +59,9 @@ const HERO_SLIDES = [
   { uri: 'https://wallpaperaccess.com/full/85562.jpg' },
 ];
 
-// Cartoon Mushroom Component (no changes needed)
+// ============ DECORATIVE MUSHROOM COMPONENTS ============
+
+// Cartoon Mushroom SVG Component
 const CartoonMushroom = ({ 
   size = 60, 
   color = COLORS.sage, 
@@ -280,27 +267,27 @@ const CartoonMushroom = ({
   );
 };
 
-// Mushroom Cluster Decoration - Responsive
+// Mushroom Cluster Decoration
 const MushroomCluster = ({ position = 'left' }: { position?: 'left' | 'right' }) => {
   return (
     <View
       style={{
         position: 'absolute',
-        [position]: isSmallScreen ? -10 : -20,
-        bottom: isSmallScreen ? 10 : 20,
+        [position]: -20,
+        bottom: 20,
         opacity: 0.6,
       }}
     >
-      <View style={{ flexDirection: 'row', alignItems: 'flex-end', gap: isSmallScreen ? 4 : 8 }}>
-        <CartoonMushroom size={isSmallScreen ? 30 : 40} capColor={COLORS.terracotta} color={COLORS.sage} />
-        <CartoonMushroom size={isSmallScreen ? 35 : 50} capColor={COLORS.coral} color={COLORS.moss} spots={false} />
-        <CartoonMushroom size={isSmallScreen ? 25 : 35} capColor={COLORS.terracotta} color={COLORS.sage} />
+      <View style={{ flexDirection: 'row', alignItems: 'flex-end', gap: 8 }}>
+        <CartoonMushroom size={40} capColor={COLORS.terracotta} color={COLORS.sage} />
+        <CartoonMushroom size={50} capColor={COLORS.coral} color={COLORS.moss} spots={false} />
+        <CartoonMushroom size={35} capColor={COLORS.terracotta} color={COLORS.sage} />
       </View>
     </View>
   );
 };
 
-// Floating Spores Animation (no changes needed)
+// Floating Spores Animation
 const FloatingSpores = () => {
   const spores = Array.from({ length: 12 }, (_, i) => ({
     id: i,
@@ -377,7 +364,7 @@ const FloatingSpore = ({ delay, x, duration }: { delay: number; x: number; durat
   );
 };
 
-// Mushroom Infographics Section - Responsive
+// ============ MUSHROOM INFOGRAPHICS SECTION ============
 const MushroomInfographics = () => {
   const [activeTab, setActiveTab] = useState('facts');
   const containerAnim = useRef(new Animated.Value(0)).current;
@@ -408,12 +395,12 @@ const MushroomInfographics = () => {
         },
       ]}
     >
-      {/* Decorative mushrooms - responsive */}
-      <View style={{ position: 'absolute', top: isSmallScreen ? 10 : 20, right: isSmallScreen ? 10 : 20, opacity: 0.15 }}>
-        <CartoonMushroom size={isSmallScreen ? 60 : 80} capColor={COLORS.coral} color={COLORS.sage} />
+      {/* Decorative mushrooms */}
+      <View style={{ position: 'absolute', top: 20, right: 20, opacity: 0.15 }}>
+        <CartoonMushroom size={80} capColor={COLORS.coral} color={COLORS.sage} />
       </View>
-      <View style={{ position: 'absolute', bottom: isSmallScreen ? 20 : 40, left: isSmallScreen ? 10 : 20, opacity: 0.15 }}>
-        <CartoonMushroom size={isSmallScreen ? 45 : 60} capColor={COLORS.terracotta} color={COLORS.moss} spots={false} />
+      <View style={{ position: 'absolute', bottom: 40, left: 20, opacity: 0.15 }}>
+        <CartoonMushroom size={60} capColor={COLORS.terracotta} color={COLORS.moss} spots={false} />
       </View>
 
       <View style={styles.sectionHeader}>
@@ -426,29 +413,23 @@ const MushroomInfographics = () => {
         </ThemedText>
       </View>
 
-      {/* Tab Navigation - Responsive */}
-      <ScrollView 
-        horizontal 
-        showsHorizontalScrollIndicator={false}
-        contentContainerStyle={styles.tabScrollContainer}
-      >
-        <View style={styles.tabContainer}>
-          {['facts', 'anatomy', 'types', 'safety'].map((tab) => (
-            <TouchableOpacity
-              key={tab}
-              style={[styles.tabButton, activeTab === tab && styles.activeTabButton]}
-              onPress={() => setActiveTab(tab)}
-            >
-              <ThemedText style={[styles.tabText, activeTab === tab && styles.activeTabText]}>
-                {tab === 'facts' && '✨ Facts'}
-                {tab === 'anatomy' && '🔬 Anatomy'}
-                {tab === 'types' && '📚 Types'}
-                {tab === 'safety' && '⚠️ Safety'}
-              </ThemedText>
-            </TouchableOpacity>
-          ))}
-        </View>
-      </ScrollView>
+      {/* Tab Navigation */}
+      <View style={styles.tabContainer}>
+        {['facts', 'anatomy', 'types', 'safety'].map((tab) => (
+          <TouchableOpacity
+            key={tab}
+            style={[styles.tabButton, activeTab === tab && styles.activeTabButton]}
+            onPress={() => setActiveTab(tab)}
+          >
+            <ThemedText style={[styles.tabText, activeTab === tab && styles.activeTabText]}>
+              {tab === 'facts' && '✨ Fun Facts'}
+              {tab === 'anatomy' && '🔬 Anatomy'}
+              {tab === 'types' && '📚 Types'}
+              {tab === 'safety' && '⚠️ Safety'}
+            </ThemedText>
+          </TouchableOpacity>
+        ))}
+      </View>
 
       {/* Content Area */}
       <View style={styles.contentArea}>
@@ -461,7 +442,7 @@ const MushroomInfographics = () => {
   );
 };
 
-// Fun Facts Tab - Responsive
+// Fun Facts Tab
 const FactsTab = () => {
   const floatAnim = useRef(new Animated.Value(0)).current;
 
@@ -546,10 +527,7 @@ const FactsTab = () => {
   ];
 
   return (
-    <ScrollView 
-      showsVerticalScrollIndicator={false}
-      contentContainerStyle={styles.factsScrollContainer}
-    >
+    <View style={styles.tabContent}>
       <View style={styles.factsGrid}>
         {facts.map((fact, index) => (
           <Animated.View
@@ -582,11 +560,11 @@ const FactsTab = () => {
           </Animated.View>
         ))}
       </View>
-    </ScrollView>
+    </View>
   );
 };
 
-// Anatomy Tab - Responsive
+// Anatomy Tab
 const AnatomyTab = () => {
   const [parts] = useState([
     {
@@ -646,14 +624,11 @@ const AnatomyTab = () => {
   ]);
 
   return (
-    <ScrollView 
-      showsVerticalScrollIndicator={false}
-      contentContainerStyle={styles.anatomyScrollContainer}
-    >
+    <View style={styles.tabContent}>
       <View style={styles.anatomyContainer}>
         {/* Large decorative mushroom */}
         <View style={styles.diagramContainer}>
-          <CartoonMushroom size={isSmallScreen ? 80 : 120} capColor={COLORS.coral} color={COLORS.sage} />
+          <CartoonMushroom size={120} capColor={COLORS.coral} color={COLORS.sage} />
           <ThemedText style={styles.diagramLabel}>Mushroom Anatomy</ThemedText>
         </View>
 
@@ -676,11 +651,11 @@ const AnatomyTab = () => {
           ))}
         </View>
       </View>
-    </ScrollView>
+    </View>
   );
 };
 
-// Types Tab - Responsive
+// Types Tab
 const TypesTab = () => {
   const [mushroomTypes] = useState([
     {
@@ -757,45 +732,40 @@ const TypesTab = () => {
   }, []);
 
   return (
-    <ScrollView 
-      showsVerticalScrollIndicator={false}
-      contentContainerStyle={styles.typesScrollContainer}
-    >
-      <Animated.View style={[styles.tabContent, { transform: [{ scale: scaleAnim }] }]}>
-        <View style={styles.typesGrid}>
-          {mushroomTypes.map((type) => (
-            <View key={type.id} style={styles.typeCard}>
-              <View style={[styles.typeCardHeader, { backgroundColor: `${type.color}15` }]}>
-                <ThemedText style={styles.typeEmoji}>{type.emoji}</ThemedText>
-                <View style={{ flex: 1 }}>
-                  <ThemedText style={[styles.typeName, { color: type.color }]}>{type.name}</ThemedText>
-                  <ThemedText style={[styles.typeSafety, { color: COLORS.stone }]}>{type.safety}</ThemedText>
-                </View>
+    <Animated.View style={[styles.tabContent, { transform: [{ scale: scaleAnim }] }]}>
+      <View style={styles.typesGrid}>
+        {mushroomTypes.map((type) => (
+          <View key={type.id} style={styles.typeCard}>
+            <View style={[styles.typeCardHeader, { backgroundColor: `${type.color}15` }]}>
+              <ThemedText style={styles.typeEmoji}>{type.emoji}</ThemedText>
+              <View style={{ flex: 1 }}>
+                <ThemedText style={[styles.typeName, { color: type.color }]}>{type.name}</ThemedText>
+                <ThemedText style={[styles.typeSafety, { color: COLORS.stone }]}>{type.safety}</ThemedText>
               </View>
+            </View>
 
-              <View style={styles.typeCardBody}>
-                <ThemedText style={styles.typeDescription}>{type.description}</ThemedText>
+            <View style={styles.typeCardBody}>
+              <ThemedText style={styles.typeDescription}>{type.description}</ThemedText>
 
-                <View style={styles.examplesContainer}>
-                  <ThemedText style={styles.examplesTitle}>Common Examples:</ThemedText>
-                  <View style={styles.examplesGrid}>
-                    {type.examples.map((example, idx) => (
-                      <View key={idx} style={[styles.exampleBadge, { backgroundColor: `${type.color}10` }]}>
-                        <ThemedText style={[styles.exampleText, { color: type.color }]}>{example}</ThemedText>
-                      </View>
-                    ))}
-                  </View>
+              <View style={styles.examplesContainer}>
+                <ThemedText style={styles.examplesTitle}>Common Examples:</ThemedText>
+                <View style={styles.examplesGrid}>
+                  {type.examples.map((example, idx) => (
+                    <View key={idx} style={[styles.exampleBadge, { backgroundColor: `${type.color}10` }]}>
+                      <ThemedText style={[styles.exampleText, { color: type.color }]}>{example}</ThemedText>
+                    </View>
+                  ))}
                 </View>
               </View>
             </View>
-          ))}
-        </View>
-      </Animated.View>
-    </ScrollView>
+          </View>
+        ))}
+      </View>
+    </Animated.View>
   );
 };
 
-// Safety Tab - Responsive
+// Safety Tab
 const SafetyTab = () => {
   const [safetyRules] = useState([
     {
@@ -887,86 +857,83 @@ const SafetyTab = () => {
   };
 
   return (
-    <ScrollView 
-      showsVerticalScrollIndicator={false}
-      contentContainerStyle={styles.safetyScrollContainer}
-    >
-      <View style={styles.tabContent}>
-        {/* Warning Banner */}
-        <Animated.View style={[styles.warningBanner, { transform: [{ scale: pulseAnim }] }]}>
-          <ThemedText style={styles.warningEmoji}>⚠️</ThemedText>
-          <View style={styles.warningContent}>
-            <ThemedText style={styles.warningTitle}>FOR EDUCATIONAL PURPOSES ONLY</ThemedText>
-            <ThemedText style={styles.warningText}>Never consume wild mushrooms without expert verification</ThemedText>
-          </View>
-        </Animated.View>
-
-        <View style={styles.safetyGrid}>
-          {safetyRules.map((rule) => {
-            const severityColor = getSeverityColor(rule.severity);
-            return (
-              <View key={rule.id} style={styles.safetyCard}>
-                <View style={styles.safetyCardHeader}>
-                  <View style={[styles.ruleEmojiContainer, { backgroundColor: `${severityColor}15` }]}>
-                    <ThemedText style={styles.ruleEmoji}>{rule.emoji}</ThemedText>
-                  </View>
-                  <View style={styles.ruleInfo}>
-                    <ThemedText style={styles.ruleName}>{rule.rule}</ThemedText>
-                    <View style={[styles.severityBadge, { backgroundColor: `${severityColor}15` }]}>
-                      <View style={[styles.severityDot, { backgroundColor: severityColor }]} />
-                      <ThemedText style={[styles.severityText, { color: severityColor }]}>
-                        {rule.severity.toUpperCase()} PRIORITY
-                      </ThemedText>
-                    </View>
-                  </View>
-                </View>
-
-                <ThemedText style={styles.ruleDescription}>{rule.description}</ThemedText>
-
-                <View style={styles.tipsContainer}>
-                  <ThemedText style={styles.tipsTitle}>Key Tips:</ThemedText>
-                  {rule.tips.map((tip, idx) => (
-                    <View key={idx} style={styles.tipItem}>
-                      <View style={[styles.tipDot, { backgroundColor: severityColor }]} />
-                      <ThemedText style={styles.tipText}>{tip}</ThemedText>
-                    </View>
-                  ))}
-                </View>
-              </View>
-            );
-          })}
+    <View style={styles.tabContent}>
+      {/* Warning Banner */}
+      <Animated.View style={[styles.warningBanner, { transform: [{ scale: pulseAnim }] }]}>
+        <ThemedText style={styles.warningEmoji}>⚠️</ThemedText>
+        <View style={styles.warningContent}>
+          <ThemedText style={styles.warningTitle}>FOR EDUCATIONAL PURPOSES ONLY</ThemedText>
+          <ThemedText style={styles.warningText}>Never consume wild mushrooms without expert verification</ThemedText>
         </View>
+      </Animated.View>
 
-        {/* Emergency Info */}
-        <View style={styles.emergencyContainer}>
-          <ThemedText style={styles.emergencyTitle}>🚨 In Case of Poisoning:</ThemedText>
-          <View style={styles.emergencySteps}>
-            <View style={styles.emergencyStep}>
-              <View style={styles.emergencyNumber}>
-                <ThemedText style={styles.stepNumberText}>1</ThemedText>
+      <View style={styles.safetyGrid}>
+        {safetyRules.map((rule) => {
+          const severityColor = getSeverityColor(rule.severity);
+          return (
+            <View key={rule.id} style={styles.safetyCard}>
+              <View style={styles.safetyCardHeader}>
+                <View style={[styles.ruleEmojiContainer, { backgroundColor: `${severityColor}15` }]}>
+                  <ThemedText style={styles.ruleEmoji}>{rule.emoji}</ThemedText>
+                </View>
+                <View style={styles.ruleInfo}>
+                  <ThemedText style={styles.ruleName}>{rule.rule}</ThemedText>
+                  <View style={[styles.severityBadge, { backgroundColor: `${severityColor}15` }]}>
+                    <View style={[styles.severityDot, { backgroundColor: severityColor }]} />
+                    <ThemedText style={[styles.severityText, { color: severityColor }]}>
+                      {rule.severity.toUpperCase()} PRIORITY
+                    </ThemedText>
+                  </View>
+                </View>
               </View>
-              <ThemedText style={styles.stepText}>Call Poison Control Immediately</ThemedText>
-            </View>
-            <View style={styles.emergencyStep}>
-              <View style={styles.emergencyNumber}>
-                <ThemedText style={styles.stepNumberText}>2</ThemedText>
+
+              <ThemedText style={styles.ruleDescription}>{rule.description}</ThemedText>
+
+              <View style={styles.tipsContainer}>
+                <ThemedText style={styles.tipsTitle}>Key Tips:</ThemedText>
+                {rule.tips.map((tip, idx) => (
+                  <View key={idx} style={styles.tipItem}>
+                    <View style={[styles.tipDot, { backgroundColor: severityColor }]} />
+                    <ThemedText style={styles.tipText}>{tip}</ThemedText>
+                  </View>
+                ))}
               </View>
-              <ThemedText style={styles.stepText}>Save Mushroom Sample</ThemedText>
             </View>
-            <View style={styles.emergencyStep}>
-              <View style={styles.emergencyNumber}>
-                <ThemedText style={styles.stepNumberText}>3</ThemedText>
-              </View>
-              <ThemedText style={styles.stepText}>Go to Emergency Room</ThemedText>
+          );
+        })}
+      </View>
+
+      {/* Emergency Info */}
+      <View style={styles.emergencyContainer}>
+        <ThemedText style={styles.emergencyTitle}>🚨 In Case of Poisoning:</ThemedText>
+        <View style={styles.emergencySteps}>
+          <View style={styles.emergencyStep}>
+            <View style={styles.emergencyNumber}>
+              <ThemedText style={styles.stepNumberText}>1</ThemedText>
             </View>
+            <ThemedText style={styles.stepText}>Call Poison Control Immediately</ThemedText>
+          </View>
+          <View style={styles.emergencyStep}>
+            <View style={styles.emergencyNumber}>
+              <ThemedText style={styles.stepNumberText}>2</ThemedText>
+            </View>
+            <ThemedText style={styles.stepText}>Save Mushroom Sample</ThemedText>
+          </View>
+          <View style={styles.emergencyStep}>
+            <View style={styles.emergencyNumber}>
+              <ThemedText style={styles.stepNumberText}>3</ThemedText>
+            </View>
+            <ThemedText style={styles.stepText}>Go to Emergency Room</ThemedText>
           </View>
         </View>
       </View>
-    </ScrollView>
+    </View>
   );
 };
 
-// Machine Learning Icon (no changes needed)
+// ============ ANIMATED FEATURE ICONS ============
+
+// Machine Learning Recognition Icon
 const MachineLearningIcon = () => {
   const pulseAnim = useRef(new Animated.Value(1)).current;
   const glowAnim = useRef(new Animated.Value(0)).current;
@@ -1029,19 +996,19 @@ const MachineLearningIcon = () => {
       {/* Main icon */}
       <Animated.View style={{ transform: [{ scale: pulseAnim }] }}>
         <View style={[styles.iconContainer, { backgroundColor: `${COLORS.sage}20` }]}>
-          <Ionicons name="analytics" size={isSmallScreen ? 30 : 40} color={COLORS.forest} />
+          <Ionicons name="analytics" size={40} color={COLORS.forest} />
         </View>
       </Animated.View>
 
       {/* Decorative mushroom */}
       <View style={{ position: 'absolute', bottom: -10, right: -10 }}>
-        <CartoonMushroom size={isSmallScreen ? 20 : 30} capColor={COLORS.coral} color={COLORS.sage} />
+        <CartoonMushroom size={30} capColor={COLORS.coral} color={COLORS.sage} />
       </View>
     </View>
   );
 };
 
-// Safety Icon (no changes needed)
+// Safety Shield Icon
 const SafetyIcon = () => {
   const checkAnim = useRef(new Animated.Value(0)).current;
 
@@ -1068,7 +1035,7 @@ const SafetyIcon = () => {
   return (
     <View style={styles.iconWrapper}>
       <View style={[styles.iconContainer, { backgroundColor: `${COLORS.forest}20` }]}>
-        <Ionicons name="shield-checkmark" size={isSmallScreen ? 30 : 40} color={COLORS.forest} />
+        <Ionicons name="shield-checkmark" size={40} color={COLORS.forest} />
       </View>
 
       {/* Animated checkmark */}
@@ -1086,18 +1053,18 @@ const SafetyIcon = () => {
           ],
         }}
       >
-        <Ionicons name="checkmark-circle" size={isSmallScreen ? 20 : 28} color={COLORS.success} />
+        <Ionicons name="checkmark-circle" size={28} color={COLORS.success} />
       </Animated.View>
 
       {/* Decorative mushroom */}
       <View style={{ position: 'absolute', bottom: -10, left: -10 }}>
-        <CartoonMushroom size={isSmallScreen ? 20 : 30} capColor={COLORS.terracotta} color={COLORS.moss} spots={false} />
+        <CartoonMushroom size={30} capColor={COLORS.terracotta} color={COLORS.moss} spots={false} />
       </View>
     </View>
   );
 };
 
-// Species Icon (no changes needed)
+// Species Database Icon
 const SpeciesIcon = () => {
   const rotateAnim = useRef(new Animated.Value(0)).current;
 
@@ -1120,16 +1087,16 @@ const SpeciesIcon = () => {
     <View style={styles.iconWrapper}>
       <Animated.View style={{ transform: [{ rotate }] }}>
         <View style={[styles.iconContainer, { backgroundColor: `${COLORS.moss}20` }]}>
-          <Ionicons name="library" size={isSmallScreen ? 30 : 40} color={COLORS.forest} />
+          <Ionicons name="library" size={40} color={COLORS.forest} />
         </View>
       </Animated.View>
 
       {/* Decorative mushrooms */}
       <View style={{ position: 'absolute', top: -10, right: -10 }}>
-        <CartoonMushroom size={isSmallScreen ? 18 : 25} capColor={COLORS.coral} color={COLORS.sage} />
+        <CartoonMushroom size={25} capColor={COLORS.coral} color={COLORS.sage} />
       </View>
       <View style={{ position: 'absolute', bottom: -10, right: -10 }}>
-        <CartoonMushroom size={isSmallScreen ? 18 : 25} capColor={COLORS.terracotta} color={COLORS.moss} spots={false} />
+        <CartoonMushroom size={25} capColor={COLORS.terracotta} color={COLORS.moss} spots={false} />
       </View>
     </View>
   );
@@ -1160,7 +1127,7 @@ const FEATURES = [
   },
 ];
 
-// Enhanced Step Card - Responsive
+// Enhanced Step Card
 const StepCard = ({ step, index }: { step: { number: string; title: string; description: string }; index: number }) => {
   const scaleAnim = useRef(new Animated.Value(0)).current;
   const floatAnim = useRef(new Animated.Value(0)).current;
@@ -1240,7 +1207,7 @@ const StepCard = ({ step, index }: { step: { number: string; title: string; desc
       ]}
     >
       <View style={styles.stepMushroomContainer}>
-        <CartoonMushroom size={isSmallScreen ? 70 : 100} capColor={getCapColor(step.number)} color={COLORS.moss} />
+        <CartoonMushroom size={100} capColor={getCapColor(step.number)} color={COLORS.moss} />
       </View>
 
       <View style={styles.stepContent}>
@@ -1344,11 +1311,6 @@ export default function LandingPage() {
       {/* Floating spores background */}
       <FloatingSpores />
 
-      {/* Status Bar Background for iOS */}
-      {Platform.OS === 'ios' && (
-        <View style={styles.statusBarBackground} />
-      )}
-
       {/* Floating Header */}
       <Animated.View
         style={[
@@ -1386,7 +1348,7 @@ export default function LandingPage() {
         onScroll={Animated.event([{ nativeEvent: { contentOffset: { y: scrollY } } }], { useNativeDriver: false })}
         scrollEventThrottle={16}
       >
-        {/* Hero Section - Responsive height */}
+        {/* Hero Section - Reduced height */}
         <View style={styles.heroSection}>
           <Animated.View style={[styles.heroImageContainer, { opacity: fadeAnim }]}>
             <Image source={HERO_SLIDES[currentSlide]} style={styles.heroImage} contentFit="cover" transition={500} />
@@ -1401,7 +1363,7 @@ export default function LandingPage() {
               <ThemedText style={styles.welcomeEmoji}>
                 {isLoggedIn ? '👋' : '🌟'}
               </ThemedText>
-              <ThemedText style={styles.welcomeText} numberOfLines={1} ellipsizeMode="tail">
+              <ThemedText style={styles.welcomeText} numberOfLines={1}>
                 {isLoggedIn ? `Welcome, ${user?.name || user?.username || 'Explorer'}` : 'Discover the World of Fungi'}
               </ThemedText>
             </View>
@@ -1447,14 +1409,14 @@ export default function LandingPage() {
 
           {/* Decorative mushrooms in hero */}
           <View style={{ position: 'absolute', bottom: 80, left: 20, opacity: 0.3 }}>
-            <CartoonMushroom size={isSmallScreen ? 40 : 60} capColor={COLORS.coral} color={COLORS.sage} />
+            <CartoonMushroom size={60} capColor={COLORS.coral} color={COLORS.sage} />
           </View>
           <View style={{ position: 'absolute', bottom: 60, right: 30, opacity: 0.3 }}>
-            <CartoonMushroom size={isSmallScreen ? 35 : 50} capColor={COLORS.terracotta} color={COLORS.moss} spots={false} />
+            <CartoonMushroom size={50} capColor={COLORS.terracotta} color={COLORS.moss} spots={false} />
           </View>
         </View>
 
-        {/* Stats Bar - Responsive */}
+        {/* Stats Bar - Reduced padding */}
         <View style={styles.statsBar}>
           <View style={styles.statItem}>
             <ThemedText style={styles.statEmoji}>🍄</ThemedText>
@@ -1475,13 +1437,13 @@ export default function LandingPage() {
           </View>
         </View>
 
-        {/* Mushroom Infographics Section */}
+        {/* Mushroom Infographics Section - Reduced padding */}
         <MushroomInfographics />
 
-        {/* Features Section */}
+        {/* Features Section - Reduced padding */}
         <View style={styles.featuresSection}>
           {/* Decorative mushroom cluster */}
-          {isSmallScreen ? null : <MushroomCluster position="left" />}
+          <MushroomCluster position="left" />
 
           <View style={styles.sectionHeader}>
             <View style={styles.sectionBadge}>
@@ -1493,30 +1455,24 @@ export default function LandingPage() {
             </ThemedText>
           </View>
 
-          <ScrollView 
-            horizontal={isSmallScreen}
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={styles.featuresScrollContainer}
-          >
-            <View style={styles.featuresGrid}>
-              {FEATURES.map((feature, index) => {
-                const IconComponent = feature.IconComponent;
-                return (
-                  <View key={feature.id} style={styles.featureCard}>
-                    <IconComponent />
-                    <ThemedText style={styles.featureTitle}>{feature.title}</ThemedText>
-                    <ThemedText style={styles.featureDescription}>{feature.description}</ThemedText>
-                  </View>
-                );
-              })}
-            </View>
-          </ScrollView>
+          <View style={styles.featuresGrid}>
+            {FEATURES.map((feature, index) => {
+              const IconComponent = feature.IconComponent;
+              return (
+                <View key={feature.id} style={styles.featureCard}>
+                  <IconComponent />
+                  <ThemedText style={styles.featureTitle}>{feature.title}</ThemedText>
+                  <ThemedText style={styles.featureDescription}>{feature.description}</ThemedText>
+                </View>
+              );
+            })}
+          </View>
 
           {/* Decorative mushroom cluster */}
-          {isSmallScreen ? null : <MushroomCluster position="right" />}
+          <MushroomCluster position="right" />
         </View>
 
-        {/* How It Works Section */}
+        {/* How It Works Section - Reduced padding */}
         <View style={styles.howItWorksSection}>
           <View style={styles.sectionHeader}>
             <View style={styles.sectionBadge}>
@@ -1525,49 +1481,39 @@ export default function LandingPage() {
             <ThemedText style={styles.sectionTitle}>Three Simple Steps</ThemedText>
           </View>
 
-          <ScrollView 
-            horizontal={isSmallScreen}
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={styles.stepsScrollContainer}
-          >
-            <View style={styles.stepsContainer}>
-              {[
-                {
-                  number: '1',
-                  title: 'Take a Photo',
-                  description: 'Capture clear images of the mushroom from multiple angles for best results',
-                },
-                {
-                  number: '2',
-                  title: 'Machine Learning Analysis',
-                  description: 'Our ML algorithm instantly analyzes and identifies the species',
-                },
-                {
-                  number: '3',
-                  title: 'Learn & Explore',
-                  description: 'Get detailed information, safety tips, and scientific data',
-                },
-              ].map((step, index) => (
-                <StepCard key={step.number} step={step} index={index} />
-              ))}
-            </View>
-          </ScrollView>
+          <View style={styles.stepsContainer}>
+            {[
+              {
+                number: '1',
+                title: 'Take a Photo',
+                description: 'Capture clear images of the mushroom from multiple angles for best results',
+              },
+              {
+                number: '2',
+                title: 'Machine Learning Analysis',
+                description: 'Our ML algorithm instantly analyzes and identifies the species',
+              },
+              {
+                number: '3',
+                title: 'Learn & Explore',
+                description: 'Get detailed information, safety tips, and scientific data',
+              },
+            ].map((step, index) => (
+              <StepCard key={step.number} step={step} index={index} />
+            ))}
+          </View>
         </View>
 
-        {/* Call to Action Section */}
+        {/* Call to Action Section - Reduced padding */}
         {!isLoggedIn && (
           <View style={styles.ctaSection}>
             <View style={styles.ctaCard}>
-              {!isSmallScreen && (
-                <>
-                  <View style={styles.ctaMushroomLeft}>
-                    <CartoonMushroom size={isSmallScreen ? 60 : 80} capColor={COLORS.coral} color={COLORS.sage} />
-                  </View>
-                  <View style={styles.ctaMushroomRight}>
-                    <CartoonMushroom size={isSmallScreen ? 50 : 70} capColor={COLORS.terracotta} color={COLORS.moss} spots={false} />
-                  </View>
-                </>
-              )}
+              <View style={styles.ctaMushroomLeft}>
+                <CartoonMushroom size={80} capColor={COLORS.coral} color={COLORS.sage} />
+              </View>
+              <View style={styles.ctaMushroomRight}>
+                <CartoonMushroom size={70} capColor={COLORS.terracotta} color={COLORS.moss} spots={false} />
+              </View>
 
               <View style={styles.ctaContent}>
                 <ThemedText style={styles.ctaEmoji}>🚀</ThemedText>
@@ -1587,7 +1533,7 @@ export default function LandingPage() {
           </View>
         )}
 
-        {/* Safety Notice */}
+        {/* Safety Notice - Reduced padding */}
         <View style={styles.safetySection}>
           <View style={styles.safetyCard}>
             <ThemedText style={styles.safetyEmoji}>⚠️</ThemedText>
@@ -1601,7 +1547,7 @@ export default function LandingPage() {
           </View>
         </View>
 
-        {/* System Status */}
+        {/* System Status - Reduced padding */}
         {isLoggedIn && (
           <View style={styles.systemSection}>
             <View style={styles.systemCard}>
@@ -1645,7 +1591,7 @@ export default function LandingPage() {
           </View>
         )}
 
-        {/* Footer */}
+        {/* Footer - Reduced padding */}
         <View style={styles.footer}>
           <View style={styles.footerContent}>
             <View style={styles.footerBrand}>
@@ -1655,9 +1601,9 @@ export default function LandingPage() {
             </View>
 
             <View style={styles.footerMushroomRow}>
-              <CartoonMushroom size={isSmallScreen ? 30 : 40} capColor={COLORS.coral} color={COLORS.sage} />
-              <CartoonMushroom size={isSmallScreen ? 35 : 45} capColor={COLORS.terracotta} color={COLORS.moss} spots={false} />
-              <CartoonMushroom size={isSmallScreen ? 30 : 40} capColor={COLORS.coral} color={COLORS.sage} />
+              <CartoonMushroom size={40} capColor={COLORS.coral} color={COLORS.sage} />
+              <CartoonMushroom size={45} capColor={COLORS.terracotta} color={COLORS.moss} spots={false} />
+              <CartoonMushroom size={40} capColor={COLORS.coral} color={COLORS.sage} />
             </View>
 
             <ThemedText style={styles.copyright}>© 2026 SnapShroom. All rights reserved.</ThemedText>
@@ -1673,15 +1619,6 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: COLORS.cream,
   },
-  statusBarBackground: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    height: statusBarHeight,
-    backgroundColor: COLORS.cream,
-    zIndex: 999,
-  },
   loadingContainer: {
     flex: 1,
     backgroundColor: COLORS.cream,
@@ -1693,7 +1630,7 @@ const styles = StyleSheet.create({
     gap: SPACING.lg,
   },
   loadingText: {
-    fontSize: FONT_SIZES.lg,
+    fontSize: 18,
     color: COLORS.charcoal,
     fontWeight: '600',
   },
@@ -1701,14 +1638,14 @@ const styles = StyleSheet.create({
     flex: 1,
   },
 
-  // Floating Header
+  // Floating Header - Reduced padding
   floatingHeader: {
     position: 'absolute',
     top: 0,
     left: 0,
     right: 0,
     zIndex: 1000,
-    paddingTop: Platform.OS === 'ios' ? statusBarHeight : 0,
+    paddingTop: isSmallScreen ? 40 : 45,
     paddingBottom: SPACING.sm,
     borderBottomWidth: 1,
     borderBottomColor: COLORS.cloud,
@@ -1718,7 +1655,6 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     paddingHorizontal: SPACING.md,
-    height: 56,
   },
   logoContainer: {
     flexDirection: 'row',
@@ -1728,10 +1664,10 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   logoEmoji: {
-    fontSize: isSmallScreen ? 20 : 22,
+    fontSize: 22,
   },
   logoText: {
-    fontSize: isSmallScreen ? 15 : 16,
+    fontSize: 16,
     fontWeight: '800',
     color: COLORS.forest,
     letterSpacing: -0.5,
@@ -1739,7 +1675,7 @@ const styles = StyleSheet.create({
   loginButton: {
     borderRadius: 20,
     overflow: 'hidden',
-    width: isSmallScreen ? 70 : 80,
+    width: 80,
     shadowColor: COLORS.forest,
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.15,
@@ -1750,21 +1686,20 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: isSmallScreen ? 6 : 8,
-    paddingHorizontal: isSmallScreen ? 10 : 12,
+    paddingVertical: 8,
+    paddingHorizontal: 12,
     gap: 4,
   },
   loginButtonText: {
     color: COLORS.white,
-    fontSize: isSmallScreen ? 11 : 12,
+    fontSize: 12,
     fontWeight: '700',
   },
 
-  // Hero Section
+  // Hero Section - Reduced height
   heroSection: {
-    height: isSmallScreen ? height * 0.85 : height * 0.78,
+    height: isSmallScreen ? height * 0.75 : height * 0.78,
     position: 'relative',
-    marginTop: -statusBarHeight,
   },
   heroImageContainer: {
     ...StyleSheet.absoluteFillObject,
@@ -1781,9 +1716,8 @@ const styles = StyleSheet.create({
     bottom: 0,
     left: 0,
     right: 0,
-    paddingHorizontal: SPACING.md,
+    paddingHorizontal: SPACING.lg,
     paddingBottom: isSmallScreen ? 40 : 35,
-    paddingTop: isSmallScreen ? 80 : 60,
   },
   welcomeBadge: {
     flexDirection: 'row',
@@ -1800,16 +1734,16 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(255, 255, 255, 0.3)',
   },
   welcomeEmoji: {
-    fontSize: isSmallScreen ? 14 : 16,
+    fontSize: 16,
   },
   welcomeText: {
     color: COLORS.white,
-    fontSize: isSmallScreen ? 12 : 13,
+    fontSize: 13,
     fontWeight: '600',
     flexShrink: 1,
   },
   heroTitle: {
-    fontSize: isSmallScreen ? FONT_SIZES.displayLg : 40,
+    fontSize: isSmallScreen ? 28 : 40,
     fontWeight: '900',
     color: COLORS.white,
     lineHeight: isSmallScreen ? 34 : 48,
@@ -1819,9 +1753,9 @@ const styles = StyleSheet.create({
     textShadowRadius: 8,
   },
   heroSubtitle: {
-    fontSize: isSmallScreen ? FONT_SIZES.sm : 15,
+    fontSize: isSmallScreen ? 14 : 15,
     color: 'rgba(255, 255, 255, 0.95)',
-    lineHeight: isSmallScreen ? 18 : 22,
+    lineHeight: isSmallScreen ? 20 : 22,
     marginBottom: SPACING.lg,
     maxWidth: '95%',
   },
@@ -1849,7 +1783,7 @@ const styles = StyleSheet.create({
   },
   primaryButtonText: {
     color: COLORS.white,
-    fontSize: isSmallScreen ? 15 : 16,
+    fontSize: 16,
     fontWeight: '700',
   },
   secondaryButton: {
@@ -1866,7 +1800,7 @@ const styles = StyleSheet.create({
   },
   secondaryButtonText: {
     color: COLORS.white,
-    fontSize: isSmallScreen ? 15 : 16,
+    fontSize: 16,
     fontWeight: '600',
   },
   slideIndicators: {
@@ -1875,22 +1809,22 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   indicator: {
-    width: isSmallScreen ? 5 : 6,
-    height: isSmallScreen ? 5 : 6,
-    borderRadius: isSmallScreen ? 2.5 : 3,
+    width: 6,
+    height: 6,
+    borderRadius: 3,
     backgroundColor: 'rgba(255, 255, 255, 0.4)',
   },
   activeIndicator: {
     backgroundColor: COLORS.white,
-    width: isSmallScreen ? 20 : 24,
+    width: 24,
   },
 
-  // Stats Bar
+  // Stats Bar - Reduced padding
   statsBar: {
     flexDirection: 'row',
     backgroundColor: COLORS.white,
     paddingVertical: SPACING.lg,
-    paddingHorizontal: SPACING.sm,
+    paddingHorizontal: SPACING.md,
     justifyContent: 'space-around',
     borderBottomWidth: 1,
     borderBottomColor: COLORS.cloud,
@@ -1898,20 +1832,17 @@ const styles = StyleSheet.create({
   statItem: {
     alignItems: 'center',
     gap: SPACING.xs,
-    flex: 1,
-    paddingHorizontal: SPACING.xs,
   },
   statEmoji: {
-    fontSize: isSmallScreen ? 20 : 24,
+    fontSize: 24,
   },
   statNumber: {
-    fontSize: isSmallScreen ? FONT_SIZES.md : 20,
+    fontSize: isSmallScreen ? 18 : 20,
     fontWeight: '800',
     color: COLORS.forest,
-    textAlign: 'center',
   },
   statLabel: {
-    fontSize: isSmallScreen ? FONT_SIZES.xxs : 11,
+    fontSize: 11,
     color: COLORS.stone,
     fontWeight: '500',
     textAlign: 'center',
@@ -1919,20 +1850,19 @@ const styles = StyleSheet.create({
   statDivider: {
     width: 1,
     backgroundColor: COLORS.cloud,
-    marginVertical: SPACING.xs,
   },
 
-  // Infographics Section
+  // Infographics Section - Reduced padding
   infographicsSection: {
-    paddingVertical: SPACING.xl,
+    paddingVertical: SPACING.xxl,
     paddingHorizontal: SPACING.md,
     backgroundColor: COLORS.sand,
     position: 'relative',
   },
   sectionHeader: {
     alignItems: 'center',
-    marginBottom: SPACING.lg,
-    paddingHorizontal: SPACING.xs,
+    marginBottom: SPACING.xl,
+    paddingHorizontal: SPACING.sm,
   },
   sectionBadge: {
     backgroundColor: COLORS.white,
@@ -1944,31 +1874,27 @@ const styles = StyleSheet.create({
     borderColor: COLORS.cloud,
   },
   sectionLabel: {
-    fontSize: isSmallScreen ? FONT_SIZES.xxs : 11,
+    fontSize: 11,
     fontWeight: '700',
     color: COLORS.forest,
-    letterSpacing: isSmallScreen ? 0.5 : 1.5,
+    letterSpacing: 1.5,
   },
   sectionTitle: {
-    fontSize: isSmallScreen ? FONT_SIZES.displayMd : 32,
+    fontSize: isSmallScreen ? 24 : 32,
     fontWeight: '800',
     color: COLORS.charcoal,
     marginBottom: SPACING.sm,
     textAlign: 'center',
   },
   sectionDescription: {
-    fontSize: isSmallScreen ? FONT_SIZES.base : 16,
+    fontSize: isSmallScreen ? 14 : 16,
     color: COLORS.stone,
     textAlign: 'center',
     maxWidth: 540,
-    lineHeight: isSmallScreen ? 20 : 22,
-    paddingHorizontal: SPACING.sm,
+    lineHeight: 22,
   },
 
-  // Tab Navigation
-  tabScrollContainer: {
-    paddingHorizontal: SPACING.xs,
-  },
+  // Tab Navigation - Reduced padding
   tabContainer: {
     flexDirection: 'row',
     backgroundColor: COLORS.white,
@@ -1982,20 +1908,19 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.05,
     shadowRadius: 8,
     elevation: 2,
-    minWidth: isSmallScreen ? 300 : 'auto',
   },
   tabButton: {
-    paddingVertical: isSmallScreen ? SPACING.sm : SPACING.md,
-    paddingHorizontal: isSmallScreen ? SPACING.sm : SPACING.xs,
+    flex: 1,
+    paddingVertical: SPACING.md,
+    paddingHorizontal: SPACING.xs,
     alignItems: 'center',
     borderRadius: 12,
-    minWidth: isSmallScreen ? 70 : 0,
   },
   activeTabButton: {
     backgroundColor: COLORS.sage,
   },
   tabText: {
-    fontSize: isSmallScreen ? FONT_SIZES.xxs : 11,
+    fontSize: 11,
     fontWeight: '600',
     color: COLORS.stone,
   },
@@ -2006,44 +1931,29 @@ const styles = StyleSheet.create({
 
   // Content Area
   contentArea: {
-    minHeight: isSmallScreen ? 500 : 450,
+    minHeight: 450,
   },
   tabContent: {
     flex: 1,
   },
 
-  // Scroll containers for tabs
-  factsScrollContainer: {
-    paddingBottom: SPACING.lg,
-  },
-  anatomyScrollContainer: {
-    paddingBottom: SPACING.lg,
-  },
-  typesScrollContainer: {
-    paddingBottom: SPACING.lg,
-  },
-  safetyScrollContainer: {
-    paddingBottom: SPACING.lg,
-  },
-
-  // Facts Tab
+  // Facts Tab - Adjusted sizing
   factsGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: SPACING.md,
     justifyContent: 'center',
-    paddingHorizontal: SPACING.xs,
   },
   factCard: {
-    width: isSmallScreen ? width < 360 ? '100%' : '48%' : '31%',
-    minWidth: isSmallScreen ? 0 : 140,
-    maxWidth: isSmallScreen ? 200 : 180,
+    width: isSmallScreen ? '48%' : '31%',
+    minWidth: 140,
+    maxWidth: 180,
     borderRadius: 18,
     overflow: 'visible',
   },
   factCardInner: {
     padding: SPACING.lg,
-    minHeight: isSmallScreen ? 150 : 170,
+    minHeight: 170,
     borderRadius: 18,
     borderWidth: 1,
     borderColor: COLORS.cloud,
@@ -2054,41 +1964,41 @@ const styles = StyleSheet.create({
     elevation: 3,
   },
   factEmojiContainer: {
-    width: isSmallScreen ? 40 : 45,
-    height: isSmallScreen ? 40 : 45,
-    borderRadius: isSmallScreen ? 20 : 22.5,
+    width: 45,
+    height: 45,
+    borderRadius: 22.5,
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: SPACING.md,
   },
   factEmoji: {
-    fontSize: isSmallScreen ? 20 : 24,
+    fontSize: 24,
   },
   factStats: {
     marginBottom: SPACING.md,
   },
   factStat: {
-    fontSize: isSmallScreen ? FONT_SIZES.xxl : 22,
+    fontSize: 22,
     fontWeight: '800',
     marginBottom: SPACING.xs,
   },
   factSubtext: {
-    fontSize: isSmallScreen ? FONT_SIZES.xxs : 10,
+    fontSize: 10,
     fontWeight: '600',
   },
   factCardTitle: {
-    fontSize: isSmallScreen ? FONT_SIZES.md : 15,
+    fontSize: 15,
     fontWeight: '700',
     color: COLORS.charcoal,
     marginBottom: SPACING.sm,
   },
   factCardDescription: {
-    fontSize: isSmallScreen ? FONT_SIZES.xs : 12,
+    fontSize: 12,
     color: COLORS.stone,
-    lineHeight: isSmallScreen ? 16 : 18,
+    lineHeight: 18,
   },
 
-  // Anatomy Tab
+  // Anatomy Tab - Adjusted sizing
   anatomyContainer: {
     flex: 1,
   },
@@ -2100,10 +2010,9 @@ const styles = StyleSheet.create({
     borderRadius: 18,
     borderWidth: 1,
     borderColor: COLORS.cloud,
-    marginHorizontal: SPACING.xs,
   },
   diagramLabel: {
-    fontSize: isSmallScreen ? FONT_SIZES.sm : 13,
+    fontSize: 13,
     fontWeight: '600',
     color: COLORS.stone,
     marginTop: SPACING.md,
@@ -2113,12 +2022,11 @@ const styles = StyleSheet.create({
     flexWrap: 'wrap',
     gap: SPACING.md,
     justifyContent: 'center',
-    paddingHorizontal: SPACING.xs,
   },
   partCard: {
-    width: isSmallScreen ? width < 360 ? '100%' : '48%' : '31%',
-    minWidth: isSmallScreen ? 0 : 140,
-    maxWidth: isSmallScreen ? 200 : 180,
+    width: isSmallScreen ? '48%' : '31%',
+    minWidth: 140,
+    maxWidth: 180,
     backgroundColor: COLORS.white,
     padding: SPACING.lg,
     borderRadius: 18,
@@ -2131,26 +2039,26 @@ const styles = StyleSheet.create({
     elevation: 2,
   },
   partEmojiContainer: {
-    width: isSmallScreen ? 40 : 45,
-    height: isSmallScreen ? 40 : 45,
-    borderRadius: isSmallScreen ? 20 : 22.5,
+    width: 45,
+    height: 45,
+    borderRadius: 22.5,
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: SPACING.md,
   },
   partEmoji: {
-    fontSize: isSmallScreen ? 20 : 24,
+    fontSize: 24,
   },
   partName: {
-    fontSize: isSmallScreen ? FONT_SIZES.md : 14,
+    fontSize: 14,
     fontWeight: '700',
     color: COLORS.charcoal,
     marginBottom: SPACING.sm,
   },
   partDescription: {
-    fontSize: isSmallScreen ? FONT_SIZES.xs : 12,
+    fontSize: 12,
     color: COLORS.stone,
-    lineHeight: isSmallScreen ? 16 : 18,
+    lineHeight: 18,
     marginBottom: SPACING.md,
   },
   featuresContainer: {
@@ -2162,22 +2070,21 @@ const styles = StyleSheet.create({
     borderRadius: 6,
   },
   featureText: {
-    fontSize: isSmallScreen ? FONT_SIZES.tiny : 9,
+    fontSize: 9,
     fontWeight: '500',
   },
 
-  // Types Tab
+  // Types Tab - Adjusted sizing
   typesGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: SPACING.md,
     justifyContent: 'center',
-    paddingHorizontal: SPACING.xs,
   },
   typeCard: {
-    width: isSmallScreen ? width < 360 ? '100%' : '48%' : '31%',
-    minWidth: isSmallScreen ? 0 : 140,
-    maxWidth: isSmallScreen ? 200 : 180,
+    width: isSmallScreen ? '48%' : '31%',
+    minWidth: 140,
+    maxWidth: 180,
     borderRadius: 18,
     overflow: 'hidden',
     borderWidth: 1,
@@ -2196,15 +2103,15 @@ const styles = StyleSheet.create({
     gap: SPACING.md,
   },
   typeEmoji: {
-    fontSize: isSmallScreen ? 24 : 28,
+    fontSize: 28,
   },
   typeName: {
-    fontSize: isSmallScreen ? FONT_SIZES.lg : 16,
+    fontSize: 16,
     fontWeight: '800',
     marginBottom: 2,
   },
   typeSafety: {
-    fontSize: isSmallScreen ? FONT_SIZES.xxs : 10,
+    fontSize: 10,
     fontWeight: '600',
   },
   typeCardBody: {
@@ -2212,16 +2119,16 @@ const styles = StyleSheet.create({
     paddingTop: 0,
   },
   typeDescription: {
-    fontSize: isSmallScreen ? FONT_SIZES.xs : 12,
+    fontSize: 12,
     color: COLORS.stone,
-    lineHeight: isSmallScreen ? 16 : 18,
+    lineHeight: 18,
     marginBottom: SPACING.md,
   },
   examplesContainer: {
     marginBottom: SPACING.md,
   },
   examplesTitle: {
-    fontSize: isSmallScreen ? FONT_SIZES.xxs : 11,
+    fontSize: 11,
     fontWeight: '600',
     color: COLORS.charcoal,
     marginBottom: 6,
@@ -2237,11 +2144,11 @@ const styles = StyleSheet.create({
     borderRadius: 6,
   },
   exampleText: {
-    fontSize: isSmallScreen ? FONT_SIZES.tiny : 9,
+    fontSize: 9,
     fontWeight: '500',
   },
 
-  // Safety Tab
+  // Safety Tab - Adjusted sizing
   warningBanner: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -2252,25 +2159,24 @@ const styles = StyleSheet.create({
     borderWidth: 2,
     borderColor: '#FCA5A5',
     marginBottom: SPACING.lg,
-    marginHorizontal: SPACING.xs,
   },
   warningEmoji: {
-    fontSize: isSmallScreen ? 24 : 28,
+    fontSize: 28,
   },
   warningContent: {
     flex: 1,
   },
   warningTitle: {
-    fontSize: isSmallScreen ? FONT_SIZES.sm : 13,
+    fontSize: 13,
     fontWeight: '800',
     color: COLORS.danger,
     marginBottom: SPACING.xs,
   },
   warningText: {
-    fontSize: isSmallScreen ? FONT_SIZES.xs : 11,
+    fontSize: 11,
     color: COLORS.danger,
     fontWeight: '500',
-    lineHeight: isSmallScreen ? 15 : 16,
+    lineHeight: 16,
   },
   safetyGrid: {
     flexDirection: 'row',
@@ -2278,12 +2184,11 @@ const styles = StyleSheet.create({
     gap: SPACING.md,
     justifyContent: 'center',
     marginBottom: SPACING.lg,
-    paddingHorizontal: SPACING.xs,
   },
   safetyCard: {
     width: isSmallScreen ? '100%' : '48%',
-    minWidth: isSmallScreen ? 0 : 260,
-    maxWidth: isSmallScreen ? 400 : 380,
+    minWidth: 260,
+    maxWidth: 380,
     backgroundColor: COLORS.white,
     padding: SPACING.lg,
     borderRadius: 18,
@@ -2302,20 +2207,20 @@ const styles = StyleSheet.create({
     marginBottom: SPACING.md,
   },
   ruleEmojiContainer: {
-    width: isSmallScreen ? 40 : 45,
-    height: isSmallScreen ? 40 : 45,
-    borderRadius: isSmallScreen ? 20 : 22.5,
+    width: 45,
+    height: 45,
+    borderRadius: 22.5,
     justifyContent: 'center',
     alignItems: 'center',
   },
   ruleEmoji: {
-    fontSize: isSmallScreen ? 20 : 24,
+    fontSize: 24,
   },
   ruleInfo: {
     flex: 1,
   },
   ruleName: {
-    fontSize: isSmallScreen ? FONT_SIZES.md : 15,
+    fontSize: 15,
     fontWeight: '700',
     color: COLORS.charcoal,
     marginBottom: SPACING.sm,
@@ -2335,13 +2240,13 @@ const styles = StyleSheet.create({
     borderRadius: 3,
   },
   severityText: {
-    fontSize: isSmallScreen ? FONT_SIZES.tiny : 8,
+    fontSize: 8,
     fontWeight: '700',
   },
   ruleDescription: {
-    fontSize: isSmallScreen ? FONT_SIZES.sm : 13,
+    fontSize: 13,
     color: COLORS.stone,
-    lineHeight: isSmallScreen ? 18 : 20,
+    lineHeight: 20,
     marginBottom: SPACING.md,
   },
   tipsContainer: {
@@ -2350,7 +2255,7 @@ const styles = StyleSheet.create({
     borderRadius: 12,
   },
   tipsTitle: {
-    fontSize: isSmallScreen ? FONT_SIZES.xxs : 11,
+    fontSize: 11,
     fontWeight: '600',
     color: COLORS.charcoal,
     marginBottom: 6,
@@ -2367,10 +2272,10 @@ const styles = StyleSheet.create({
     borderRadius: 2.5,
   },
   tipText: {
-    fontSize: isSmallScreen ? FONT_SIZES.xxs : 10,
+    fontSize: 10,
     color: COLORS.stone,
     flex: 1,
-    lineHeight: isSmallScreen ? 14 : 15,
+    lineHeight: 15,
   },
   emergencyContainer: {
     backgroundColor: '#FEF3C7',
@@ -2378,10 +2283,9 @@ const styles = StyleSheet.create({
     borderRadius: 18,
     borderWidth: 2,
     borderColor: '#FDE68A',
-    marginHorizontal: SPACING.xs,
   },
   emergencyTitle: {
-    fontSize: isSmallScreen ? FONT_SIZES.lg : 17,
+    fontSize: 17,
     fontWeight: '800',
     color: '#92400E',
     marginBottom: SPACING.md,
@@ -2399,46 +2303,41 @@ const styles = StyleSheet.create({
     borderRadius: 12,
   },
   emergencyNumber: {
-    width: isSmallScreen ? 24 : 28,
-    height: isSmallScreen ? 24 : 28,
-    borderRadius: isSmallScreen ? 12 : 14,
+    width: 28,
+    height: 28,
+    borderRadius: 14,
     backgroundColor: '#92400E',
     justifyContent: 'center',
     alignItems: 'center',
-    flexShrink: 0,
   },
   stepNumberText: {
-    fontSize: isSmallScreen ? FONT_SIZES.sm : 13,
+    fontSize: 13,
     fontWeight: '800',
     color: COLORS.white,
   },
   stepText: {
-    fontSize: isSmallScreen ? FONT_SIZES.sm : 13,
+    fontSize: 13,
     color: '#92400E',
     fontWeight: '600',
     flex: 1,
   },
 
-  // Features Section
+  // Features Section - Reduced padding
   featuresSection: {
-    paddingVertical: SPACING.xl,
+    paddingVertical: SPACING.xxl,
     paddingHorizontal: SPACING.md,
     backgroundColor: COLORS.white,
     position: 'relative',
   },
-  featuresScrollContainer: {
-    paddingHorizontal: isSmallScreen ? SPACING.md : 0,
-  },
   featuresGrid: {
-    flexDirection: isSmallScreen ? 'row' : 'row',
+    flexDirection: isSmallScreen ? 'column' : 'row',
     gap: SPACING.lg,
     justifyContent: 'center',
-    alignItems: isSmallScreen ? 'flex-start' : 'flex-start',
+    alignItems: isSmallScreen ? 'stretch' : 'flex-start',
   },
   featureCard: {
-    width: isSmallScreen ? 280 : 'auto',
     flex: isSmallScreen ? 0 : 1,
-    maxWidth: isSmallScreen ? 280 : 300,
+    maxWidth: isSmallScreen ? '100%' : 300,
     backgroundColor: COLORS.sand,
     padding: SPACING.lg,
     borderRadius: 20,
@@ -2450,11 +2349,10 @@ const styles = StyleSheet.create({
     elevation: 3,
     borderWidth: 1,
     borderColor: COLORS.cloud,
-    marginHorizontal: isSmallScreen ? SPACING.xs : 0,
   },
   iconWrapper: {
-    width: isSmallScreen ? 70 : 90,
-    height: isSmallScreen ? 70 : 90,
+    width: 90,
+    height: 90,
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: SPACING.lg,
@@ -2462,52 +2360,48 @@ const styles = StyleSheet.create({
   },
   iconGlow: {
     position: 'absolute',
-    width: isSmallScreen ? 70 : 90,
-    height: isSmallScreen ? 70 : 90,
-    borderRadius: isSmallScreen ? 35 : 45,
+    width: 90,
+    height: 90,
+    borderRadius: 45,
   },
   iconContainer: {
-    width: isSmallScreen ? 50 : 70,
-    height: isSmallScreen ? 50 : 70,
-    borderRadius: isSmallScreen ? 25 : 35,
+    width: 70,
+    height: 70,
+    borderRadius: 35,
     justifyContent: 'center',
     alignItems: 'center',
     borderWidth: 2,
     borderColor: 'rgba(255, 255, 255, 0.5)',
   },
   featureTitle: {
-    fontSize: isSmallScreen ? FONT_SIZES.lg : 18,
+    fontSize: 18,
     fontWeight: '700',
     color: COLORS.charcoal,
     marginBottom: SPACING.sm,
     textAlign: 'center',
   },
   featureDescription: {
-    fontSize: isSmallScreen ? FONT_SIZES.sm : 13,
+    fontSize: 13,
     color: COLORS.stone,
     textAlign: 'center',
-    lineHeight: isSmallScreen ? 18 : 20,
+    lineHeight: 20,
   },
 
-  // How It Works Section
+  // How It Works Section - Reduced padding
   howItWorksSection: {
-    paddingVertical: SPACING.xl,
+    paddingVertical: SPACING.xxl,
     paddingHorizontal: SPACING.md,
     backgroundColor: COLORS.sand,
   },
-  stepsScrollContainer: {
-    paddingHorizontal: isSmallScreen ? SPACING.md : 0,
-  },
   stepsContainer: {
-    flexDirection: isSmallScreen ? 'row' : 'row',
+    flexDirection: isSmallScreen ? 'column' : 'row',
     gap: SPACING.lg,
     justifyContent: 'center',
-    alignItems: isSmallScreen ? 'flex-start' : 'flex-start',
+    alignItems: isSmallScreen ? 'stretch' : 'flex-start',
   },
   stepCard: {
-    width: isSmallScreen ? 280 : 'auto',
     flex: isSmallScreen ? 0 : 1,
-    maxWidth: isSmallScreen ? 280 : 280,
+    maxWidth: isSmallScreen ? '100%' : 280,
     backgroundColor: COLORS.white,
     padding: SPACING.lg,
     borderRadius: 20,
@@ -2519,7 +2413,6 @@ const styles = StyleSheet.create({
     elevation: 4,
     borderWidth: 1,
     borderColor: COLORS.cloud,
-    marginHorizontal: isSmallScreen ? SPACING.xs : 0,
   },
   stepMushroomContainer: {
     marginBottom: SPACING.lg,
@@ -2529,9 +2422,9 @@ const styles = StyleSheet.create({
     width: '100%',
   },
   stepNumberBadge: {
-    width: isSmallScreen ? 32 : 36,
-    height: isSmallScreen ? 32 : 36,
-    borderRadius: isSmallScreen ? 16 : 18,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
     backgroundColor: COLORS.forest,
     justifyContent: 'center',
     alignItems: 'center',
@@ -2543,24 +2436,24 @@ const styles = StyleSheet.create({
     elevation: 2,
   },
   stepEmoji: {
-    fontSize: isSmallScreen ? 24 : 28,
+    fontSize: 28,
     marginBottom: SPACING.sm,
   },
   stepTitle: {
-    fontSize: isSmallScreen ? FONT_SIZES.md : 17,
+    fontSize: 17,
     fontWeight: '700',
     color: COLORS.charcoal,
     marginBottom: SPACING.sm,
     textAlign: 'center',
   },
   stepDescription: {
-    fontSize: isSmallScreen ? FONT_SIZES.sm : 13,
+    fontSize: 13,
     color: COLORS.stone,
-    lineHeight: isSmallScreen ? 18 : 20,
+    lineHeight: 20,
     textAlign: 'center',
   },
 
-  // CTA Section
+  // CTA Section - Reduced padding
   ctaSection: {
     paddingVertical: SPACING.xl,
     paddingHorizontal: SPACING.md,
@@ -2594,22 +2487,22 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   ctaEmoji: {
-    fontSize: isSmallScreen ? 32 : 40,
+    fontSize: 40,
     marginBottom: SPACING.md,
   },
   ctaTitle: {
-    fontSize: isSmallScreen ? FONT_SIZES.displaySm : 24,
+    fontSize: isSmallScreen ? 22 : 24,
     fontWeight: '800',
     color: COLORS.white,
     marginBottom: SPACING.md,
     textAlign: 'center',
   },
   ctaDescription: {
-    fontSize: isSmallScreen ? FONT_SIZES.sm : 14,
+    fontSize: 14,
     color: 'rgba(255, 255, 255, 0.9)',
     textAlign: 'center',
     marginBottom: SPACING.lg,
-    lineHeight: isSmallScreen ? 20 : 22,
+    lineHeight: 22,
     maxWidth: 500,
   },
   ctaButton: {
@@ -2617,7 +2510,7 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
     marginBottom: SPACING.md,
     width: '100%',
-    maxWidth: isSmallScreen ? 280 : 280,
+    maxWidth: 280,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.2,
@@ -2634,17 +2527,17 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.white,
   },
   ctaButtonText: {
-    fontSize: isSmallScreen ? FONT_SIZES.md : 15,
+    fontSize: 15,
     fontWeight: '700',
     color: COLORS.forest,
   },
   ctaNote: {
-    fontSize: isSmallScreen ? FONT_SIZES.xxs : 11,
+    fontSize: 11,
     color: 'rgba(255, 255, 255, 0.8)',
     textAlign: 'center',
   },
 
-  // Safety Section
+  // Safety Section - Reduced padding
   safetySection: {
     paddingVertical: SPACING.lg,
     paddingHorizontal: SPACING.md,
@@ -2665,25 +2558,25 @@ const styles = StyleSheet.create({
     elevation: 2,
   },
   safetyEmoji: {
-    fontSize: isSmallScreen ? 28 : 36,
+    fontSize: 36,
     flexShrink: 0,
   },
   safetyContent: {
     flex: 1,
   },
   safetyTitle: {
-    fontSize: isSmallScreen ? FONT_SIZES.md : 16,
+    fontSize: 16,
     fontWeight: '700',
     color: '#92400E',
     marginBottom: SPACING.sm,
   },
   safetyText: {
-    fontSize: isSmallScreen ? FONT_SIZES.xs : 12,
+    fontSize: 12,
     color: '#92400E',
-    lineHeight: isSmallScreen ? 16 : 18,
+    lineHeight: 18,
   },
 
-  // System Section
+  // System Section - Reduced padding
   systemSection: {
     paddingVertical: SPACING.lg,
     paddingHorizontal: SPACING.md,
@@ -2710,10 +2603,10 @@ const styles = StyleSheet.create({
     gap: SPACING.sm,
   },
   systemEmoji: {
-    fontSize: isSmallScreen ? 18 : 22,
+    fontSize: 22,
   },
   systemTitle: {
-    fontSize: isSmallScreen ? FONT_SIZES.md : 16,
+    fontSize: 16,
     fontWeight: '700',
     color: COLORS.charcoal,
   },
@@ -2745,15 +2638,15 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.danger,
   },
   statusText: {
-    fontSize: isSmallScreen ? FONT_SIZES.xxs : 10,
+    fontSize: 10,
     fontWeight: '600',
     color: COLORS.stone,
   },
   systemMessage: {
-    fontSize: isSmallScreen ? FONT_SIZES.xs : 12,
+    fontSize: 12,
     color: COLORS.stone,
     marginBottom: SPACING.md,
-    lineHeight: isSmallScreen ? 16 : 18,
+    lineHeight: 18,
   },
   testButton: {
     backgroundColor: COLORS.forest,
@@ -2763,11 +2656,11 @@ const styles = StyleSheet.create({
   },
   testButtonText: {
     color: COLORS.white,
-    fontSize: isSmallScreen ? FONT_SIZES.sm : 13,
+    fontSize: 13,
     fontWeight: '600',
   },
 
-  // Footer
+  // Footer - Reduced padding
   footer: {
     backgroundColor: COLORS.charcoal,
     paddingVertical: SPACING.xl,
@@ -2781,17 +2674,17 @@ const styles = StyleSheet.create({
     marginBottom: SPACING.md,
   },
   footerEmoji: {
-    fontSize: isSmallScreen ? 32 : 40,
+    fontSize: 40,
   },
   footerTitle: {
-    fontSize: isSmallScreen ? FONT_SIZES.lg : 20,
+    fontSize: 20,
     fontWeight: '800',
     color: COLORS.white,
     marginTop: SPACING.sm,
     marginBottom: 2,
   },
   footerTagline: {
-    fontSize: isSmallScreen ? FONT_SIZES.xs : 12,
+    fontSize: 12,
     color: 'rgba(255, 255, 255, 0.7)',
     textAlign: 'center',
   },
@@ -2802,7 +2695,7 @@ const styles = StyleSheet.create({
     marginBottom: SPACING.md,
   },
   copyright: {
-    fontSize: isSmallScreen ? FONT_SIZES.xxs : 11,
+    fontSize: 11,
     color: 'rgba(255, 255, 255, 0.5)',
     textAlign: 'center',
   },
