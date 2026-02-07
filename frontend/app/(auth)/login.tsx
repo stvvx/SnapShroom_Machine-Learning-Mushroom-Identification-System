@@ -1,25 +1,25 @@
-// app/login.tsx
-import { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   View,
   TextInput,
   TouchableOpacity,
   StyleSheet,
   Alert,
-  ScrollView,
-  KeyboardAvoidingView,
   ActivityIndicator,
   Dimensions,
+  Platform,
+  Keyboard,
+  ScrollView,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 
 import { ThemedText } from '@/components/themed-text';
-import { ThemedView } from '@/components/themed-view';
 import { useAuth } from '@/contexts/AuthContext';
 
 const { width, height } = Dimensions.get('window');
+const isSmallScreen = width < 375;
 
 export default function LoginScreen() {
   const [email, setEmail] = useState('');
@@ -27,9 +27,30 @@ export default function LoginScreen() {
   const [showPassword, setShowPassword] = useState(false);
   const [emailFocused, setEmailFocused] = useState(false);
   const [passwordFocused, setPasswordFocused] = useState(false);
+  const [keyboardVisible, setKeyboardVisible] = useState(false);
 
   const router = useRouter();
   const { login, isLoading, error, clearError } = useAuth();
+  
+  const passwordInputRef = useRef<TextInput>(null);
+  const scrollViewRef = useRef<ScrollView>(null);
+  const emailInputRef = useRef<TextInput>(null);
+
+  useEffect(() => {
+    const showListener = Keyboard.addListener(
+      Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow',
+      () => setKeyboardVisible(true)
+    );
+    const hideListener = Keyboard.addListener(
+      Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide',
+      () => setKeyboardVisible(false)
+    );
+
+    return () => {
+      showListener.remove();
+      hideListener.remove();
+    };
+  }, []);
 
   const handleLogin = async () => {
     clearError();
@@ -48,7 +69,7 @@ export default function LoginScreen() {
       await login({ email, password });
       router.replace('/(tabs)');
     } catch {
-      // ❗ error already handled by AuthContext
+      // Error already handled by AuthContext
     }
   };
 
@@ -60,21 +81,41 @@ export default function LoginScreen() {
     );
   };
 
+  const handleEmailFocus = () => {
+    setEmailFocused(true);
+    setTimeout(() => {
+      scrollViewRef.current?.scrollTo({ y: 0, animated: true });
+    }, 200);
+  };
+
+  const handlePasswordFocus = () => {
+    setPasswordFocused(true);
+    setTimeout(() => {
+      scrollViewRef.current?.scrollTo({ y: 100, animated: true });
+    }, 200);
+  };
+
   return (
-    <KeyboardAvoidingView style={styles.container} behavior="padding" enabled keyboardVerticalOffset={10}>
-      {/* Background with Gradient */}
-      <LinearGradient
-        colors={['#F8FAF6', '#E8F0E3', '#F8FAF6']}
-        style={styles.backgroundGradient}
-      />
-
-      {/* Decorative Elements */}
-      <View style={styles.decorativeCircle1} />
-      <View style={styles.decorativeCircle2} />
-
-      <View 
-        style={styles.scrollContent}
+    <View style={styles.container}>
+      <ScrollView 
+        ref={scrollViewRef}
+        style={styles.scrollView}
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
+        scrollEventThrottle={16}
+        nestedScrollEnabled={true}
       >
+        {/* Background with Gradient */}
+        <LinearGradient
+          colors={['#F8FAF6', '#E8F0E3', '#F8FAF6']}
+          style={styles.backgroundGradient}
+        />
+
+        {/* Decorative Elements */}
+        <View style={styles.decorativeCircle1} />
+        <View style={styles.decorativeCircle2} />
+
         {/* Logo & Header */}
         <View style={styles.header}>
           <View style={styles.logoContainer}>
@@ -82,11 +123,13 @@ export default function LoginScreen() {
               colors={['#7BA05B', '#5A8040']}
               style={styles.logoGradient}
             >
-              <Ionicons name="camera" size={48} color="#FFFFFF" />
+              <Ionicons name="leaf" size={48} color="#FFFFFF" />
             </LinearGradient>
           </View>
           <ThemedText style={styles.title}>SnapShroom</ThemedText>
-          <ThemedText style={styles.subtitle}>Welcome back, let's identify some mushrooms</ThemedText>
+          <ThemedText style={styles.subtitle}>
+            Welcome back, let's identify some mushrooms
+          </ThemedText>
         </View>
 
         {/* Login Card */}
@@ -111,32 +154,41 @@ export default function LoginScreen() {
           {/* Email Input */}
           <View style={styles.inputGroup}>
             <ThemedText style={styles.inputLabel}>Email Address</ThemedText>
-            <View style={[
-              styles.inputContainer,
-              emailFocused && styles.inputContainerFocused
-            ]}>
+            <View
+              style={[
+                styles.inputContainer,
+                emailFocused && styles.inputContainerFocused,
+              ]}
+            >
               <View style={styles.inputIconContainer}>
-                <Ionicons 
-                  name="mail" 
-                  size={20} 
-                  color={emailFocused ? '#7BA05B' : '#6B7C61'} 
+                <Ionicons
+                  name="mail"
+                  size={20}
+                  color={emailFocused ? '#7BA05B' : '#6B7C61'}
                 />
               </View>
               <TextInput
+                ref={emailInputRef}
                 style={styles.input}
                 placeholder="your.email@snapshroom.com"
                 placeholderTextColor="#9CA897"
                 value={email}
                 onChangeText={setEmail}
-                onFocus={() => setEmailFocused(true)}
+                onFocus={handleEmailFocus}
                 onBlur={() => setEmailFocused(false)}
                 autoCapitalize="none"
                 keyboardType="email-address"
                 editable={!isLoading}
                 returnKeyType="next"
                 blurOnSubmit={false}
-                importantForAutofill="yes"
+                onSubmitEditing={() => {
+                  passwordInputRef.current?.focus();
+                }}
                 autoComplete="email"
+                textContentType="emailAddress"
+                autoCorrect={false}
+                spellCheck={false}
+                accessibilityLabel="Email address input"
               />
             </View>
           </View>
@@ -150,42 +202,49 @@ export default function LoginScreen() {
                 disabled={isLoading}
                 hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
               >
-                <ThemedText style={styles.forgotPasswordText}>
-                  Forgot?
-                </ThemedText>
+                <ThemedText style={styles.forgotPasswordText}>Forgot?</ThemedText>
               </TouchableOpacity>
             </View>
-            <View style={[
-              styles.inputContainer,
-              passwordFocused && styles.inputContainerFocused
-            ]}>
+            <View
+              style={[
+                styles.inputContainer,
+                passwordFocused && styles.inputContainerFocused,
+              ]}
+            >
               <View style={styles.inputIconContainer}>
-                <Ionicons 
-                  name="lock-closed" 
-                  size={20} 
-                  color={passwordFocused ? '#7BA05B' : '#6B7C61'} 
+                <Ionicons
+                  name="lock-closed"
+                  size={20}
+                  color={passwordFocused ? '#7BA05B' : '#6B7C61'}
                 />
               </View>
               <TextInput
+                ref={passwordInputRef}
                 style={styles.input}
                 placeholder="Enter your password"
                 placeholderTextColor="#9CA897"
                 value={password}
                 onChangeText={setPassword}
-                onFocus={() => setPasswordFocused(true)}
+                onFocus={handlePasswordFocus}
                 onBlur={() => setPasswordFocused(false)}
                 secureTextEntry={!showPassword}
                 editable={!isLoading}
                 returnKeyType="done"
                 onSubmitEditing={handleLogin}
-                importantForAutofill="yes"
                 autoComplete="password"
+                textContentType="password"
+                autoCorrect={false}
+                spellCheck={false}
+                accessibilityLabel="Password input"
               />
               <TouchableOpacity
                 onPress={() => setShowPassword(!showPassword)}
                 disabled={isLoading}
                 style={styles.eyeButton}
                 hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                accessibilityLabel={
+                  showPassword ? 'Hide password' : 'Show password'
+                }
               >
                 <Ionicons
                   name={showPassword ? 'eye-off' : 'eye'}
@@ -205,13 +264,19 @@ export default function LoginScreen() {
             onPress={handleLogin}
             disabled={isLoading}
             activeOpacity={0.8}
+            accessibilityLabel="Sign in button"
+            accessibilityRole="button"
           >
             <LinearGradient
-              colors={isLoading ? ['#B5C9A7', '#A3B895'] : ['#7BA05B', '#5A8040']}
+              colors={
+                isLoading
+                  ? ['#B5C9A7', '#A3B895']
+                  : ['#7BA05B', '#5A8040']
+              }
               style={styles.submitGradient}
             >
               {isLoading ? (
-                <ActivityIndicator color="#FFFFFF" />
+                <ActivityIndicator color="#FFFFFF" size="small" />
               ) : (
                 <>
                   <ThemedText style={styles.submitButtonText}>
@@ -236,6 +301,8 @@ export default function LoginScreen() {
             onPress={() => router.replace('/(tabs)')}
             disabled={isLoading}
             activeOpacity={0.7}
+            accessibilityLabel="Continue as guest button"
+            accessibilityRole="button"
           >
             <Ionicons name="person-outline" size={20} color="#7BA05B" />
             <ThemedText style={styles.guestButtonText}>
@@ -254,6 +321,7 @@ export default function LoginScreen() {
                 router.push('/(auth)/register');
               }}
               disabled={isLoading}
+              accessibilityLabel="Navigate to sign up screen"
             >
               <ThemedText style={styles.signupLink}>Sign up</ThemedText>
             </TouchableOpacity>
@@ -261,19 +329,23 @@ export default function LoginScreen() {
         </View>
 
         {/* Footer */}
-        <View style={styles.footer}>
-          <ThemedText style={styles.footerText}>
-            By continuing, you agree to our{' '}
-            <ThemedText style={styles.footerLink}>Terms of Service</ThemedText>
-            {' '}and{' '}
-            <ThemedText style={styles.footerLink}>Privacy Policy</ThemedText>
-          </ThemedText>
-        </View>
+        {!keyboardVisible && (
+          <View style={styles.footer}>
+            <ThemedText style={styles.footerText}>
+              By continuing, you agree to our{' '}
+              <ThemedText style={styles.footerLink}>
+                Terms of Service
+              </ThemedText>
+              {' '}and{' '}
+              <ThemedText style={styles.footerLink}>Privacy Policy</ThemedText>
+            </ThemedText>
+          </View>
+        )}
 
         {/* Bottom Spacing */}
-        <View style={{ height: 40 }} />
-      </View>
-    </KeyboardAvoidingView>
+        <View style={{ height: keyboardVisible ? 20 : 60 }} />
+      </ScrollView>
+    </View>
   );
 }
 
@@ -281,6 +353,14 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#F8FAF6',
+  },
+  scrollView: {
+    flex: 1,
+  },
+  scrollContent: {
+    flexGrow: 1,
+    paddingHorizontal: 24,
+    paddingTop: Platform.OS === 'ios' ? 60 : 40,
   },
   backgroundGradient: {
     position: 'absolute',
@@ -307,16 +387,12 @@ const styles = StyleSheet.create({
     borderRadius: 125,
     backgroundColor: 'rgba(90, 128, 64, 0.06)',
   },
-  scrollContent: {
-    flexGrow: 1,
-    paddingHorizontal: 24,
-    paddingTop: 60,
-  },
 
   // Header Section
   header: {
     alignItems: 'center',
-    marginBottom: 40,
+    marginBottom: isSmallScreen ? 30 : 40,
+    marginTop: isSmallScreen ? 10 : 0,
   },
   logoContainer: {
     marginBottom: 20,
@@ -327,32 +403,32 @@ const styles = StyleSheet.create({
     elevation: 8,
   },
   logoGradient: {
-    width: 88,
-    height: 88,
-    borderRadius: 44,
+    width: isSmallScreen ? 76 : 88,
+    height: isSmallScreen ? 76 : 88,
+    borderRadius: isSmallScreen ? 38 : 44,
     justifyContent: 'center',
     alignItems: 'center',
   },
   title: {
-    fontSize: 36,
+    fontSize: isSmallScreen ? 30 : 36,
     fontWeight: '900',
     color: '#3A4D33',
     marginBottom: 8,
     letterSpacing: -1,
   },
   subtitle: {
-    fontSize: 15,
+    fontSize: isSmallScreen ? 13 : 15,
     color: '#6B7C61',
     textAlign: 'center',
     maxWidth: 280,
-    lineHeight: 22,
+    lineHeight: isSmallScreen ? 18 : 22,
   },
 
   // Card
   card: {
     backgroundColor: '#FFFFFF',
     borderRadius: 24,
-    padding: 28,
+    padding: isSmallScreen ? 20 : 28,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 8 },
     shadowOpacity: 0.08,
@@ -360,18 +436,19 @@ const styles = StyleSheet.create({
     elevation: 5,
     borderWidth: 1,
     borderColor: 'rgba(123, 160, 91, 0.1)',
+    marginBottom: 20,
   },
   cardHeader: {
-    marginBottom: 28,
+    marginBottom: 24,
   },
   cardTitle: {
-    fontSize: 24,
+    fontSize: isSmallScreen ? 22 : 24,
     fontWeight: '800',
     color: '#3A4D33',
     marginBottom: 6,
   },
   cardSubtitle: {
-    fontSize: 14,
+    fontSize: isSmallScreen ? 13 : 14,
     color: '#6B7C61',
     lineHeight: 20,
   },
@@ -442,17 +519,19 @@ const styles = StyleSheet.create({
   },
   inputIconContainer: {
     marginRight: 12,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   input: {
     flex: 1,
-    fontSize: 15,
+    fontSize: 16,
     color: '#3A4D33',
     fontWeight: '500',
-    paddingVertical: 0, // Ensures text is properly centered
-    minHeight: 20, // Ensures touch area is adequate
+    padding: 0,
   },
   eyeButton: {
-    padding: 4,
+    padding: 8,
+    marginLeft: 4,
   },
 
   // Submit Button

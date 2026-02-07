@@ -1,3 +1,4 @@
+import React, { useState, useRef } from 'react';
 import {
   View,
   TextInput,
@@ -5,20 +6,20 @@ import {
   StyleSheet,
   Alert,
   ScrollView,
-  KeyboardAvoidingView,
   ActivityIndicator,
   Dimensions,
+  Platform,
+  Keyboard,
 } from 'react-native';
-import { useState } from 'react';
 import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 
 import { ThemedText } from '@/components/themed-text';
-import { ThemedView } from '@/components/themed-view';
 import { useAuth } from '@/contexts/AuthContext';
 
 const { width } = Dimensions.get('window');
+const isSmallScreen = width < 375;
 
 export default function RegisterScreen() {
   const [username, setUsername] = useState('');
@@ -34,6 +35,12 @@ export default function RegisterScreen() {
   const [confirmPasswordFocused, setConfirmPasswordFocused] = useState(false);
 
   const { signup, isLoading, error, clearError } = useAuth();
+
+  // Refs for input navigation
+  const emailInputRef = useRef<TextInput>(null);
+  const passwordInputRef = useRef<TextInput>(null);
+  const confirmPasswordInputRef = useRef<TextInput>(null);
+  const scrollViewRef = useRef<ScrollView>(null);
 
   // ---------- VALIDATION ----------
   const validateForm = () => {
@@ -94,8 +101,36 @@ export default function RegisterScreen() {
     }
   };
 
+  const handleUsernameFocus = () => {
+    setUsernameFocused(true);
+    setTimeout(() => {
+      scrollViewRef.current?.scrollTo({ y: 0, animated: true });
+    }, 200);
+  };
+
+  const handleEmailFocus = () => {
+    setEmailFocused(true);
+    setTimeout(() => {
+      scrollViewRef.current?.scrollTo({ y: 50, animated: true });
+    }, 200);
+  };
+
+  const handlePasswordFocus = () => {
+    setPasswordFocused(true);
+    setTimeout(() => {
+      scrollViewRef.current?.scrollTo({ y: 100, animated: true });
+    }, 200);
+  };
+
+  const handleConfirmPasswordFocus = () => {
+    setConfirmPasswordFocused(true);
+    setTimeout(() => {
+      scrollViewRef.current?.scrollTo({ y: 150, animated: true });
+    }, 200);
+  };
+
   return (
-    <KeyboardAvoidingView style={styles.container} behavior="padding" enabled keyboardVerticalOffset={10}>
+    <View style={styles.container}>
       {/* Background with Gradient */}
       <LinearGradient
         colors={['#F8FAF6', '#E8F0E3', '#F8FAF6']}
@@ -106,8 +141,14 @@ export default function RegisterScreen() {
       <View style={styles.decorativeCircle1} />
       <View style={styles.decorativeCircle2} />
 
-      <View 
-        style={styles.scrollContent}
+      <ScrollView
+        ref={scrollViewRef}
+        style={styles.scrollView}
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
+        scrollEventThrottle={16}
+        nestedScrollEnabled={true}
       >
         {/* Logo & Header */}
         <View style={styles.header}>
@@ -116,7 +157,7 @@ export default function RegisterScreen() {
               colors={['#7BA05B', '#5A8040']}
               style={styles.logoGradient}
             >
-              <Ionicons name="camera" size={48} color="#FFFFFF" />
+              <Ionicons name="leaf" size={48} color="#FFFFFF" />
             </LinearGradient>
           </View>
           <ThemedText style={styles.title}>Join SnapShroom</ThemedText>
@@ -147,15 +188,17 @@ export default function RegisterScreen() {
           {/* Username Input */}
           <View style={styles.inputGroup}>
             <ThemedText style={styles.inputLabel}>Username</ThemedText>
-            <View style={[
-              styles.inputContainer,
-              usernameFocused && styles.inputContainerFocused
-            ]}>
+            <View
+              style={[
+                styles.inputContainer,
+                usernameFocused && styles.inputContainerFocused,
+              ]}
+            >
               <View style={styles.inputIconContainer}>
-                <Ionicons 
-                  name="person" 
-                  size={20} 
-                  color={usernameFocused ? '#7BA05B' : '#6B7C61'} 
+                <Ionicons
+                  name="person"
+                  size={20}
+                  color={usernameFocused ? '#7BA05B' : '#6B7C61'}
                 />
               </View>
               <TextInput
@@ -164,9 +207,12 @@ export default function RegisterScreen() {
                 placeholderTextColor="#9CA897"
                 value={username}
                 onChangeText={setUsername}
-                onFocus={() => setUsernameFocused(true)}
+                onFocus={handleUsernameFocus}
                 onBlur={() => setUsernameFocused(false)}
                 editable={!isLoading}
+                returnKeyType="next"
+                blurOnSubmit={false}
+                onSubmitEditing={() => emailInputRef.current?.focus()}
               />
             </View>
           </View>
@@ -174,28 +220,34 @@ export default function RegisterScreen() {
           {/* Email Input */}
           <View style={styles.inputGroup}>
             <ThemedText style={styles.inputLabel}>Email Address</ThemedText>
-            <View style={[
-              styles.inputContainer,
-              emailFocused && styles.inputContainerFocused
-            ]}>
+            <View
+              style={[
+                styles.inputContainer,
+                emailFocused && styles.inputContainerFocused,
+              ]}
+            >
               <View style={styles.inputIconContainer}>
-                <Ionicons 
-                  name="mail" 
-                  size={20} 
-                  color={emailFocused ? '#7BA05B' : '#6B7C61'} 
+                <Ionicons
+                  name="mail"
+                  size={20}
+                  color={emailFocused ? '#7BA05B' : '#6B7C61'}
                 />
               </View>
               <TextInput
+                ref={emailInputRef}
                 style={styles.input}
                 placeholder="your.email@example.com"
                 placeholderTextColor="#9CA897"
                 value={email}
                 onChangeText={setEmail}
-                onFocus={() => setEmailFocused(true)}
+                onFocus={handleEmailFocus}
                 onBlur={() => setEmailFocused(false)}
                 autoCapitalize="none"
                 keyboardType="email-address"
                 editable={!isLoading}
+                returnKeyType="next"
+                blurOnSubmit={false}
+                onSubmitEditing={() => passwordInputRef.current?.focus()}
               />
             </View>
           </View>
@@ -203,32 +255,39 @@ export default function RegisterScreen() {
           {/* Password Input */}
           <View style={styles.inputGroup}>
             <ThemedText style={styles.inputLabel}>Password</ThemedText>
-            <View style={[
-              styles.inputContainer,
-              passwordFocused && styles.inputContainerFocused
-            ]}>
+            <View
+              style={[
+                styles.inputContainer,
+                passwordFocused && styles.inputContainerFocused,
+              ]}
+            >
               <View style={styles.inputIconContainer}>
-                <Ionicons 
-                  name="lock-closed" 
-                  size={20} 
-                  color={passwordFocused ? '#7BA05B' : '#6B7C61'} 
+                <Ionicons
+                  name="lock-closed"
+                  size={20}
+                  color={passwordFocused ? '#7BA05B' : '#6B7C61'}
                 />
               </View>
               <TextInput
+                ref={passwordInputRef}
                 style={styles.input}
                 placeholder="Create a password (min. 6 chars)"
                 placeholderTextColor="#9CA897"
                 value={password}
                 onChangeText={setPassword}
-                onFocus={() => setPasswordFocused(true)}
+                onFocus={handlePasswordFocus}
                 onBlur={() => setPasswordFocused(false)}
                 secureTextEntry={!showPassword}
                 editable={!isLoading}
+                returnKeyType="next"
+                blurOnSubmit={false}
+                onSubmitEditing={() => confirmPasswordInputRef.current?.focus()}
               />
               <TouchableOpacity
                 onPress={() => setShowPassword(!showPassword)}
                 disabled={isLoading}
                 style={styles.eyeButton}
+                hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
               >
                 <Ionicons
                   name={showPassword ? 'eye-off' : 'eye'}
@@ -242,27 +301,32 @@ export default function RegisterScreen() {
           {/* Confirm Password Input */}
           <View style={styles.inputGroup}>
             <ThemedText style={styles.inputLabel}>Confirm Password</ThemedText>
-            <View style={[
-              styles.inputContainer,
-              confirmPasswordFocused && styles.inputContainerFocused
-            ]}>
+            <View
+              style={[
+                styles.inputContainer,
+                confirmPasswordFocused && styles.inputContainerFocused,
+              ]}
+            >
               <View style={styles.inputIconContainer}>
-                <Ionicons 
-                  name="lock-closed" 
-                  size={20} 
-                  color={confirmPasswordFocused ? '#7BA05B' : '#6B7C61'} 
+                <Ionicons
+                  name="lock-closed"
+                  size={20}
+                  color={confirmPasswordFocused ? '#7BA05B' : '#6B7C61'}
                 />
               </View>
               <TextInput
+                ref={confirmPasswordInputRef}
                 style={styles.input}
                 placeholder="Re-enter your password"
                 placeholderTextColor="#9CA897"
                 value={confirmPassword}
                 onChangeText={setConfirmPassword}
-                onFocus={() => setConfirmPasswordFocused(true)}
+                onFocus={handleConfirmPasswordFocus}
                 onBlur={() => setConfirmPasswordFocused(false)}
                 secureTextEntry={!showPassword}
                 editable={!isLoading}
+                returnKeyType="done"
+                onSubmitEditing={handleRegister}
               />
             </View>
           </View>
@@ -270,28 +334,51 @@ export default function RegisterScreen() {
           {/* Password Requirements */}
           <View style={styles.requirementsContainer}>
             <View style={styles.requirementRow}>
-              <Ionicons 
-                name={password.length >= 6 ? 'checkmark-circle' : 'ellipse-outline'} 
-                size={16} 
-                color={password.length >= 6 ? '#22C55E' : '#9CA897'} 
+              <Ionicons
+                name={
+                  password.length >= 6
+                    ? 'checkmark-circle'
+                    : 'ellipse-outline'
+                }
+                size={16}
+                color={password.length >= 6 ? '#22C55E' : '#9CA897'}
               />
-              <ThemedText style={[
-                styles.requirementText,
-                password.length >= 6 && styles.requirementMet
-              ]}>
+              <ThemedText
+                style={[
+                  styles.requirementText,
+                  password.length >= 6 && styles.requirementMet,
+                ]}
+              >
                 At least 6 characters
               </ThemedText>
             </View>
             <View style={styles.requirementRow}>
-              <Ionicons 
-                name={password && confirmPassword && password === confirmPassword ? 'checkmark-circle' : 'ellipse-outline'} 
-                size={16} 
-                color={password && confirmPassword && password === confirmPassword ? '#22C55E' : '#9CA897'} 
+              <Ionicons
+                name={
+                  password &&
+                  confirmPassword &&
+                  password === confirmPassword
+                    ? 'checkmark-circle'
+                    : 'ellipse-outline'
+                }
+                size={16}
+                color={
+                  password &&
+                  confirmPassword &&
+                  password === confirmPassword
+                    ? '#22C55E'
+                    : '#9CA897'
+                }
               />
-              <ThemedText style={[
-                styles.requirementText,
-                password && confirmPassword && password === confirmPassword && styles.requirementMet
-              ]}>
+              <ThemedText
+                style={[
+                  styles.requirementText,
+                  password &&
+                    confirmPassword &&
+                    password === confirmPassword &&
+                    styles.requirementMet,
+                ]}
+              >
                 Passwords match
               </ThemedText>
             </View>
@@ -308,11 +395,15 @@ export default function RegisterScreen() {
             activeOpacity={0.8}
           >
             <LinearGradient
-              colors={isLoading ? ['#B5C9A7', '#A3B895'] : ['#7BA05B', '#5A8040']}
+              colors={
+                isLoading
+                  ? ['#B5C9A7', '#A3B895']
+                  : ['#7BA05B', '#5A8040']
+              }
               style={styles.submitGradient}
             >
               {isLoading ? (
-                <ActivityIndicator color="#FFFFFF" />
+                <ActivityIndicator color="#FFFFFF" size="small" />
               ) : (
                 <>
                   <ThemedText style={styles.submitButtonText}>
@@ -345,7 +436,9 @@ export default function RegisterScreen() {
         <View style={styles.footer}>
           <ThemedText style={styles.footerText}>
             By creating an account, you agree to our{' '}
-            <ThemedText style={styles.footerLink}>Terms of Service</ThemedText>
+            <ThemedText style={styles.footerLink}>
+              Terms of Service
+            </ThemedText>
             {' '}and{' '}
             <ThemedText style={styles.footerLink}>Privacy Policy</ThemedText>
           </ThemedText>
@@ -353,8 +446,8 @@ export default function RegisterScreen() {
 
         {/* Bottom Spacing */}
         <View style={{ height: 40 }} />
-      </View>
-    </KeyboardAvoidingView>
+      </ScrollView>
+    </View>
   );
 }
 
@@ -364,6 +457,9 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#F8FAF6',
+  },
+  scrollView: {
+    flex: 1,
   },
   backgroundGradient: {
     position: 'absolute',
@@ -393,13 +489,14 @@ const styles = StyleSheet.create({
   scrollContent: {
     flexGrow: 1,
     paddingHorizontal: 24,
-    paddingTop: 60,
+    paddingTop: Platform.OS === 'ios' ? 60 : 40,
   },
 
   // Header Section
   header: {
     alignItems: 'center',
-    marginBottom: 40,
+    marginBottom: isSmallScreen ? 30 : 40,
+    marginTop: isSmallScreen ? 10 : 0,
   },
   logoContainer: {
     marginBottom: 20,
@@ -410,32 +507,32 @@ const styles = StyleSheet.create({
     elevation: 8,
   },
   logoGradient: {
-    width: 88,
-    height: 88,
-    borderRadius: 44,
+    width: isSmallScreen ? 76 : 88,
+    height: isSmallScreen ? 76 : 88,
+    borderRadius: isSmallScreen ? 38 : 44,
     justifyContent: 'center',
     alignItems: 'center',
   },
   title: {
-    fontSize: 36,
+    fontSize: isSmallScreen ? 30 : 36,
     fontWeight: '900',
     color: '#3A4D33',
     marginBottom: 8,
     letterSpacing: -1,
   },
   subtitle: {
-    fontSize: 15,
+    fontSize: isSmallScreen ? 13 : 15,
     color: '#6B7C61',
     textAlign: 'center',
     maxWidth: 300,
-    lineHeight: 22,
+    lineHeight: isSmallScreen ? 18 : 22,
   },
 
   // Card
   card: {
     backgroundColor: '#FFFFFF',
     borderRadius: 24,
-    padding: 28,
+    padding: isSmallScreen ? 20 : 28,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 8 },
     shadowOpacity: 0.08,
@@ -443,18 +540,19 @@ const styles = StyleSheet.create({
     elevation: 5,
     borderWidth: 1,
     borderColor: 'rgba(123, 160, 91, 0.1)',
+    marginBottom: 20,
   },
   cardHeader: {
-    marginBottom: 28,
+    marginBottom: 24,
   },
   cardTitle: {
-    fontSize: 24,
+    fontSize: isSmallScreen ? 22 : 24,
     fontWeight: '800',
     color: '#3A4D33',
     marginBottom: 6,
   },
   cardSubtitle: {
-    fontSize: 14,
+    fontSize: isSmallScreen ? 13 : 14,
     color: '#6B7C61',
     lineHeight: 20,
   },
@@ -514,15 +612,19 @@ const styles = StyleSheet.create({
   },
   inputIconContainer: {
     marginRight: 12,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   input: {
     flex: 1,
-    fontSize: 15,
+    fontSize: 16,
     color: '#3A4D33',
     fontWeight: '500',
+    padding: 0,
   },
   eyeButton: {
-    padding: 4,
+    padding: 8,
+    marginLeft: 4,
   },
 
   // Password Requirements
