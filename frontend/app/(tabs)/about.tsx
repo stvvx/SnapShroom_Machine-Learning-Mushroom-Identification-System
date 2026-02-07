@@ -3,32 +3,36 @@ import { ScrollView, View, Text, StyleSheet, Image, Linking, TouchableOpacity } 
 import { Ionicons } from '@expo/vector-icons';
 import HamburgerMenu from '@/components/HamburgerMenu';
 
-// Team member data
+// Team member data with image paths
 const TEAM_MEMBERS = [
   {
     id: 1,
-    name: 'FAMINI, Cristel Kate M.',
+    name: 'Famini, Cristel Kate M.',
     role: 'Developer',
-    image: null, // Placeholder - will be provided later
+    image: require('@/assets/images/cristel.png'),
+    bio: 'cristelkate.famini@tup.edu.ph',
   },
   {
     id: 2,
-    name: 'ROSARIO, Jerome Steven S.',
+    name: 'Rosario, Jerome Steven S.',
     role: 'Developer',
-    image: null, // Placeholder - will be provided later
+    image: require('@/assets/images/jerome.png'),
+    bio: 'jeromesteven.rosario@tup.edu.ph',
   },
   {
     id: 3,
-    name: 'TOLIN, Ernesto III M.',
+    name: 'Tolin, Ernesto III M.',
     role: 'Developer',
-    image: null, // Placeholder - will be provided later
+    image: require('@/assets/images/ernesto.png'),
+    bio: 'ernestoiii.tolin@tup.edu.ph',
   },
 ];
 
 const ADVISER = {
   name: 'MADRIAGA, Pops V.',
   role: 'Adviser',
-  image: null, // Placeholder - will be provided later
+  image: require('@/assets/images/adviser.png'),
+  bio: 'Project Guide',
 };
 
 export default function AboutPage() {
@@ -38,13 +42,15 @@ export default function AboutPage() {
       <View style={styles.header}>
         <HamburgerMenu />
         <Text style={styles.headerTitle}>About SnapShroom</Text>
-        <View style={{ width: 40 }} /> {/* Spacer for alignment */}
+        <View style={{ width: 40 }} />
       </View>
 
       <ScrollView style={styles.content}>
         {/* Logo/Icon Section */}
         <View style={styles.iconSection}>
-          <Ionicons name="leaf" size={80} color="#A8B89D" />
+          <View style={styles.logoContainer}>
+            <Ionicons name="leaf" size={80} color="#A8B89D" />
+          </View>
         </View>
 
         {/* App Title */}
@@ -61,11 +67,31 @@ export default function AboutPage() {
           </Text>
         </View>
 
+        {/* Vision and Mission Section */}
+        <View style={styles.visionMissionContainer}>
+          <VisionMissionCard 
+            icon="bulb"
+            title="Vision"
+            description="To become the world's most trusted and comprehensive platform for mycological knowledge and safety, revolutionizing how people interact with fungi in their natural habitats. We envision a future where advanced machine learning technologies make expert-level mushroom identification accessible to everyone - from professional mycologists and researchers to amateur foragers and nature enthusiasts. Our vision extends beyond mere identification to fostering global awareness about fungal biodiversity, promoting sustainable foraging practices, and contributing to scientific research through community-driven data collection. We aim to bridge the gap between cutting-edge technology and traditional mycological wisdom, creating a symbiotic relationship between human knowledge and machine learning that enhances safety, education, and appreciation of the fungal kingdom worldwide."
+            bgColor="#FFF8F0"
+            borderColor="#FFB74D"
+            iconColor="#FF9800"
+          />
+          <VisionMissionCard 
+            icon="target"
+            title="Mission"
+            description="Our mission is to empower individuals and communities with accurate, real-time mushroom identification and comprehensive safety assessment tools through the power of machine learning and scientific research. We are committed to developing and continuously improving our machine learning algorithms to provide the most reliable mushroom identification system available. We strive to educate users about mushroom toxicity, edibility, and ecological importance through detailed species profiles, habitat information, and seasonal data. Our platform serves as both a practical tool for safe foraging and an educational resource for learning about fungal biodiversity. We collaborate with mycological experts, research institutions, and conservation organizations to validate our data and contribute to fungal science. Through user-friendly interfaces and accessible technology, we aim to reduce mushroom-related poisoning incidents while promoting responsible interaction with nature. We are dedicated to making mycological knowledge democratically accessible, fostering environmental stewardship, and supporting the global community of fungi enthusiasts and researchers in their pursuit of knowledge and safety."
+            bgColor="#F0F8FF"
+            borderColor="#4DA6FF"
+            iconColor="#2196F3"
+          />
+        </View>
+
         {/* Features */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Key Features</Text>
           <View style={styles.featureList}>
-            <FeatureItem icon="camera" title="AI Recognition" description="Advanced mushroom identification" />
+            <FeatureItem icon="camera" title="Machine Learning Recognition" description="Advanced mushroom identification using machine learning" />
             <FeatureItem icon="flask" title="Toxicity Assessment" description="Comprehensive safety information" />
             <FeatureItem icon="map" title="Habitat Analysis" description="Species habitat and seasonal data" />
             <FeatureItem icon="bar-chart" title="Risk Analysis" description="Detailed risk assessment" />
@@ -100,12 +126,12 @@ export default function AboutPage() {
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Technology Stack</Text>
           <View style={styles.techStack}>
-            <TechBadge name="React Native" />
-            <TechBadge name="Python Flask" />
-            <TechBadge name="Machine Learning" />
-            <TechBadge name="YOLO Detection" />
-            <TechBadge name="PyTorch" />
-            <TechBadge name="MongoDB" />
+            <TechBadge name="React Native" icon="logo-react" />
+            <TechBadge name="Python Flask" icon="logo-python" />
+            <TechBadge name="Machine Learning" icon="cpu" />
+            <TechBadge name="YOLO Detection" icon="eye" />
+            <TechBadge name="PyTorch" icon="flash" />
+            <TechBadge name="MongoDB" icon="server" />
           </View>
         </View>
 
@@ -143,13 +169,42 @@ export default function AboutPage() {
   );
 }
 
+function VisionMissionCard({ 
+  icon, 
+  title, 
+  description, 
+  bgColor, 
+  borderColor, 
+  iconColor 
+}: { 
+  icon: string;
+  title: string;
+  description: string;
+  bgColor: string;
+  borderColor: string;
+  iconColor: string;
+}) {
+  return (
+    <View style={[styles.vmCard, { backgroundColor: bgColor, borderColor: borderColor }]}>
+      <View style={[styles.vmIconContainer, { backgroundColor: iconColor }]}>
+        <Ionicons name={icon as any} size={28} color="#FFFFFF" />
+      </View>
+      <Text style={styles.vmTitle}>{title}</Text>
+      <Text style={styles.vmDescription}>{description}</Text>
+    </View>
+  );
+}
+
 function TeamMemberCard({ member, isAdviser }: { member: any; isAdviser?: boolean }) {
   return (
     <View style={[styles.memberCard, isAdviser && styles.adviserCard]}>
-      {/* Image Placeholder */}
+      {/* Image with Enhanced Styling */}
       <View style={styles.memberImage}>
         {member.image ? (
-          <Image source={{ uri: member.image }} style={styles.memberImageActual} />
+          <View style={styles.imageWrapper}>
+            <Image source={member.image} style={styles.memberImageActual} />
+            <View style={styles.imageGlow} />
+          </View>
         ) : (
           <View style={styles.imagePlaceholder}>
             <Ionicons name="person-circle" size={60} color="#7A8F7A" />
@@ -159,7 +214,14 @@ function TeamMemberCard({ member, isAdviser }: { member: any; isAdviser?: boolea
 
       {/* Member Info */}
       <Text style={styles.memberName}>{member.name}</Text>
+      {member.bio && <Text style={styles.memberBio}>{member.bio}</Text>}
       <Text style={styles.memberRole}>{member.role}</Text>
+
+      {/* Decorative Element */}
+      <View style={styles.memberFooter}>
+        <View style={[styles.dot, { marginRight: 6 }]} />
+        <View style={styles.dot} />
+      </View>
     </View>
   );
 }
@@ -167,7 +229,9 @@ function TeamMemberCard({ member, isAdviser }: { member: any; isAdviser?: boolea
 function FeatureItem({ icon, title, description }: { icon: string; title: string; description: string }) {
   return (
     <View style={styles.featureItem}>
-      <Ionicons name={icon as any} size={24} color="#A8B89D" />
+      <View style={styles.featureIconContainer}>
+        <Ionicons name={icon as any} size={24} color="#A8B89D" />
+      </View>
       <View style={styles.featureContent}>
         <Text style={styles.featureTitle}>{title}</Text>
         <Text style={styles.featureDescription}>{description}</Text>
@@ -176,9 +240,10 @@ function FeatureItem({ icon, title, description }: { icon: string; title: string
   );
 }
 
-function TechBadge({ name }: { name: string }) {
+function TechBadge({ name, icon }: { name: string; icon: string }) {
   return (
     <View style={styles.techBadge}>
+      <Ionicons name={icon as any} size={14} color="#6B7C61" style={{ marginRight: 6 }} />
       <Text style={styles.techBadgeText}>{name}</Text>
     </View>
   );
@@ -215,6 +280,21 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginVertical: 30,
   },
+  logoContainer: {
+    width: 120,
+    height: 120,
+    borderRadius: 60,
+    backgroundColor: '#F5F3EF',
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 3,
+    borderColor: '#E8E4DE',
+    shadowColor: '#7BA05B',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 8,
+    elevation: 5,
+  },
   appTitle: {
     fontSize: 36,
     fontWeight: '800',
@@ -250,6 +330,47 @@ const styles = StyleSheet.create({
     borderLeftWidth: 4,
     borderLeftColor: '#7BA05B',
   },
+  visionMissionContainer: {
+    gap: 16,
+    marginBottom: 28,
+  },
+  vmCard: {
+    borderRadius: 14,
+    padding: 20,
+    borderWidth: 2,
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  vmIconContainer: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 12,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.12,
+    shadowRadius: 3,
+    elevation: 2,
+  },
+  vmTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#2D3E2D',
+    marginBottom: 10,
+  },
+  vmDescription: {
+    fontSize: 13,
+    color: '#555',
+    lineHeight: 21,
+    textAlign: 'center',
+    fontWeight: '500',
+  },
   featureList: {
     gap: 12,
   },
@@ -261,6 +382,10 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     borderLeftWidth: 4,
     borderLeftColor: '#7BA05B',
+    alignItems: 'flex-start',
+  },
+  featureIconContainer: {
+    marginTop: 2,
   },
   featureContent: {
     flex: 1,
@@ -297,29 +422,45 @@ const styles = StyleSheet.create({
   },
   memberCard: {
     backgroundColor: '#F9F7F3',
-    borderRadius: 12,
+    borderRadius: 16,
     padding: 20,
     alignItems: 'center',
     borderWidth: 1,
     borderColor: '#E8E4DE',
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.08,
-    shadowRadius: 4,
-    elevation: 3,
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.1,
+    shadowRadius: 6,
+    elevation: 4,
   },
   adviserCard: {
-    backgroundColor: '#F5F3EF',
+    backgroundColor: '#FFF8F0',
     borderColor: '#D4C8BD',
     borderWidth: 2,
   },
   memberImage: {
     marginBottom: 16,
   },
+  imageWrapper: {
+    position: 'relative',
+  },
   memberImageActual: {
     width: 100,
     height: 100,
     borderRadius: 50,
+    borderWidth: 3,
+    borderColor: '#7BA05B',
+  },
+  imageGlow: {
+    position: 'absolute',
+    width: 110,
+    height: 110,
+    borderRadius: 55,
+    borderWidth: 2,
+    borderColor: '#7BA05B',
+    opacity: 0.2,
+    top: -5,
+    left: -5,
   },
   imagePlaceholder: {
     width: 100,
@@ -328,7 +469,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#E8E4DE',
     justifyContent: 'center',
     alignItems: 'center',
-    borderWidth: 2,
+    borderWidth: 3,
     borderColor: '#6B7C61',
   },
   memberName: {
@@ -336,13 +477,32 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: '#2D3E2D',
     textAlign: 'center',
+    marginBottom: 4,
+  },
+  memberBio: {
+    fontSize: 12,
+    color: '#7BA05B',
+    textAlign: 'center',
     marginBottom: 6,
+    fontWeight: '500',
+    fontStyle: 'italic',
   },
   memberRole: {
     fontSize: 13,
     color: '#7BA05B',
     textAlign: 'center',
     fontWeight: '600',
+  },
+  memberFooter: {
+    flexDirection: 'row',
+    marginTop: 12,
+    justifyContent: 'center',
+  },
+  dot: {
+    width: 4,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: '#A8B89D',
   },
   adviserSection: {
     marginTop: 12,
@@ -363,11 +523,13 @@ const styles = StyleSheet.create({
   },
   techBadge: {
     backgroundColor: '#E8E4DE',
-    paddingHorizontal: 14,
+    paddingHorizontal: 12,
     paddingVertical: 8,
     borderRadius: 20,
     borderWidth: 1.5,
     borderColor: '#7BA05B',
+    flexDirection: 'row',
+    alignItems: 'center',
   },
   techBadgeText: {
     fontSize: 12,

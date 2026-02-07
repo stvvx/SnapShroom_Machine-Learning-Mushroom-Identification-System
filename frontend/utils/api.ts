@@ -20,7 +20,7 @@
 const ENV_API_URL = process.env.EXPO_PUBLIC_API_URL;
 
 // 2️⃣ Fallback: local LAN (only if env not set)
-const FALLBACK_LAN_URL = 'http://192.168.1.102:5000'; // ← optional, dev only
+const FALLBACK_LAN_URL = 'http://192.168.100.26:5000'; // ← optional, dev only
 
 // 3️⃣ Final resolved base URL
 const API_BASE_URL = ENV_API_URL || FALLBACK_LAN_URL;

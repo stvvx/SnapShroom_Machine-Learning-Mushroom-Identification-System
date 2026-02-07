@@ -155,7 +155,7 @@ export default function CameraScreen() {
         cleanBase64 = cleanBase64.split(',')[1];
       }
 
-      const apiUrl = process.env.EXPO_PUBLIC_API_URL || 'http://192.168.1.100:5000/api';
+      const apiUrl = process.env.EXPO_PUBLIC_API_URL || 'http://192.168.100.26:5000/api';
       
       const response = await fetch(`${apiUrl}/toxicity/detect`, {
         method: 'POST',
