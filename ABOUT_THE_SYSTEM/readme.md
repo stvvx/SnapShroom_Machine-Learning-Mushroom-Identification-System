@@ -1,4 +1,4 @@
-
+The app’s “AI” is a locally hosted PyTorch pipeline defined in custom_predict.py:1-332
 ### Step 1: Prepare Your Dataset
 **What happens:**
 - 📊 Loads all images from dataset
