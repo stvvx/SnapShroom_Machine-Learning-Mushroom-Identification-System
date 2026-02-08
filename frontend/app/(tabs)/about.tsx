@@ -29,10 +29,16 @@ const TEAM_MEMBERS = [
 ];
 
 const ADVISER = {
-  name: 'MADRIAGA, Pops V.',
+  name: 'Madriaga, Pops V.',
   role: 'Adviser',
   image: require('@/assets/images/adviser.png'),
-  bio: 'Project Guide',
+  bio: 'pops_madriaga@tup.edu.ph',
+};
+
+const TECHNICAL_ADVISER = {
+  name: 'Motol, Ian Jasper',
+  role: 'Technical Adviser',
+  bio: 'ianjasper.motol@tup.edu.ph',
 };
 
 // Animated Mushroom Component
@@ -202,239 +208,209 @@ export default function AboutPage() {
       </View>
 
       <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
-        {/* Logo/Icon Section with Mushroom */}
-        <View style={styles.iconSection}>
+        {/* Compact Hero Section */}
+        <View style={styles.heroSection}>
           <View style={styles.logoContainer}>
-            <AnimatedMushroom size={60} />
+            <AnimatedMushroom size={55} />
+          </View>
+          <View style={styles.heroText}>
+            <Text style={styles.appTitle}>SnapShroom</Text>
+            <Text style={styles.appVersion}>v1.0.0</Text>
+            <Text style={styles.tagline}>🍄 Your AI-Powered Mushroom Companion</Text>
           </View>
         </View>
 
-        {/* App Title */}
-        <Text style={styles.appTitle}>SnapShroom</Text>
-        <Text style={styles.appVersion}>Version 1.0.0</Text>
-        <Text style={styles.tagline}>🍄 Your AI-Powered Mushroom Companion 🍄</Text>
-
         {/* Description */}
-        <View style={styles.section}>
-          <View style={styles.sectionTitleContainer}>
-            <Ionicons name="information-circle" size={22} color="#6B7C61" />
-            <Text style={styles.sectionTitle}>About the Application</Text>
+        <View style={styles.descriptionCard}>
+          <View style={styles.cardHeader}>
+            <Ionicons name="information-circle" size={20} color="#7BA05B" />
+            <Text style={styles.cardHeaderText}>About the App</Text>
           </View>
-          <Text style={styles.sectionText}>
-            SnapShroom is an intelligent mushroom identification and safety assessment application.
-            Using advanced computer vision and machine learning, we help you identify mushrooms and
-            assess their edibility and toxicity levels with scientific accuracy.
+          <Text style={styles.descriptionText}>
+            SnapShroom uses advanced computer vision and machine learning to identify mushrooms and 
+            assess their edibility with scientific accuracy.
           </Text>
         </View>
 
-        {/* Vision and Mission Section */}
-        <View style={styles.visionMissionContainer}>
-          <VisionMissionCard 
+        {/* Compact Features Grid */}
+        <View style={styles.featuresGrid}>
+          <FeatureCard icon="camera" title="ML Recognition" color="#7BA05B" />
+          <FeatureCard icon="flask" title="Toxicity Info" color="#E85D5D" />
+          <FeatureCard icon="map" title="Habitat Data" color="#4DA6FF" />
+          <FeatureCard icon="bar-chart" title="Risk Analysis" color="#FFB74D" />
+        </View>
+
+        {/* Vision & Mission - Full Content */}
+        <View style={styles.vmCompactContainer}>
+          <CompactVMCard 
             icon="bulb"
             title="Vision"
             description="To become the world's most trusted and comprehensive platform for mycological knowledge and safety, revolutionizing how people interact with fungi in their natural habitats. We envision a future where advanced machine learning technologies make expert-level mushroom identification accessible to everyone - from professional mycologists and researchers to amateur foragers and nature enthusiasts. Our vision extends beyond mere identification to fostering global awareness about fungal biodiversity, promoting sustainable foraging practices, and contributing to scientific research through community-driven data collection. We aim to bridge the gap between cutting-edge technology and traditional mycological wisdom, creating a symbiotic relationship between human knowledge and machine learning that enhances safety, education, and appreciation of the fungal kingdom worldwide."
-            bgColor="#FFF8F0"
-            borderColor="#FFB74D"
             iconColor="#FF9800"
           />
-          <VisionMissionCard 
+          <CompactVMCard 
             icon="target"
             title="Mission"
             description="Our mission is to empower individuals and communities with accurate, real-time mushroom identification and comprehensive safety assessment tools through the power of machine learning and scientific research. We are committed to developing and continuously improving our machine learning algorithms to provide the most reliable mushroom identification system available. We strive to educate users about mushroom toxicity, edibility, and ecological importance through detailed species profiles, habitat information, and seasonal data. Our platform serves as both a practical tool for safe foraging and an educational resource for learning about fungal biodiversity. We collaborate with mycological experts, research institutions, and conservation organizations to validate our data and contribute to fungal science. Through user-friendly interfaces and accessible technology, we aim to reduce mushroom-related poisoning incidents while promoting responsible interaction with nature. We are dedicated to making mycological knowledge democratically accessible, fostering environmental stewardship, and supporting the global community of fungi enthusiasts and researchers in their pursuit of knowledge and safety."
-            bgColor="#F0F8FF"
-            borderColor="#4DA6FF"
             iconColor="#2196F3"
           />
         </View>
 
-        {/* Features */}
+        {/* Compact Team Grid */}
         <View style={styles.section}>
-          <View style={styles.sectionTitleContainer}>
-            <Ionicons name="sparkles" size={22} color="#6B7C61" />
-            <Text style={styles.sectionTitle}>Key Features</Text>
-          </View>
-          <View style={styles.featureList}>
-            <FeatureItem icon="camera" title="Machine Learning Recognition" description="Advanced mushroom identification using machine learning" />
-            <FeatureItem icon="flask" title="Toxicity Assessment" description="Comprehensive safety information" />
-            <FeatureItem icon="map" title="Habitat Analysis" description="Species habitat and seasonal data" />
-            <FeatureItem icon="bar-chart" title="Risk Analysis" description="Detailed risk assessment" />
-          </View>
-        </View>
-
-        {/* Decorative Divider */}
-        <View style={styles.decorativeDivider}>
-          <View style={styles.dividerLine} />
-          <View style={styles.dividerMushroom}>
-            <Text style={styles.dividerEmoji}>🍄</Text>
-          </View>
-          <View style={styles.dividerLine} />
-        </View>
-
-        {/* Development Team Section */}
-        <View style={styles.teamSection}>
-          <View style={styles.sectionTitleContainer}>
-            <Ionicons name="people" size={22} color="#6B7C61" />
-            <Text style={styles.teamTitle}>Development Team</Text>
+          <View style={styles.sectionHeader}>
+            <Ionicons name="people" size={20} color="#6B7C61" />
+            <Text style={styles.sectionTitle}>Development Team</Text>
           </View>
           
-          {/* Team Members */}
-          <View style={styles.membersGrid}>
+          <View style={styles.teamGrid}>
             {TEAM_MEMBERS.map((member) => (
-              <TeamMemberCard key={member.id} member={member} />
+              <CompactTeamCard key={member.id} member={member} />
             ))}
           </View>
 
-          {/* Adviser Section */}
-          <View style={styles.adviserSection}>
-            <Text style={styles.adviserLabel}>Project Adviser</Text>
-            <TeamMemberCard member={ADVISER} isAdviser />
+          {/* Project Advisers Section */}
+          <View style={styles.advisersSection}>
+            <Text style={styles.advisersSectionTitle}>Project Advisers</Text>
+            
+            {/* Adviser */}
+            <View style={styles.adviserCompact}>
+              <Text style={styles.adviserLabel}>Adviser</Text>
+              <CompactTeamCard member={ADVISER} isAdviser />
+            </View>
+
+            {/* Technical Adviser */}
+            <View style={styles.adviserCompact}>
+              <Text style={styles.technicalAdviserLabel}>Technical Adviser</Text>
+              <CompactTeamCard member={TECHNICAL_ADVISER} isTechnicalAdviser />
+            </View>
           </View>
         </View>
 
-        {/* Decorative Divider */}
-        <View style={styles.decorativeDivider}>
-          <View style={styles.dividerLine} />
-          <View style={styles.dividerMushroom}>
-            <Text style={styles.dividerEmoji}>🍄</Text>
-          </View>
-          <View style={styles.dividerLine} />
-        </View>
-
-        {/* Technology Section */}
+        {/* Compact Tech Stack */}
         <View style={styles.section}>
-          <View style={styles.sectionTitleContainer}>
-            <Ionicons name="code-slash" size={22} color="#6B7C61" />
-            <Text style={styles.sectionTitle}>Technology Stack</Text>
+          <View style={styles.sectionHeader}>
+            <Ionicons name="code-slash" size={20} color="#6B7C61" />
+            <Text style={styles.sectionTitle}>Technology</Text>
           </View>
-          <View style={styles.techStack}>
-            <TechBadge name="React Native" icon="logo-react" />
-            <TechBadge name="Python Flask" icon="logo-python" />
-            <TechBadge name="Machine Learning" icon="cpu" />
-            <TechBadge name="YOLO Detection" icon="eye" />
-            <TechBadge name="PyTorch" icon="flash" />
-            <TechBadge name="MongoDB" icon="server" />
+          <View style={styles.techGrid}>
+            <TechChip name="React Native" icon="logo-react" />
+            <TechChip name="Python Flask" icon="logo-python" />
+            <TechChip name="ML/YOLO" icon="cpu" />
+            <TechChip name="PyTorch" icon="flash" />
+            <TechChip name="MongoDB" icon="server" />
           </View>
         </View>
 
-        {/* Safety Disclaimer */}
-        <View style={styles.disclaimerSection}>
-          <Ionicons name="warning" size={28} color="#FF9800" />
+        {/* Compact Disclaimer */}
+        <View style={styles.disclaimerCompact}>
+          <Ionicons name="warning" size={24} color="#FF9800" />
           <View style={styles.disclaimerContent}>
-            <Text style={styles.disclaimerTitle}>⚠️ Safety Disclaimer</Text>
+            <Text style={styles.disclaimerTitle}>Safety First</Text>
             <Text style={styles.disclaimerText}>
-              SnapShroom is an educational tool for mushroom identification. Never consume wild mushrooms
-              based solely on app results. Always consult with expert mycologists before consumption.
+              Educational tool only. Always consult expert mycologists before consuming wild mushrooms.
             </Text>
           </View>
         </View>
 
-        {/* Contact Section */}
-        <View style={styles.section}>
-          <View style={styles.sectionTitleContainer}>
-            <Ionicons name="mail" size={22} color="#6B7C61" />
-            <Text style={styles.sectionTitle}>Contact & Support</Text>
-          </View>
-          <TouchableOpacity
-            style={styles.contactItem}
-            onPress={() => Linking.openURL('mailto:support@snapshroom.app')}
-          >
-            <Ionicons name="mail-outline" size={22} color="#7BA05B" />
-            <Text style={styles.contactText}>support@snapshroom.app</Text>
-            <Ionicons name="chevron-forward" size={18} color="#A8B89D" />
-          </TouchableOpacity>
-        </View>
+        {/* Compact Contact */}
+        <TouchableOpacity
+          style={styles.contactCompact}
+          onPress={() => Linking.openURL('mailto:support@snapshroom.app')}
+        >
+          <Ionicons name="mail-outline" size={20} color="#7BA05B" />
+          <Text style={styles.contactText}>support@snapshroom.app</Text>
+          <Ionicons name="chevron-forward" size={16} color="#A8B89D" />
+        </TouchableOpacity>
 
-        {/* Footer */}
+        {/* Compact Footer */}
         <View style={styles.footer}>
-          <AnimatedMushroom size={45} />
           <Text style={styles.footerText}>© 2026 SnapShroom</Text>
-          <Text style={styles.footerSubtext}>Empowering Safe Mushroom Identification</Text>
-          <Text style={styles.footerEmoji}>🍄 🌿 🔬</Text>
+          <Text style={styles.footerSubtext}>Safe Mushroom Identification 🍄</Text>
         </View>
       </ScrollView>
     </View>
   );
 }
 
-function VisionMissionCard({ 
+function FeatureCard({ icon, title, color }: { icon: string; title: string; color: string }) {
+  return (
+    <View style={styles.featureCard}>
+      <View style={[styles.featureIcon, { backgroundColor: color }]}>
+        <Ionicons name={icon as any} size={22} color="#FFFFFF" />
+      </View>
+      <Text style={styles.featureCardTitle}>{title}</Text>
+    </View>
+  );
+}
+
+function CompactVMCard({ 
   icon, 
   title, 
   description, 
-  bgColor, 
-  borderColor, 
   iconColor 
 }: { 
   icon: string;
   title: string;
   description: string;
-  bgColor: string;
-  borderColor: string;
   iconColor: string;
 }) {
   return (
-    <View style={[styles.vmCard, { backgroundColor: bgColor, borderColor: borderColor }]}>
-      <View style={[styles.vmIconContainer, { backgroundColor: iconColor }]}>
-        <Ionicons name={icon as any} size={28} color="#FFFFFF" />
+    <View style={styles.vmCompactCard}>
+      <View style={[styles.vmCompactIcon, { backgroundColor: iconColor }]}>
+        <Ionicons name={icon as any} size={24} color="#FFFFFF" />
       </View>
-      <Text style={styles.vmTitle}>{title}</Text>
-      <Text style={styles.vmDescription}>{description}</Text>
+      <View style={styles.vmCompactContent}>
+        <Text style={styles.vmCompactTitle}>{title}</Text>
+        <Text style={styles.vmCompactText}>{description}</Text>
+      </View>
     </View>
   );
 }
 
-function TeamMemberCard({ member, isAdviser }: { member: any; isAdviser?: boolean }) {
+function CompactTeamCard({ 
+  member, 
+  isAdviser, 
+  isTechnicalAdviser 
+}: { 
+  member: any; 
+  isAdviser?: boolean;
+  isTechnicalAdviser?: boolean;
+}) {
   return (
-    <View style={[styles.memberCard, isAdviser && styles.adviserCard]}>
-      {/* Image with Enhanced Styling */}
-      <View style={styles.memberImage}>
+    <View style={[
+      styles.teamCompactCard, 
+      isAdviser && styles.adviserCardCompact,
+      isTechnicalAdviser && styles.technicalAdviserCardCompact
+    ]}>
+      <View style={styles.teamImageContainer}>
         {member.image ? (
-          <View style={styles.imageWrapper}>
-            <Image source={member.image} style={styles.memberImageActual} />
-            <View style={styles.imageGlow} />
-          </View>
+          <Image source={member.image} style={styles.teamImage} />
         ) : (
-          <View style={styles.imagePlaceholder}>
-            <Ionicons name="person-circle" size={60} color="#7A8F7A" />
+          <View style={styles.teamImagePlaceholder}>
+            <Ionicons name="person-circle" size={50} color="#7A8F7A" />
           </View>
         )}
       </View>
-
-      {/* Member Info */}
-      <Text style={styles.memberName}>{member.name}</Text>
-      {member.bio && <Text style={styles.memberBio}>{member.bio}</Text>}
-      <View style={styles.roleBadge}>
-        <Text style={styles.memberRole}>{member.role}</Text>
-      </View>
-
-      {/* Decorative Element */}
-      <View style={styles.memberFooter}>
-        <View style={styles.footerDot} />
-        <View style={[styles.footerDot, { marginHorizontal: 6 }]} />
-        <View style={styles.footerDot} />
+      <View style={styles.teamInfo}>
+        <Text style={styles.teamName}>{member.name}</Text>
+        <Text style={styles.teamEmail}>{member.bio}</Text>
+        <View style={[
+          styles.teamBadge,
+          isTechnicalAdviser && styles.technicalAdviserBadge
+        ]}>
+          <Text style={styles.teamRole}>{member.role}</Text>
+        </View>
       </View>
     </View>
   );
 }
 
-function FeatureItem({ icon, title, description }: { icon: string; title: string; description: string }) {
+function TechChip({ name, icon }: { name: string; icon: string }) {
   return (
-    <View style={styles.featureItem}>
-      <View style={styles.featureIconContainer}>
-        <Ionicons name={icon as any} size={26} color="#FFFFFF" />
-      </View>
-      <View style={styles.featureContent}>
-        <Text style={styles.featureTitle}>{title}</Text>
-        <Text style={styles.featureDescription}>{description}</Text>
-      </View>
-    </View>
-  );
-}
-
-function TechBadge({ name, icon }: { name: string; icon: string }) {
-  return (
-    <View style={styles.techBadge}>
-      <Ionicons name={icon as any} size={16} color="#6B7C61" />
-      <Text style={styles.techBadgeText}>{name}</Text>
+    <View style={styles.techChip}>
+      <Ionicons name={icon as any} size={14} color="#6B7C61" />
+      <Text style={styles.techChipText}>{name}</Text>
     </View>
   );
 }
@@ -601,7 +577,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     backgroundColor: 'rgba(255, 255, 255, 0.95)',
-    paddingVertical: 16,
+    paddingVertical: 14,
     paddingHorizontal: 16,
     marginTop: 40,
     borderBottomWidth: 1,
@@ -614,7 +590,7 @@ const styles = StyleSheet.create({
     zIndex: 10,
   },
   headerTitle: {
-    fontSize: 20,
+    fontSize: 19,
     fontWeight: '700',
     color: '#2D3E2D',
     flex: 1,
@@ -622,409 +598,369 @@ const styles = StyleSheet.create({
   },
   content: {
     flex: 1,
-    padding: 20,
+    padding: 16,
     zIndex: 1,
   },
-  iconSection: {
+  heroSection: {
+    flexDirection: 'row',
     alignItems: 'center',
-    marginVertical: 30,
-  },
-  logoContainer: {
-    width: 140,
-    height: 140,
-    borderRadius: 70,
     backgroundColor: 'rgba(255, 255, 255, 0.95)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderWidth: 4,
+    borderRadius: 16,
+    padding: 16,
+    marginBottom: 16,
+    borderWidth: 2,
     borderColor: '#7BA05B',
     shadowColor: '#7BA05B',
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.25,
-    shadowRadius: 10,
-    elevation: 8,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 8,
+    elevation: 5,
+  },
+  logoContainer: {
+    width: 90,
+    height: 90,
+    borderRadius: 45,
+    backgroundColor: '#F5F3EF',
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 3,
+    borderColor: '#7BA05B',
+    marginRight: 16,
+  },
+  heroText: {
+    flex: 1,
   },
   appTitle: {
-    fontSize: 38,
+    fontSize: 28,
     fontWeight: '800',
     color: '#2D3E2D',
-    textAlign: 'center',
-    marginBottom: 8,
-    letterSpacing: 1.5,
+    letterSpacing: 0.5,
+    marginBottom: 2,
   },
   appVersion: {
-    fontSize: 14,
+    fontSize: 12,
     color: '#999',
-    textAlign: 'center',
-    marginBottom: 8,
     fontWeight: '500',
+    marginBottom: 4,
   },
   tagline: {
-    fontSize: 15,
+    fontSize: 13,
     color: '#7BA05B',
-    textAlign: 'center',
-    marginBottom: 30,
     fontWeight: '600',
     fontStyle: 'italic',
   },
-  section: {
-    marginBottom: 32,
-  },
-  sectionTitleContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    marginBottom: 16,
-  },
-  sectionTitle: {
-    fontSize: 19,
-    fontWeight: '700',
-    color: '#6B7C61',
-    letterSpacing: 0.5,
-  },
-  sectionText: {
-    fontSize: 14.5,
-    color: '#555',
-    lineHeight: 24,
+  descriptionCard: {
     backgroundColor: 'rgba(255, 255, 255, 0.9)',
-    padding: 18,
-    borderRadius: 12,
+    borderRadius: 14,
+    padding: 14,
+    marginBottom: 16,
     borderLeftWidth: 4,
     borderLeftColor: '#7BA05B',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
-    elevation: 2,
-  },
-  visionMissionContainer: {
-    gap: 18,
-    marginBottom: 32,
-  },
-  vmCard: {
-    borderRadius: 16,
-    padding: 22,
-    borderWidth: 2,
-    alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.1,
-    shadowRadius: 6,
-    elevation: 4,
-    backgroundColor: 'rgba(255, 255, 255, 0.9)',
-  },
-  vmIconContainer: {
-    width: 60,
-    height: 60,
-    borderRadius: 30,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 14,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.15,
-    shadowRadius: 4,
-    elevation: 3,
-  },
-  vmTitle: {
-    fontSize: 19,
-    fontWeight: '700',
-    color: '#2D3E2D',
-    marginBottom: 12,
-  },
-  vmDescription: {
-    fontSize: 13.5,
-    color: '#555',
-    lineHeight: 22,
-    textAlign: 'center',
-    fontWeight: '500',
-  },
-  featureList: {
-    gap: 14,
-  },
-  featureItem: {
-    flexDirection: 'row',
-    gap: 14,
-    backgroundColor: 'rgba(255, 255, 255, 0.9)',
-    padding: 16,
-    borderRadius: 14,
-    alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.08,
     shadowRadius: 4,
     elevation: 3,
   },
-  featureIconContainer: {
-    width: 50,
-    height: 50,
-    borderRadius: 25,
-    backgroundColor: '#7BA05B',
-    justifyContent: 'center',
-    alignItems: 'center',
-    shadowColor: '#7BA05B',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.3,
-    shadowRadius: 3,
-    elevation: 2,
-  },
-  featureContent: {
-    flex: 1,
-  },
-  featureTitle: {
-    fontSize: 15,
-    fontWeight: '700',
-    color: '#2D3E2D',
-    marginBottom: 4,
-  },
-  featureDescription: {
-    fontSize: 13,
-    color: '#666',
-    lineHeight: 19,
-  },
-  decorativeDivider: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginVertical: 35,
-  },
-  dividerLine: {
-    flex: 1,
-    height: 2,
-    backgroundColor: '#E8E4DE',
-  },
-  dividerMushroom: {
-    marginHorizontal: 15,
-    backgroundColor: 'rgba(255, 255, 255, 0.95)',
-    borderRadius: 20,
-    padding: 8,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 3,
-    elevation: 2,
-  },
-  dividerEmoji: {
-    fontSize: 20,
-  },
-  teamSection: {
-    marginBottom: 32,
-  },
-  teamTitle: {
-    fontSize: 20,
-    fontWeight: '700',
-    color: '#6B7C61',
-    letterSpacing: 0.5,
-  },
-  membersGrid: {
-    gap: 18,
-    marginBottom: 30,
-  },
-  memberCard: {
-    backgroundColor: 'rgba(255, 255, 255, 0.9)',
-    borderRadius: 18,
-    padding: 24,
-    alignItems: 'center',
-    borderWidth: 2,
-    borderColor: '#E8E4DE',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.12,
-    shadowRadius: 8,
-    elevation: 5,
-  },
-  adviserCard: {
-    backgroundColor: 'rgba(255, 248, 240, 0.95)',
-    borderColor: '#FFB74D',
-    borderWidth: 2.5,
-  },
-  memberImage: {
-    marginBottom: 18,
-  },
-  imageWrapper: {
-    position: 'relative',
-  },
-  memberImageActual: {
-    width: 110,
-    height: 110,
-    borderRadius: 55,
-    borderWidth: 4,
-    borderColor: '#7BA05B',
-  },
-  imageGlow: {
-    position: 'absolute',
-    width: 120,
-    height: 120,
-    borderRadius: 60,
-    borderWidth: 2,
-    borderColor: '#7BA05B',
-    opacity: 0.3,
-    top: -5,
-    left: -5,
-  },
-  imagePlaceholder: {
-    width: 110,
-    height: 110,
-    borderRadius: 55,
-    backgroundColor: '#E8E4DE',
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderWidth: 4,
-    borderColor: '#6B7C61',
-  },
-  memberName: {
-    fontSize: 17,
-    fontWeight: '700',
-    color: '#2D3E2D',
-    textAlign: 'center',
-    marginBottom: 6,
-  },
-  memberBio: {
-    fontSize: 12.5,
-    color: '#7BA05B',
-    textAlign: 'center',
-    marginBottom: 10,
-    fontWeight: '500',
-    fontStyle: 'italic',
-  },
-  roleBadge: {
-    backgroundColor: '#7BA05B',
-    paddingHorizontal: 16,
-    paddingVertical: 6,
-    borderRadius: 20,
-    marginTop: 4,
-  },
-  memberRole: {
-    fontSize: 13,
-    color: '#FFFFFF',
-    fontWeight: '700',
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
-  },
-  memberFooter: {
-    flexDirection: 'row',
-    marginTop: 16,
-    justifyContent: 'center',
-  },
-  footerDot: {
-    width: 5,
-    height: 5,
-    borderRadius: 2.5,
-    backgroundColor: '#A8B89D',
-  },
-  adviserSection: {
-    marginTop: 12,
-  },
-  adviserLabel: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: '#FF9800',
-    marginBottom: 14,
-    textAlign: 'center',
-    letterSpacing: 1,
-    textTransform: 'uppercase',
-  },
-  techStack: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 12,
-  },
-  techBadge: {
-    backgroundColor: 'rgba(255, 255, 255, 0.9)',
-    paddingHorizontal: 14,
-    paddingVertical: 10,
-    borderRadius: 25,
-    borderWidth: 2,
-    borderColor: '#7BA05B',
+  cardHeader: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.08,
-    shadowRadius: 3,
-    elevation: 2,
+    marginBottom: 8,
   },
-  techBadgeText: {
-    fontSize: 13,
-    color: '#6B7C61',
-    fontWeight: '700',
-  },
-  disclaimerSection: {
-    backgroundColor: 'rgba(255, 243, 224, 0.95)',
-    padding: 20,
-    borderRadius: 14,
-    marginBottom: 32,
-    flexDirection: 'row',
-    gap: 14,
-    borderWidth: 2,
-    borderColor: '#FFB74D',
-    shadowColor: '#FF9800',
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.15,
-    shadowRadius: 5,
-    elevation: 4,
-  },
-  disclaimerContent: {
-    flex: 1,
-  },
-  disclaimerTitle: {
+  cardHeaderText: {
     fontSize: 15,
     fontWeight: '700',
-    color: '#D84315',
-    marginBottom: 10,
+    color: '#6B7C61',
   },
-  disclaimerText: {
+  descriptionText: {
     fontSize: 13,
     color: '#555',
     lineHeight: 20,
     fontWeight: '500',
   },
-  contactItem: {
+  featuresGrid: {
     flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-    paddingVertical: 16,
-    paddingHorizontal: 18,
+    flexWrap: 'wrap',
+    gap: 10,
+    marginBottom: 16,
+  },
+  featureCard: {
+    flex: 1,
+    minWidth: '47%',
     backgroundColor: 'rgba(255, 255, 255, 0.9)',
     borderRadius: 12,
+    padding: 12,
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 3,
+    elevation: 3,
+  },
+  featureIcon: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  featureCardTitle: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#2D3E2D',
+    textAlign: 'center',
+  },
+  vmCompactContainer: {
+    gap: 12,
+    marginBottom: 16,
+  },
+  vmCompactCard: {
+    backgroundColor: 'rgba(255, 255, 255, 0.9)',
+    borderRadius: 14,
+    padding: 16,
+    flexDirection: 'column',
+    gap: 12,
     borderWidth: 2,
-    borderColor: '#7BA05B',
+    borderColor: '#E8E4DE',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.08,
     shadowRadius: 4,
     elevation: 3,
   },
+  vmCompactIcon: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    justifyContent: 'center',
+    alignItems: 'center',
+    alignSelf: 'center',
+  },
+  vmCompactContent: {
+    flex: 1,
+  },
+  vmCompactTitle: {
+    fontSize: 17,
+    fontWeight: '700',
+    color: '#2D3E2D',
+    marginBottom: 8,
+    textAlign: 'center',
+  },
+  vmCompactText: {
+    fontSize: 13,
+    color: '#555',
+    lineHeight: 21,
+    textAlign: 'justify',
+  },
+  section: {
+    marginBottom: 16,
+  },
+  sectionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginBottom: 12,
+  },
+  sectionTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#6B7C61',
+  },
+  teamGrid: {
+    gap: 12,
+    marginBottom: 12,
+  },
+  teamCompactCard: {
+    backgroundColor: 'rgba(255, 255, 255, 0.9)',
+    borderRadius: 12,
+    padding: 12,
+    flexDirection: 'row',
+    gap: 12,
+    borderWidth: 2,
+    borderColor: '#E8E4DE',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  adviserCardCompact: {
+    backgroundColor: 'rgba(255, 248, 240, 0.95)',
+    borderColor: '#FFB74D',
+  },
+  technicalAdviserCardCompact: {
+    backgroundColor: 'rgba(240, 248, 255, 0.95)',
+    borderColor: '#4DA6FF',
+  },
+  teamImageContainer: {
+    width: 70,
+    height: 70,
+  },
+  teamImage: {
+    width: 70,
+    height: 70,
+    borderRadius: 35,
+    borderWidth: 3,
+    borderColor: '#7BA05B',
+  },
+  teamImagePlaceholder: {
+    width: 70,
+    height: 70,
+    borderRadius: 35,
+    backgroundColor: '#E8E4DE',
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 3,
+    borderColor: '#6B7C61',
+  },
+  teamInfo: {
+    flex: 1,
+    justifyContent: 'center',
+  },
+  teamName: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#2D3E2D',
+    marginBottom: 2,
+  },
+  teamEmail: {
+    fontSize: 11,
+    color: '#7BA05B',
+    marginBottom: 6,
+    fontStyle: 'italic',
+  },
+  teamBadge: {
+    backgroundColor: '#7BA05B',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 12,
+    alignSelf: 'flex-start',
+  },
+  technicalAdviserBadge: {
+    backgroundColor: '#4DA6FF',
+  },
+  teamRole: {
+    fontSize: 10,
+    color: '#FFFFFF',
+    fontWeight: '700',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  advisersSection: {
+    marginTop: 16,
+  },
+  advisersSectionTitle: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#6B7C61',
+    marginBottom: 12,
+    textAlign: 'center',
+    letterSpacing: 1,
+    textTransform: 'uppercase',
+  },
+  adviserCompact: {
+    marginBottom: 12,
+  },
+  adviserLabel: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#FF9800',
+    marginBottom: 8,
+    textAlign: 'center',
+    letterSpacing: 1,
+    textTransform: 'uppercase',
+  },
+  technicalAdviserLabel: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#4DA6FF',
+    marginBottom: 8,
+    textAlign: 'center',
+    letterSpacing: 1,
+    textTransform: 'uppercase',
+  },
+  techGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  techChip: {
+    backgroundColor: 'rgba(255, 255, 255, 0.9)',
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+    borderRadius: 20,
+    borderWidth: 1.5,
+    borderColor: '#7BA05B',
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+  },
+  techChipText: {
+    fontSize: 11,
+    color: '#6B7C61',
+    fontWeight: '700',
+  },
+  disclaimerCompact: {
+    backgroundColor: 'rgba(255, 243, 224, 0.95)',
+    padding: 14,
+    borderRadius: 12,
+    marginBottom: 16,
+    flexDirection: 'row',
+    gap: 10,
+    borderWidth: 2,
+    borderColor: '#FFB74D',
+  },
+  disclaimerContent: {
+    flex: 1,
+  },
+  disclaimerTitle: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#D84315',
+    marginBottom: 4,
+  },
+  disclaimerText: {
+    fontSize: 12,
+    color: '#555',
+    lineHeight: 18,
+  },
+  contactCompact: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    paddingVertical: 12,
+    paddingHorizontal: 14,
+    backgroundColor: 'rgba(255, 255, 255, 0.9)',
+    borderRadius: 12,
+    borderWidth: 2,
+    borderColor: '#7BA05B',
+    marginBottom: 16,
+  },
   contactText: {
-    fontSize: 14.5,
+    fontSize: 13,
     color: '#6B7C61',
     fontWeight: '700',
     flex: 1,
   },
   footer: {
-    paddingVertical: 45,
+    paddingVertical: 20,
     borderTopWidth: 2,
     borderTopColor: '#E8E4DE',
     alignItems: 'center',
     backgroundColor: 'rgba(245, 243, 239, 0.95)',
-    borderRadius: 20,
-    marginTop: 10,
+    borderRadius: 12,
   },
   footerText: {
-    fontSize: 13,
+    fontSize: 12,
     color: '#6B7C61',
-    marginTop: 16,
-    marginBottom: 6,
     fontWeight: '700',
+    marginBottom: 4,
   },
   footerSubtext: {
-    fontSize: 12,
+    fontSize: 11,
     color: '#999',
     fontWeight: '500',
-    marginBottom: 10,
-  },
-  footerEmoji: {
-    fontSize: 16,
-    marginTop: 8,
   },
 });
