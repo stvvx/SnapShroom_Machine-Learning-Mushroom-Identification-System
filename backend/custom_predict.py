@@ -19,6 +19,19 @@ DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 IMAGE_SIZE = 224
 
 
+class MushroomDetector(nn.Module):
+    """Binary classifier: Mushroom or Not Mushroom"""
+    
+    def __init__(self):
+        super(MushroomDetector, self).__init__()
+        self.backbone = models.resnet50(pretrained=False)
+        num_features = self.backbone.fc.in_features
+        self.backbone.fc = nn.Linear(num_features, 2)  # Binary: not mushroom, mushroom
+    
+    def forward(self, x):
+        return self.backbone(x)
+
+
 class MushroomClassifier(nn.Module):
     """ResNet50-based mushroom classifier"""
     
@@ -33,30 +46,52 @@ class MushroomClassifier(nn.Module):
 
 
 class CustomMushroomPredictor:
-    """Custom mushroom classification predictor"""
+    """Two-stage mushroom prediction: Detection -> Classification"""
     
-    def __init__(self, model_path: str = "models/mushroom_classifier.pth", 
+    def __init__(self, 
+                 detector_path: str = "models/mushroom_detector.pth",
+                 classifier_path: str = "models/mushroom_classifier.pth", 
                  classes_path: str = "models/mushroom_classes.json"):
         """
-        Initialize predictor with trained model.
+        Initialize predictor with both detector and classifier models.
         
         Args:
-            model_path: Path to trained model weights
+            detector_path: Path to binary mushroom detector model
+            classifier_path: Path to multi-class classifier model
             classes_path: Path to classes JSON file
         """
-        self.model_path = model_path
-        self.classes_path = classes_path
-        self.model = None
+        # Resolve paths relative to this script's directory (backend/)
+        script_dir = os.path.dirname(os.path.abspath(__file__))
+        self.detector_path = os.path.join(script_dir, detector_path)
+        self.classifier_path = os.path.join(script_dir, classifier_path)
+        self.classes_path = os.path.join(script_dir, classes_path)
+        self.detector = None
+        self.classifier = None
         self.classes = None
         self.device = DEVICE
         
-        self._load_model()
+        self._load_detector()
+        self._load_classifier()
         self._load_classes()
+    
+    def _load_detector(self):
+        """Load the binary mushroom detector"""
+        if not os.path.exists(self.detector_path):
+            print(f"[WARN] Detector not found: {self.detector_path}")
+            print(f"       Run: python train_mushroom_detector.py")
+            return
         
-    def _load_model(self):
-        """Load the trained model"""
-        if not os.path.exists(self.model_path):
-            raise FileNotFoundError(f"Model not found: {self.model_path}")
+        self.detector = MushroomDetector()
+        self.detector.load_state_dict(torch.load(self.detector_path, map_location=self.device))
+        self.detector.to(self.device)
+        self.detector.eval()
+        
+        print(f"[OK] Detector loaded: {self.detector_path}")
+    
+    def _load_classifier(self):
+        """Load the multi-class mushroom classifier"""
+        if not os.path.exists(self.classifier_path):
+            raise FileNotFoundError(f"Classifier not found: {self.classifier_path}")
         
         # Load classes first to know num_classes
         if not os.path.exists(self.classes_path):
@@ -67,14 +102,13 @@ class CustomMushroomPredictor:
         
         num_classes = len(classes_dict['classes'])
         
-        # Initialize model
-        self.model = MushroomClassifier(num_classes=num_classes)
-        self.model.load_state_dict(torch.load(self.model_path, map_location=self.device))
-        self.model.to(self.device)
-        self.model.eval()
+        # Initialize classifier
+        self.classifier = MushroomClassifier(num_classes=num_classes)
+        self.classifier.load_state_dict(torch.load(self.classifier_path, map_location=self.device))
+        self.classifier.to(self.device)
+        self.classifier.eval()
         
-        print(f"✅ Model loaded: {self.model_path}")
-    
+        print(f"[OK] Classifier loaded: {self.classifier_path}")
     def _load_classes(self):
         """Load class names"""
         if not os.path.exists(self.classes_path):
@@ -87,7 +121,7 @@ class CustomMushroomPredictor:
         self.class_to_id = classes_dict['class_to_id']
         self.id_to_class = classes_dict['id_to_class']
         
-        print(f"✅ Classes loaded: {len(self.classes)} mushroom types")
+        print(f"[OK] Classes loaded: {len(self.classes)} mushroom types")
     
     def _preprocess_image(self, image_input) -> torch.Tensor:
         """
@@ -136,53 +170,36 @@ class CustomMushroomPredictor:
     
     def predict(self, image_input) -> Dict:
         """
-        Predict mushroom class from image.
+        Two-stage prediction: Detect mushroom, then classify.
         
         Args:
             image_input: Base64 string, numpy array, or PIL Image
             
         Returns:
-            Dict with prediction results
+            Dict with detection + classification results
         """
         try:
             # Preprocess image
             image_tensor = self._preprocess_image(image_input)
             
-            # Get prediction
-            with torch.no_grad():
-                outputs = self.model(image_tensor)
-                probabilities = torch.nn.functional.softmax(outputs, dim=1)
-                confidence, class_idx = torch.max(probabilities, 1)
+            # ============ STAGE 1: DETECT MUSHROOM ============
+            detection_result = self._detect_mushroom(image_tensor)
             
-            class_idx = class_idx.item()
-            confidence = confidence.item()
-            class_name = self.classes[class_idx]
-            
-            # Get top 3 predictions
-            top_probs, top_indices = torch.topk(probabilities[0], min(3, len(self.classes)))
-            top_predictions = [
-                {
-                    "class": self.classes[idx.item()],
-                    "confidence": prob.item()
+            if not detection_result["found"]:
+                return {
+                    "success": True,
+                    "detection": detection_result,
+                    "classification": None,
+                    "message": "No mushroom detected in image"
                 }
-                for prob, idx in zip(top_probs, top_indices)
-            ]
             
-            # Determine edibility based on CSV data
-            edibility = self._get_edibility(class_name)
+            # ============ STAGE 2: CLASSIFY MUSHROOM ============
+            classification_result = self._classify_mushroom(image_tensor)
             
             return {
                 "success": True,
-                "detection": {
-                    "found": True,
-                    "confidence": round(confidence, 3)
-                },
-                "classification": {
-                    "label": class_name,
-                    "confidence": round(confidence, 3),
-                    "top_predictions": top_predictions,
-                    "toxicity_level": "SAFE" if edibility else "DANGEROUS"
-                }
+                "detection": detection_result,
+                "classification": classification_result
             }
         
         except Exception as e:
@@ -190,6 +207,74 @@ class CustomMushroomPredictor:
                 "success": False,
                 "error": str(e)
             }
+    
+    def _detect_mushroom(self, image_tensor: torch.Tensor) -> Dict:
+        """
+        Stage 1: Detect if image contains a mushroom
+        
+        Returns:
+            Dict with detection confidence
+        """
+        if self.detector is None:
+            return {
+                "found": True,  # Assume mushroom if detector not available
+                "confidence": 0.0,
+                "warning": "Detector not loaded, assuming mushroom"
+            }
+        
+        with torch.no_grad():
+            outputs = self.detector(image_tensor)
+            probabilities = torch.nn.functional.softmax(outputs, dim=1)
+            confidence, class_idx = torch.max(probabilities, 1)
+        
+        class_idx = class_idx.item()
+        confidence = confidence.item()
+        
+        # class_idx 0 = not mushroom, 1 = mushroom
+        is_mushroom = class_idx == 1
+        
+        return {
+            "found": is_mushroom,
+            "confidence": round(confidence, 3),
+            "prediction": "Mushroom" if is_mushroom else "Not a Mushroom"
+        }
+    
+    def _classify_mushroom(self, image_tensor: torch.Tensor) -> Dict:
+        """
+        Stage 2: Classify mushroom type
+        
+        Returns:
+            Dict with classification results
+        """
+        with torch.no_grad():
+            outputs = self.classifier(image_tensor)
+            probabilities = torch.nn.functional.softmax(outputs, dim=1)
+            confidence, class_idx = torch.max(probabilities, 1)
+        
+        class_idx = class_idx.item()
+        confidence = confidence.item()
+        class_name = self.classes[class_idx]
+        
+        # Get top 3 predictions
+        top_probs, top_indices = torch.topk(probabilities[0], min(3, len(self.classes)))
+        top_predictions = [
+            {
+                "class": self.classes[idx.item()],
+                "confidence": round(prob.item(), 3)
+            }
+            for prob, idx in zip(top_probs, top_indices)
+        ]
+        
+        # Determine edibility based on CSV data
+        edibility = self._get_edibility(class_name)
+        
+        return {
+            "label": class_name,
+            "confidence": round(confidence, 3),
+            "top_predictions": top_predictions,
+            "toxicity_level": "SAFE" if edibility else "DANGEROUS",
+            "edible": edibility
+        }
     
     def _get_edibility(self, mushroom_name: str) -> bool:
         """
@@ -203,16 +288,31 @@ class CustomMushroomPredictor:
         """
         # Load CSV to check edibility
         import pandas as pd
+        import os
         
         try:
-            df = pd.read_csv("mushrooms10kinds.csv")
-            row = df[df['english_name'] == mushroom_name]
+            # Try multiple possible locations
+            possible_paths = [
+                "frontend/mushrooms10kinds.csv",
+                "../frontend/mushrooms10kinds.csv",
+                "mushrooms10kinds.csv"
+            ]
             
-            if not row.empty:
-                return bool(row.iloc[0]['edible'])
+            csv_path = None
+            for path in possible_paths:
+                if os.path.exists(path):
+                    csv_path = path
+                    break
+            
+            if csv_path:
+                df = pd.read_csv(csv_path)
+                row = df[df['english_name'] == mushroom_name]
+                
+                if not row.empty:
+                    return bool(row.iloc[0]['edible'])
         
         except Exception as e:
-            print(f"⚠️ Could not determine edibility: {e}")
+            print(f"Could not determine edibility: {e}")
         
         return False
 

@@ -54,9 +54,10 @@ def create_app(config_name="development"):
     # ==================================================
     allowed_origins = [
         "http://localhost:8081",
-        "http://127.0.0.1:8081",
-        "http://192.168.1.12:8081",
-        "https://ruthie-unablative-amiya.ngrok-free.dev"
+        "http://192.168.1.102:8081",
+        "http://192.168.1.102:8081",
+        "https://ruthie-unablative-amiya.ngrok-free.dev",
+        "https://eastwardly-retreatal-kerstin.ngrok-free.dev"
     ]
     
     CORS(
@@ -95,10 +96,10 @@ def create_app(config_name="development"):
     with app.app_context():
         try:
             mongo.db.command("ping")
-            print("✅ MongoDB connected")
+            print("[OK] MongoDB connected")
             init_database(mongo.db)
         except Exception as e:
-            print("⚠️ MongoDB warning:", e)
+            print("[WARN] MongoDB warning:", e)
 
     # ==================================================
     # FOLDERS
@@ -110,6 +111,7 @@ def create_app(config_name="development"):
         "logs",
     ]:
         os.makedirs(folder, exist_ok=True)
+        print(f"[OK] Folder {folder} ready")
 
     # ==================================================
     # BLUEPRINTS
@@ -152,7 +154,7 @@ def create_app(config_name="development"):
     def server_error(e):
         return jsonify({"error": "Server Error", "detail": str(e)}), 500
 
-    print("✅ SnapShroom API initialized")
+    print("[OK] SnapShroom API initialized")
     return app
 
 
@@ -169,7 +171,7 @@ def init_database(db):
     users.create_index("password")
     users.create_index("created_at")
 
-    print("✅ Database ready")
+    print("[OK] Database ready")
 
 
 # ==================================================
@@ -179,23 +181,31 @@ def register_blueprints(app):
     try:
         from routes.auth_routes import auth_bp
         app.register_blueprint(auth_bp, url_prefix="/api/auth")
-        print("✅ Auth routes loaded")
+        print("[OK] Auth routes loaded")
     except Exception as e:
-        print("⚠️ Blueprint error:", e)
+        print("[WARN] Blueprint error:", e)
     
     try:
         from routes.admin_routes import admin_bp
         app.register_blueprint(admin_bp, url_prefix="/api/admin")
-        print("✅ Admin routes loaded")
+        print("[OK] Admin routes loaded")
     except Exception as e:
-        print("⚠️ Admin blueprint error:", e)
+        print("[WARN] Admin blueprint error:", e)
     
     try:
+        print("[...] Loading toxicity routes...")
+        import sys
+        sys.stdout.flush()
         from routes.toxicity_routes_custom import toxicity_bp
         app.register_blueprint(toxicity_bp, url_prefix="/api/toxicity")
-        print("✅ Toxicity/Detection routes loaded (Custom Model)")
+        print("[OK] Toxicity/Detection routes loaded (Custom Model)")
+        sys.stdout.flush()
     except Exception as e:
-        print("⚠️ Toxicity blueprint error:", e)
+        print("[WARN] Toxicity blueprint error:", e)
+        import traceback
+        traceback.print_exc()
+        import sys
+        sys.stdout.flush()
 
 
 # ==================================================

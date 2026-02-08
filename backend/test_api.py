@@ -9,10 +9,15 @@ import base64
 from PIL import Image
 import io
 
+# API Configuration
+API_URL = "http://localhost:5000"
+# For ngrok forwarding, use:
+# API_URL = "https://eastwardly-retreatal-kerstin.ngrok-free.dev"
+
 def test_home_endpoint():
     """Test the home endpoint."""
     try:
-        response = requests.get('http://127.0.0.1:5000/')
+        response = requests.get(f'{API_URL}/')
         print(f"Home endpoint: {response.status_code}")
         if response.status_code == 200:
             data = response.json()
@@ -26,7 +31,7 @@ def test_home_endpoint():
 def test_dataset_info():
     """Test dataset info endpoint."""
     try:
-        response = requests.get('http://127.0.0.1:5000/api/dataset/info')
+        response = requests.get(f'{API_URL}/api/dataset/info')
         print(f"Dataset info: {response.status_code}")
         if response.status_code == 200:
             data = response.json()
@@ -40,7 +45,7 @@ def test_dataset_info():
 def test_species_list():
     """Test species list endpoint."""
     try:
-        response = requests.get('http://127.0.0.1:5000/api/dataset/species')
+        response = requests.get(f'{API_URL}/api/dataset/species')
         print(f"Species list: {response.status_code}")
         if response.status_code == 200:
             data = response.json()
@@ -85,7 +90,7 @@ def test_prediction_endpoint():
         }
 
         response = requests.post(
-            'http://127.0.0.1:5000/api/toxicity/predict',
+            f'{API_URL}/api/toxicity/predict',
             json=payload,
             timeout=30
         )

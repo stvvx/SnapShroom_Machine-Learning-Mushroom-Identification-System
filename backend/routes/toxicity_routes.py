@@ -12,6 +12,64 @@ from utils.json_encoder import safe_jsonify, make_json_serializable
 
 toxicity_bp = Blueprint("toxicity", __name__)
 
+@toxicity_bp.route("/check-mushroom", methods=["POST"])
+def check_mushroom_presence():
+    """
+    Quick check if image contains any mushroom.
+    Returns: {exists: true/false, confidence: 0-1, message: string}
+    """
+    try:
+        # Handle image
+        image = None
+        if 'image' in request.files:
+            image_file = request.files['image']
+            image = Image.open(image_file.stream)
+        elif request.json and 'image_base64' in request.json:
+            try:
+                image_base64 = request.json['image_base64']
+                if ',' in image_base64:
+                    image_base64 = image_base64.split(',')[1]
+                image_data = base64.b64decode(image_base64)
+                image = Image.open(io.BytesIO(image_data))
+            except Exception as e:
+                return jsonify({"error": f"Invalid image data: {str(e)}"}), 400
+        else:
+            return jsonify({"error": "No image provided. Send 'image' file or 'image_base64' in JSON."}), 400
+        
+        if image is None:
+            return jsonify({"error": "Failed to load image"}), 400
+
+        # Quick detection check
+        try:
+            detection_result = toxicity_detector.detect_toxicity(image)
+            
+            # Check if mushroom was detected
+            detected = detection_result.get('detected', False)
+            confidence = detection_result.get('confidence', 0)
+            
+            # Get count if available
+            count = detection_result.get('mushroom_count', 0 if not detected else 1)
+            
+            return safe_jsonify({
+                "exists": detected,
+                "confidence": float(confidence),
+                "count": count,
+                "message": f"Found {count} mushroom(s)" if detected else "No mushroom detected in image"
+            })
+            
+        except Exception as e:
+            print(f"Detection error: {str(e)}")
+            return safe_jsonify({
+                "exists": False,
+                "confidence": 0,
+                "count": 0,
+                "message": "Detection unavailable"
+            }), 500
+            
+    except Exception as e:
+        print(f"Check mushroom error: {str(e)}")
+        return jsonify({"error": str(e)}), 500
+
 @toxicity_bp.route("/detect", methods=["POST"])
 def detect_toxicity():
     """

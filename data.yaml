@@ -1,9 +1,0 @@
-path: .
-train: train/images
-val: valid/images
-test: test/images
-
-names:
-  0: mushroom_type_1
-  1: mushroom_type_2
-  2: mushroom_type_3

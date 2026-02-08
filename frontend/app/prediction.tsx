@@ -10,12 +10,23 @@ import {
   ActivityIndicator,
   Dimensions,
   Modal,
-  WebView,
-  Platform,  
+  Platform,
 } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { analyzeMushroom } from '@/utils/api';
+import { generateMushroomLocationMap } from '@/utils/map-generator';
+import { getMushroomLocations } from '@/utils/mushroom-locations';
+
+// Conditionally import WebView only for native platforms
+let WebView: any = null;
+if (Platform.OS !== 'web') {
+  try {
+    WebView = require('react-native-webview').WebView;
+  } catch (e) {
+    console.warn('WebView not available');
+  }
+}
 
 const { width } = Dimensions.get('window');
 
@@ -62,39 +73,23 @@ interface BackendClassification {
   toxicity_level?: string;
 }
 
+interface BackendDetection {
+  found?: boolean;
+  confidence?: number;
+  prediction?: string;
+}
+
 interface BackendResult {
+  detection?: BackendDetection;
   classification?: BackendClassification;
+  success?: boolean;
+  message?: string;
   [key: string]: any;
 }
 
-// Location coordinates for Philippine regions and provinces
-const LOCATION_COORDINATES: { [key: string]: { lat: number; lng: number; name: string } } = {
-  'region 1': { lat: 16.6, lng: 120.5, name: 'Region 1 (Ilocos)' },
-  'region 2': { lat: 16.79, lng: 121.74, name: 'Region 2 (Cagayan Valley)' },
-  'region 3': { lat: 14.87, lng: 121.77, name: 'Region 3 (Central Luzon)' },
-  'region 4a': { lat: 13.94, lng: 121.87, name: 'Region 4A (CALABARZON)' },
-  'region 4b': { lat: 13.6, lng: 122.5, name: 'Region 4B (MIMAROPA)' },
-  'region 5': { lat: 13.15, lng: 123.75, name: 'Region 5 (Bicol)' },
-  'region 6': { lat: 10.69, lng: 122.56, name: 'Region 6 (Western Visayas)' },
-  'region 7': { lat: 10.32, lng: 123.98, name: 'Region 7 (Central Visayas)' },
-  'region 8': { lat: 11.24, lng: 124.99, name: 'Region 8 (Eastern Visayas)' },
-  'region 9': { lat: 8.67, lng: 123.72, name: 'Region 9 (Zamboanga Peninsula)' },
-  'region 10': { lat: 8.67, lng: 125.03, name: 'Region 10 (Northern Mindanao)' },
-  'region 11': { lat: 7.1, lng: 125.6, name: 'Region 11 (Davao)' },
-  'region 12': { lat: 6.11, lng: 124.59, name: 'Region 12 (SOCCSKSARGEN)' },
-  'car': { lat: 16.41, lng: 120.89, name: 'CAR (Cordillera)' },
-  'ncr': { lat: 14.6, lng: 121.0, name: 'NCR (Metro Manila)' },
-  'bangui': { lat: 18.55, lng: 121.95, name: 'Ilocos Norte' },
-  'pangasinan': { lat: 15.82, lng: 120.37, name: 'Pangasinan' },
-  'isabela': { lat: 16.84, lng: 121.77, name: 'Isabela' },
-  'cavite': { lat: 14.35, lng: 120.90, name: 'Cavite' },
-  'laguna': { lat: 14.00, lng: 121.43, name: 'Laguna' },
-  'rizal': { lat: 14.65, lng: 121.32, name: 'Rizal' },
-  'quezon': { lat: 14.27, lng: 121.95, name: 'Quezon' },
-  'iloilo': { lat: 10.69, lng: 122.56, name: 'Iloilo' },
-  'benguet': { lat: 16.41, lng: 120.89, name: 'Benguet' },
-  'manila': { lat: 14.60, lng: 120.97, name: 'Manila' },
-};
+interface DetectionStatus extends BackendDetection {
+  message?: string;
+}
 
 export default function PredictionScreen() {
   const { imageUri, imageBase64, cloudinaryUrl } = useLocalSearchParams();
@@ -105,6 +100,7 @@ export default function PredictionScreen() {
   const [mushroomData, setMushroomData] = useState<MushroomData | null>(null);
   const [showMap, setShowMap] = useState(false);
   const [mapHtml, setMapHtml] = useState<string>('');
+  const [detectionStatus, setDetectionStatus] = useState<DetectionStatus | null>(null);
   
   // Ensure URLs are strings (useLocalSearchParams can return string or string[])
   const normalizeUrl = (url: string | string[] | undefined): string | undefined => {
@@ -412,132 +408,18 @@ export default function PredictionScreen() {
   const generateMap = () => {
     if (!mushroomData) return;
 
-    // Get coordinates for region and province
-    const regionKey = mushroomData.location_region.toLowerCase();
-    const provinceKey = mushroomData.location_province.toLowerCase();
+    // Get the mushroom species name
+    const mushroomName = mushroomData.english_name || mushroomData.scientific_name || 'Unknown Mushroom';
 
-    const regionCoords = LOCATION_COORDINATES[regionKey];
-    const provinceCoords = LOCATION_COORDINATES[provinceKey];
+    // Get global locations for this mushroom species
+    const locations = getMushroomLocations(mushroomName);
 
-    // Use province coordinates if available, otherwise use region
-    const coords = provinceCoords || regionCoords || { lat: 12.8797, lng: 121.7740, name: 'Philippines' };
-
-    // Create HTML with Plotly map
-    const html = `
-      <!DOCTYPE html>
-      <html>
-      <head>
-        <meta charset="utf-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
-        <style>
-          body {
-            margin: 0;
-            padding: 0;
-            font-family: Arial, sans-serif;
-            background-color: #f5f5f5;
-          }
-          #map {
-            width: 100%;
-            height: 100vh;
-          }
-          .info-panel {
-            position: absolute;
-            top: 10px;
-            left: 10px;
-            background: white;
-            padding: 15px;
-            border-radius: 8px;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.15);
-            z-index: 1000;
-            max-width: 300px;
-          }
-          .info-panel h3 {
-            margin: 0 0 10px 0;
-            color: #2E7D32;
-          }
-          .info-panel p {
-            margin: 5px 0;
-            font-size: 14px;
-            color: #666;
-          }
-          .location-badge {
-            background: #4CAF50;
-            color: white;
-            padding: 5px 10px;
-            border-radius: 4px;
-            font-size: 12px;
-            margin-top: 10px;
-            display: inline-block;
-          }
-        </style>
-      </head>
-      <body>
-        <div class="info-panel">
-          <h3>${mushroomData.english_name}</h3>
-          <p><strong>Region:</strong> ${mushroomData.location_region}</p>
-          <p><strong>Province:</strong> ${mushroomData.location_province}</p>
-          <p><strong>Habitat:</strong> ${mushroomData.habitat}</p>
-          <div class="location-badge">${coords.name}</div>
-        </div>
-        <div id="map"></div>
-        <script>
-          // Create map data
-          var data = [{
-            type: 'scattergeo',
-            lat: [${coords.lat}],
-            lon: [${coords.lng}],
-            mode: 'markers',
-            marker: {
-              size: 15,
-              color: '${mushroomData.poisonous === 'TRUE' ? '#F44336' : '#4CAF50'}',
-              opacity: 0.8,
-              line: {
-                color: 'white',
-                width: 2
-              }
-            },
-            text: ['${coords.name}<br>${mushroomData.english_name}'],
-            hoverinfo: 'text'
-          }];
-
-          var layout = {
-            title: {
-              text: '${mushroomData.english_name} - Geographic Location',
-              font: { size: 18, color: '#333' }
-            },
-            geo: {
-              scope: 'asia',
-              center: { lat: 12, lon: 121 },
-              projection: { type: 'mercator' },
-              showland: true,
-              landcolor: '#e5e3df',
-              coastcolor: '#bfbfbf',
-              showocean: true,
-              oceancolor: '#e0f0ff',
-              showlakes: true,
-              lakecolor: '#d4f1f9',
-              coastlinewidth: 1,
-              countrywidth: 1,
-              showcountries: true
-            },
-            margin: { l: 0, r: 0, t: 50, b: 0 },
-            paper_bgcolor: '#f5f5f5',
-            font: { family: 'Arial, sans-serif' }
-          };
-
-          var config = {
-            responsive: true,
-            displayModeBar: true,
-            displaylogo: false,
-            modeBarButtonsToRemove: ['select2d', 'lasso2d']
-          };
-
-          Plotly.newPlot('map', data, layout, config);
-        </script>
-      </body>
-      </html>
-    `;
+    // Generate appropriate map based on platform
+    const html = generateMushroomLocationMap(
+      mushroomName,
+      locations,
+      Platform.OS === 'web'
+    );
 
     setMapHtml(html);
   };
@@ -546,6 +428,7 @@ export default function PredictionScreen() {
     try {
       setIsAnalyzing(true);
       setError(null);
+      setDetectionStatus(null);
 
       // Clean base64 string (remove data URI prefix if present)
       let cleanBase64 = normalizedImageBase64 || '';
@@ -571,6 +454,30 @@ export default function PredictionScreen() {
       });
 
       console.log('Analysis result received:', backendResult);
+
+      // Check if mushroom was detected
+      const detection = backendResult?.detection;
+      const mushroomDetected = detection?.found !== false; // Default to true if not specified
+      const detectionMessage = backendResult?.message;
+
+      if (!mushroomDetected) {
+        setDetectionStatus({
+          found: false,
+          confidence: detection?.confidence,
+          prediction: detection?.prediction,
+          message: detectionMessage || 'No mushroom detected in the image. Please try again with a clearer photo of the mushroom.'
+        });
+        setResult(null);
+        setMushroomData(null);
+        return;
+      }
+
+      setDetectionStatus({
+        found: true,
+        confidence: detection?.confidence,
+        prediction: detection?.prediction,
+        message: detectionMessage || 'Mushroom detected in the image.'
+      });
 
       const classification = backendResult?.classification;
       const label = classification?.label || 'Unknown';
@@ -655,6 +562,35 @@ export default function PredictionScreen() {
     }
   };
 
+  const SafeComponent = ({ component }: { component: React.ReactNode }) => {
+    if (!component) return null;
+    return component;
+  };
+
+  const renderDetectionSummary = () => {
+    if (!detectionStatus || !detectionStatus.found) return null;
+
+    return (
+      <View style={styles.section}>
+        <View style={styles.sectionHeader}>
+          <Ionicons name="search" size={24} color="#2E7D32" />
+          <Text style={styles.sectionTitle}>Detection Result</Text>
+        </View>
+
+        <View style={styles.detectionCard}>
+          <Text style={styles.detectionStatusText}>
+            {detectionStatus.message || 'Mushroom detected'}
+          </Text>
+          {typeof detectionStatus.confidence === 'number' && (
+            <Text style={styles.detectionConfidence}>
+              Confidence: {Math.round(detectionStatus.confidence * 100)}%
+            </Text>
+          )}
+        </View>
+      </View>
+    );
+  };
+
   const renderRiskAssessment = () => {
     if (!result?.risk_assessment) return null;
 
@@ -675,12 +611,14 @@ export default function PredictionScreen() {
             Risk Score: {risk.overall_risk_score}/100
           </Text>
 
-          {risk.risk_factors.length > 0 && (
+          {risk.risk_factors && risk.risk_factors.length > 0 && (
             <View style={styles.factorsList}>
               <Text style={styles.factorsTitle}>Risk Factors:</Text>
-              {risk.risk_factors.map((factor: string, index: number) => (
-                <Text key={index} style={styles.factorText}>• {factor}</Text>
-              ))}
+              {risk.risk_factors
+                .filter((factor: string) => factor && typeof factor === 'string' && factor.trim().length > 0)
+                .map((factor: string, index: number) => (
+                  <Text key={index} style={styles.factorText}>• {factor.trim()}</Text>
+                ))}
             </View>
           )}
         </View>
@@ -701,6 +639,12 @@ export default function PredictionScreen() {
         </View>
 
         <View style={styles.speciesCard}>
+          {/* Detection Status Badge */}
+          <View style={styles.detectionBadge}>
+            <Ionicons name="checkmark-circle" size={20} color="#4CAF50" />
+            <Text style={styles.detectionText}>Mushroom Detected</Text>
+          </View>
+
           <Text style={styles.speciesName}>
             {species.english_name || species.species}
           </Text>
@@ -801,6 +745,12 @@ export default function PredictionScreen() {
   const renderRecommendations = () => {
     if (!result?.recommendations?.length) return null;
 
+    const validRecommendations = result.recommendations.filter(
+      (rec: string) => rec && typeof rec === 'string' && rec.trim().length > 0
+    );
+
+    if (!validRecommendations.length) return null;
+
     return (
       <View style={styles.section}>
         <View style={styles.sectionHeader}>
@@ -809,9 +759,9 @@ export default function PredictionScreen() {
         </View>
 
         <View style={styles.recommendationsList}>
-          {result.recommendations.map((rec: string, index: number) => (
+          {validRecommendations.map((rec: string, index: number) => (
             <View key={index} style={styles.recommendationItem}>
-              <Text style={styles.recommendationText}>{rec}</Text>
+              <Text style={styles.recommendationText}>{rec.trim()}</Text>
             </View>
           ))}
         </View>
@@ -822,6 +772,12 @@ export default function PredictionScreen() {
   const renderSafetyActions = () => {
     if (!result?.safety_actions?.length) return null;
 
+    const validActions = result.safety_actions.filter(
+      (action: string) => action && typeof action === 'string' && action.trim().length > 0
+    );
+
+    if (!validActions.length) return null;
+
     return (
       <View style={styles.section}>
         <View style={styles.sectionHeader}>
@@ -830,10 +786,10 @@ export default function PredictionScreen() {
         </View>
 
         <View style={styles.safetyList}>
-          {result.safety_actions.map((action: string, index: number) => (
+          {validActions.map((action: string, index: number) => (
             <View key={index} style={styles.safetyItem}>
               <Ionicons name="shield-checkmark" size={16} color="#F44336" />
-              <Text style={styles.safetyText}>{action}</Text>
+              <Text style={styles.safetyText}>{action.trim()}</Text>
             </View>
           ))}
         </View>
@@ -1021,6 +977,40 @@ export default function PredictionScreen() {
     );
   }
 
+  if (detectionStatus && detectionStatus.found === false) {
+    return (
+      <View style={styles.noDetectionContainer}>
+        <Ionicons name="search-circle" size={80} color="#FF9800" />
+        <Text style={styles.noDetectionTitle}>No Mushroom Detected</Text>
+        <Text style={styles.noDetectionText}>
+          {detectionStatus.message || 'Please capture a closer, clearer image of the mushroom.'}
+        </Text>
+        {typeof detectionStatus.confidence === 'number' && (
+          <Text style={styles.noDetectionConfidence}>
+            Detector confidence: {Math.round(detectionStatus.confidence * 100)}%
+          </Text>
+        )}
+
+        <View style={styles.noDetectionActions}>
+          <TouchableOpacity
+            style={styles.primaryButton}
+            onPress={() => router.push('/camera')}
+          >
+            <Ionicons name="camera" size={20} color="white" />
+            <Text style={styles.primaryButtonText}>Retake Photo</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.secondaryButton}
+            onPress={() => router.back()}
+          >
+            <Text style={styles.secondaryButtonText}>Go Back</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+    );
+  }
+
   return (
     <>
       <ScrollView style={styles.container}>
@@ -1033,12 +1023,13 @@ export default function PredictionScreen() {
         )}
 
         {/* Analysis Results */}
-        {renderRiskAssessment()}
-        {renderSpeciesInfo()}
-        {renderToxicityInfo()}
-        {renderMushroomDetails()}
-        {renderRecommendations()}
-        {renderSafetyActions()}
+        <SafeComponent component={renderDetectionSummary()} />
+        <SafeComponent component={renderRiskAssessment()} />
+        <SafeComponent component={renderSpeciesInfo()} />
+        <SafeComponent component={renderToxicityInfo()} />
+        <SafeComponent component={renderMushroomDetails()} />
+        <SafeComponent component={renderRecommendations()} />
+        <SafeComponent component={renderSafetyActions()} />
 
         {/* Action Buttons */}
         <View style={styles.actionButtons}>
@@ -1059,37 +1050,66 @@ export default function PredictionScreen() {
         </View>
       </ScrollView>
 
-      {/* Map Modal */}
-      <Modal
-        visible={showMap}
-        animationType="slide"
-        onRequestClose={() => setShowMap(false)}
-      >
-        <View style={styles.mapContainer}>
-          <View style={styles.mapHeader}>
-            <Text style={styles.mapTitle}>Mushroom Location Map</Text>
-            <TouchableOpacity
-              onPress={() => setShowMap(false)}
-              style={styles.closeMapButton}
-            >
-              <Ionicons name="close" size={28} color="white" />
-            </TouchableOpacity>
-          </View>
-
-          {mapHtml ? (
-            <WebView
-              source={{ html: mapHtml }}
-              style={styles.webView}
-              scrollEnabled={true}
-            />
-          ) : (
-            <View style={styles.mapLoadingContainer}>
-              <ActivityIndicator size="large" color="#4CAF50" />
-              <Text style={styles.mapLoadingText}>Loading map...</Text>
+      {/* Map Modal - Native */}
+      {Platform.OS !== 'web' && (
+        <Modal
+          visible={showMap}
+          animationType="slide"
+          onRequestClose={() => setShowMap(false)}
+        >
+          <View style={styles.mapContainer}>
+            <View style={styles.mapHeader}>
+              <Text style={styles.mapTitle}>Mushroom Location Map</Text>
+              <TouchableOpacity
+                onPress={() => setShowMap(false)}
+                style={styles.closeMapButton}
+              >
+                <Ionicons name="close" size={28} color="white" />
+              </TouchableOpacity>
             </View>
-          )}
-        </View>
-      </Modal>
+
+            {WebView && mapHtml ? (
+              <WebView
+                source={{ html: mapHtml }}
+                style={styles.webView}
+                scrollEnabled={true}
+              />
+            ) : (
+              <View style={styles.mapLoadingContainer}>
+                <ActivityIndicator size="large" color="#4CAF50" />
+                <Text style={styles.mapLoadingText}>Loading map...</Text>
+              </View>
+            )}
+          </View>
+        </Modal>
+      )}
+
+      {/* Map Modal - Web */}
+      {Platform.OS === 'web' && showMap && mapHtml && (
+        <Modal
+          visible={showMap}
+          animationType="fade"
+          onRequestClose={() => setShowMap(false)}
+        >
+          <View style={styles.mapContainer}>
+            <View style={styles.mapHeader}>
+              <Text style={styles.mapTitle}>Mushroom Location Map</Text>
+              <TouchableOpacity
+                onPress={() => setShowMap(false)}
+                style={styles.closeMapButton}
+              >
+                <Ionicons name="close" size={28} color="white" />
+              </TouchableOpacity>
+            </View>
+            <View style={{ flex: 1, overflow: 'hidden' }}>
+              <iframe
+                srcDoc={mapHtml}
+                style={{ width: '100%', height: '100%', border: 'none' }}
+              />
+            </View>
+          </View>
+        </Modal>
+      )}
     </>
   );
 }
@@ -1123,6 +1143,13 @@ const styles = StyleSheet.create({
     backgroundColor: '#F5F5F5',
     padding: 20,
   },
+  noDetectionContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#F5F5F5',
+    padding: 20,
+  },
   errorTitle: {
     fontSize: 24,
     fontWeight: 'bold',
@@ -1140,6 +1167,29 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     marginTop: 30,
     gap: 15,
+  },
+  noDetectionTitle: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: '#333',
+    marginTop: 20,
+    marginBottom: 10,
+  },
+  noDetectionText: {
+    fontSize: 16,
+    color: '#666',
+    textAlign: 'center',
+    lineHeight: 24,
+  },
+  noDetectionConfidence: {
+    fontSize: 14,
+    color: '#333',
+    marginTop: 12,
+  },
+  noDetectionActions: {
+    width: '100%',
+    marginTop: 30,
+    gap: 10,
   },
   retryButton: {
     backgroundColor: '#4CAF50',
@@ -1239,6 +1289,36 @@ const styles = StyleSheet.create({
     backgroundColor: '#F8F9FA',
     borderRadius: 8,
     padding: 15,
+  },
+  detectionCard: {
+    backgroundColor: '#E8F5E9',
+    borderRadius: 10,
+    padding: 15,
+  },
+  detectionStatusText: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#2E7D32',
+    marginBottom: 6,
+  },
+  detectionConfidence: {
+    fontSize: 14,
+    color: '#2E7D32',
+  },
+  detectionBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#E8F5E9',
+    padding: 8,
+    borderRadius: 6,
+    marginBottom: 12,
+    alignSelf: 'flex-start',
+  },
+  detectionText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#2E7D32',
+    marginLeft: 6,
   },
   speciesName: {
     fontSize: 20,
@@ -1465,7 +1545,6 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     backgroundColor: '#2196F3',
-    paddingTop: 12,
     paddingBottom: 12,
     paddingHorizontal: 15,
     paddingTop: Platform.OS === 'ios' ? 50 : 12,

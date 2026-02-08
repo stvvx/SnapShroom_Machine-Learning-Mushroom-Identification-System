@@ -1,0 +1,13 @@
+train: train/images
+val: valid/images
+test: test/images
+
+names: 
+  0: Button Mushroom
+  1: Enoki Mushroom
+  2: Funeral Bell
+  3: Jack O Lantern Mushroom
+  4: Red Cage Fungus
+  5: Shiitake Mushroom
+  6: White Oyster Mushroom
+  7: Wood Ear Mushroom

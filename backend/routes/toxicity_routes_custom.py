@@ -3,24 +3,46 @@ Custom Mushroom Classification Routes
 Uses locally trained PyTorch model
 """
 
+import sys
+import os
+
+print("[ROUTE] 1. Starting toxicity routes import...", file=sys.stderr, flush=True)
+
 from flask import Blueprint, request, jsonify
 from datetime import datetime
-from custom_predict import create_predictor
 import logging
+
+print("[ROUTE] 2. Imported Flask...", file=sys.stderr, flush=True)
+
+from custom_predict import create_predictor
+
+print("[ROUTE] 3. Importing create_predictor...", file=sys.stderr, flush=True)
 
 # Setup logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
+print("[ROUTE] 4. Created blueprint...", file=sys.stderr, flush=True)
+
 toxicity_bp = Blueprint('toxicity_custom', __name__)
+
+print("[ROUTE] 5. Starting predictor initialization...", file=sys.stderr, flush=True)
 
 # Initialize predictor
 try:
+    print("[ROUTE] 6. Creating predictor instance...", file=sys.stderr, flush=True)
     predictor = create_predictor()
-    logger.info("✅ Custom Mushroom Predictor initialized")
+    print("[ROUTE] 7. Predictor created successfully!", file=sys.stderr, flush=True)
+    logger.info("[OK] Custom Mushroom Predictor initialized")
 except Exception as e:
-    logger.error(f"❌ Failed to initialize predictor: {e}")
+    print(f"[ROUTE] ERROR creating predictor: {e}", file=sys.stderr, flush=True)
+    logger.error(f"[ERROR] Failed to initialize predictor: {e}")
+    import traceback
+    traceback.print_exc(file=sys.stderr)
+    logger.error(f"Full traceback: {traceback.format_exc()}")
     predictor = None
+
+print("[ROUTE] 8. Finished predictor initialization", file=sys.stderr, flush=True)
 
 
 @toxicity_bp.route('/predict', methods=['POST'])
@@ -78,7 +100,16 @@ def predict_mushroom():
         
         # Log result
         if result.get("success"):
-            logger.info(f"✅ Prediction successful: {result['classification']['label']}")
+            detection = result.get('detection', {})
+            classification = result.get('classification')
+            
+            if detection.get('found'):
+                if classification:
+                    logger.info(f"✅ Mushroom detected & classified: {classification['label']}")
+                else:
+                    logger.info(f"✅ Mushroom detected (confidence: {detection['confidence']})")
+            else:
+                logger.info(f"⚠️ No mushroom detected in image (confidence: {detection['confidence']})")
         else:
             logger.error(f"❌ Prediction failed: {result.get('error')}")
         
@@ -113,13 +144,22 @@ def service_info():
     
     return jsonify({
         "configured": True,
-        "service": "Custom PyTorch Classifier",
-        "model": "ResNet50",
-        "num_classes": len(predictor.classes),
-        "classes": predictor.classes,
-        "model_path": predictor.model_path,
+        "service": "🍄 Two-Stage Mushroom Detector + Classifier",
+        "stage_1": {
+            "name": "Mushroom Detection",
+            "model": "ResNet50 (Binary Classification)",
+            "path": "models/mushroom_detector.pth",
+            "output": "Mushroom or Not Mushroom"
+        },
+        "stage_2": {
+            "name": "Mushroom Classification",
+            "model": "ResNet50 (Multi-class)",
+            "path": "models/mushroom_classifier.pth",
+            "num_classes": len(predictor.classes),
+            "classes": predictor.classes
+        },
         "device": str(predictor.device),
-        "note": "Trained on your custom mushroom dataset (mushroom10kinds)"
+        "note": "Trained on Roboflow dataset with 8 mushroom types"
     }), 200
 
 
