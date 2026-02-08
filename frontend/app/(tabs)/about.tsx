@@ -1,5 +1,6 @@
 import React, { useEffect, useRef } from 'react';
 import { ScrollView, View, Text, StyleSheet, Image, Linking, TouchableOpacity, Animated } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import HamburgerMenu from '@/components/HamburgerMenu';
 
@@ -197,28 +198,43 @@ function MushroomBackground() {
 export default function AboutPage() {
   return (
     <View style={styles.container}>
+      {/* Gradient Background */}
+      <LinearGradient
+        colors={['#F5F9F3', '#FDFCFA', '#FCF8F3']}
+        style={styles.gradientBackground}
+      />
+      
       {/* Mushroom Background Pattern */}
       <MushroomBackground />
 
       {/* Header with Hamburger Menu */}
-      <View style={styles.header}>
+      <LinearGradient
+        colors={['rgba(200, 220, 192, 0.95)', 'rgba(185, 210, 175, 0.92)']}
+        style={styles.header}
+      >
         <HamburgerMenu />
         <Text style={styles.headerTitle}>About SnapShroom</Text>
         <View style={{ width: 40 }} />
-      </View>
+      </LinearGradient>
 
       <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
-        {/* Compact Hero Section */}
-        <View style={styles.heroSection}>
+        {/* Enhanced Hero Section */}
+        <LinearGradient
+          colors={['#7BA05B', '#6A8F4D', '#5A7E40']}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={styles.heroSection}
+        >
+          <View style={styles.heroGlow} />
           <View style={styles.logoContainer}>
-            <AnimatedMushroom size={55} />
+            <AnimatedMushroom size={60} />
           </View>
           <View style={styles.heroText}>
             <Text style={styles.appTitle}>SnapShroom</Text>
-            <Text style={styles.appVersion}>v1.0.0</Text>
+            <Text style={styles.appVersion}>Version 1.0.0</Text>
             <Text style={styles.tagline}>🍄 Your AI-Powered Mushroom Companion</Text>
           </View>
-        </View>
+        </LinearGradient>
 
         {/* Description */}
         <View style={styles.descriptionCard}>
@@ -334,11 +350,44 @@ export default function AboutPage() {
 }
 
 function FeatureCard({ icon, title, color }: { icon: string; title: string; color: string }) {
+  const shimmer = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(shimmer, {
+          toValue: 1,
+          duration: 2000,
+          useNativeDriver: true,
+        }),
+        Animated.timing(shimmer, {
+          toValue: 0,
+          duration: 2000,
+          useNativeDriver: true,
+        }),
+      ])
+    ).start();
+  }, []);
+
+  const shimmerTranslate = shimmer.interpolate({
+    inputRange: [0, 1],
+    outputRange: [-100, 100],
+  });
+
   return (
     <View style={styles.featureCard}>
-      <View style={[styles.featureIcon, { backgroundColor: color }]}>
-        <Ionicons name={icon as any} size={22} color="#FFFFFF" />
-      </View>
+      <LinearGradient
+        colors={[color, color + 'DD', color]}
+        style={styles.featureIcon}
+      >
+        <Ionicons name={icon as any} size={24} color="#FFFFFF" />
+        <Animated.View 
+          style={[
+            styles.shimmerEffect,
+            { transform: [{ translateX: shimmerTranslate }] }
+          ]} 
+        />
+      </LinearGradient>
       <Text style={styles.featureCardTitle}>{title}</Text>
     </View>
   );
@@ -420,12 +469,20 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#FDFCFA',
   },
+  gradientBackground: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    top: 0,
+    bottom: 0,
+    zIndex: 0,
+  },
   backgroundContainer: {
     position: 'absolute',
     width: '100%',
     height: '100%',
-    zIndex: 0,
-    opacity: 0.12,
+    zIndex: 1,
+    opacity: 0.08,
   },
   mushroomCluster1: {
     position: 'absolute',
@@ -576,182 +633,222 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    backgroundColor: 'rgba(255, 255, 255, 0.95)',
-    paddingVertical: 14,
+    paddingVertical: 16,
     paddingHorizontal: 16,
     marginTop: 40,
-    borderBottomWidth: 1,
-    borderBottomColor: '#E8E4DE',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 3,
-    elevation: 2,
+    borderBottomWidth: 2,
+    borderBottomColor: 'rgba(123, 160, 91, 0.15)',
+    shadowColor: '#7BA05B',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.12,
+    shadowRadius: 8,
+    elevation: 5,
     zIndex: 10,
   },
   headerTitle: {
-    fontSize: 19,
-    fontWeight: '700',
+    fontSize: 20,
+    fontWeight: '800',
     color: '#2D3E2D',
     flex: 1,
     textAlign: 'center',
+    letterSpacing: 0.5,
   },
   content: {
     flex: 1,
     padding: 16,
-    zIndex: 1,
+    zIndex: 2,
   },
   heroSection: {
     flexDirection: 'row',
     alignItems: 'center',
+    borderRadius: 20,
+    padding: 20,
+    marginBottom: 20,
+    shadowColor: '#7BA05B',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.25,
+    shadowRadius: 12,
+    elevation: 8,
+    overflow: 'hidden',
+  },
+  heroGlow: {
+    position: 'absolute',
+    top: -50,
+    right: -50,
+    width: 150,
+    height: 150,
+    borderRadius: 75,
+    backgroundColor: 'rgba(255,255,255,0.15)',
+    opacity: 0.6,
+  },
+  logoContainer: {
+    width: 100,
+    height: 100,
+    borderRadius: 50,
     backgroundColor: 'rgba(255, 255, 255, 0.95)',
-    borderRadius: 16,
-    padding: 16,
-    marginBottom: 16,
-    borderWidth: 2,
-    borderColor: '#7BA05B',
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 4,
+    borderColor: 'rgba(255, 255, 255, 0.5)',
+    marginRight: 18,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.2,
+    shadowRadius: 6,
+    elevation: 4,
+  },
+  heroText: {
+    flex: 1,
+  },
+  appTitle: {
+    fontSize: 32,
+    fontWeight: '900',
+    color: '#FFFFFF',
+    letterSpacing: 0.8,
+    marginBottom: 4,
+    textShadowColor: 'rgba(0, 0, 0, 0.25)',
+    textShadowOffset: { width: 0, height: 2 },
+    textShadowRadius: 4,
+  },
+  appVersion: {
+    fontSize: 13,
+    color: 'rgba(255, 255, 255, 0.85)',
+    fontWeight: '600',
+    marginBottom: 6,
+  },
+  tagline: {
+    fontSize: 14,
+    color: 'rgba(255, 255, 255, 0.95)',
+    fontWeight: '600',
+    fontStyle: 'italic',
+    lineHeight: 20,
+  },
+  descriptionCard: {
+    backgroundColor: 'rgba(255, 255, 255, 0.95)',
+    borderRadius: 18,
+    padding: 18,
+    marginBottom: 20,
+    borderLeftWidth: 5,
+    borderLeftColor: '#7BA05B',
     shadowColor: '#7BA05B',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.15,
     shadowRadius: 8,
     elevation: 5,
   },
-  logoContainer: {
-    width: 90,
-    height: 90,
-    borderRadius: 45,
-    backgroundColor: '#F5F3EF',
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderWidth: 3,
-    borderColor: '#7BA05B',
-    marginRight: 16,
-  },
-  heroText: {
-    flex: 1,
-  },
-  appTitle: {
-    fontSize: 28,
-    fontWeight: '800',
-    color: '#2D3E2D',
-    letterSpacing: 0.5,
-    marginBottom: 2,
-  },
-  appVersion: {
-    fontSize: 12,
-    color: '#999',
-    fontWeight: '500',
-    marginBottom: 4,
-  },
-  tagline: {
-    fontSize: 13,
-    color: '#7BA05B',
-    fontWeight: '600',
-    fontStyle: 'italic',
-  },
-  descriptionCard: {
-    backgroundColor: 'rgba(255, 255, 255, 0.9)',
-    borderRadius: 14,
-    padding: 14,
-    marginBottom: 16,
-    borderLeftWidth: 4,
-    borderLeftColor: '#7BA05B',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.08,
-    shadowRadius: 4,
-    elevation: 3,
-  },
   cardHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
-    marginBottom: 8,
+    gap: 8,
+    marginBottom: 10,
   },
   cardHeaderText: {
-    fontSize: 15,
-    fontWeight: '700',
+    fontSize: 16,
+    fontWeight: '800',
     color: '#6B7C61',
+    letterSpacing: 0.3,
   },
   descriptionText: {
-    fontSize: 13,
+    fontSize: 14,
     color: '#555',
-    lineHeight: 20,
+    lineHeight: 22,
     fontWeight: '500',
   },
   featuresGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 10,
-    marginBottom: 16,
+    gap: 12,
+    marginBottom: 20,
   },
   featureCard: {
     flex: 1,
     minWidth: '47%',
-    backgroundColor: 'rgba(255, 255, 255, 0.9)',
-    borderRadius: 12,
-    padding: 12,
+    backgroundColor: 'rgba(255, 255, 255, 0.95)',
+    borderRadius: 16,
+    padding: 16,
     alignItems: 'center',
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.08,
-    shadowRadius: 3,
-    elevation: 3,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.12,
+    shadowRadius: 8,
+    elevation: 5,
+    borderWidth: 1,
+    borderColor: 'rgba(123, 160, 91, 0.1)',
   },
   featureIcon: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
+    width: 56,
+    height: 56,
+    borderRadius: 28,
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: 8,
-  },
-  featureCardTitle: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: '#2D3E2D',
-    textAlign: 'center',
-  },
-  vmCompactContainer: {
-    gap: 12,
-    marginBottom: 16,
-  },
-  vmCompactCard: {
-    backgroundColor: 'rgba(255, 255, 255, 0.9)',
-    borderRadius: 14,
-    padding: 16,
-    flexDirection: 'column',
-    gap: 12,
-    borderWidth: 2,
-    borderColor: '#E8E4DE',
+    marginBottom: 12,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.08,
+    shadowOpacity: 0.2,
     shadowRadius: 4,
     elevation: 3,
+    overflow: 'hidden',
+  },
+  shimmerEffect: {
+    position: 'absolute',
+    width: 30,
+    height: '100%',
+    backgroundColor: 'rgba(255,255,255,0.3)',
+    transform: [{ skewX: '-20deg' }],
+  },
+  featureCardTitle: {
+    fontSize: 13,
+    fontWeight: '800',
+    color: '#2D3E2D',
+    textAlign: 'center',
+    letterSpacing: 0.3,
+  },
+  vmCompactContainer: {
+    gap: 16,
+    marginBottom: 20,
+  },
+  vmCompactCard: {
+    backgroundColor: 'rgba(255, 255, 255, 0.95)',
+    borderRadius: 20,
+    padding: 20,
+    flexDirection: 'column',
+    gap: 14,
+    borderWidth: 2,
+    borderColor: 'rgba(123, 160, 91, 0.2)',
+    shadowColor: '#7BA05B',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 8,
+    elevation: 5,
   },
   vmCompactIcon: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
+    width: 56,
+    height: 56,
+    borderRadius: 28,
     justifyContent: 'center',
     alignItems: 'center',
     alignSelf: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.2,
+    shadowRadius: 6,
+    elevation: 4,
   },
   vmCompactContent: {
     flex: 1,
   },
   vmCompactTitle: {
-    fontSize: 17,
-    fontWeight: '700',
+    fontSize: 19,
+    fontWeight: '800',
     color: '#2D3E2D',
-    marginBottom: 8,
+    marginBottom: 10,
     textAlign: 'center',
+    letterSpacing: 0.5,
   },
   vmCompactText: {
-    fontSize: 13,
+    fontSize: 14,
     color: '#555',
-    lineHeight: 21,
+    lineHeight: 22,
     textAlign: 'justify',
   },
   section: {
@@ -773,26 +870,32 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   teamCompactCard: {
-    backgroundColor: 'rgba(255, 255, 255, 0.9)',
-    borderRadius: 12,
-    padding: 12,
+    backgroundColor: 'rgba(255, 255, 255, 0.95)',
+    borderRadius: 16,
+    padding: 14,
     flexDirection: 'row',
-    gap: 12,
+    gap: 14,
     borderWidth: 2,
-    borderColor: '#E8E4DE',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.08,
-    shadowRadius: 4,
-    elevation: 3,
+    borderColor: 'rgba(123, 160, 91, 0.2)',
+    shadowColor: '#7BA05B',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.12,
+    shadowRadius: 8,
+    elevation: 4,
   },
   adviserCardCompact: {
-    backgroundColor: 'rgba(255, 248, 240, 0.95)',
+    backgroundColor: 'rgba(255, 248, 240, 0.98)',
     borderColor: '#FFB74D',
+    borderWidth: 3,
+    shadowColor: '#FFB74D',
+    shadowOpacity: 0.2,
   },
   technicalAdviserCardCompact: {
-    backgroundColor: 'rgba(240, 248, 255, 0.95)',
+    backgroundColor: 'rgba(240, 248, 255, 0.98)',
     borderColor: '#4DA6FF',
+    borderWidth: 3,
+    shadowColor: '#4DA6FF',
+    shadowOpacity: 0.2,
   },
   teamImageContainer: {
     width: 70,
@@ -903,14 +1006,19 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
   disclaimerCompact: {
-    backgroundColor: 'rgba(255, 243, 224, 0.95)',
-    padding: 14,
-    borderRadius: 12,
-    marginBottom: 16,
+    backgroundColor: 'rgba(255, 243, 224, 0.98)',
+    padding: 18,
+    borderRadius: 16,
+    marginBottom: 20,
     flexDirection: 'row',
-    gap: 10,
-    borderWidth: 2,
+    gap: 12,
+    borderWidth: 3,
     borderColor: '#FFB74D',
+    shadowColor: '#FF9800',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
+    elevation: 5,
   },
   disclaimerContent: {
     flex: 1,

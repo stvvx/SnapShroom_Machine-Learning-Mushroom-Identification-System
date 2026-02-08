@@ -9,8 +9,10 @@ import {
   Dimensions,
   ScrollView,
   Image,
+  Animated,
 } from 'react-native';
 import { Camera, CameraView } from 'expo-camera';
+import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { Ionicons } from '@expo/vector-icons';
@@ -60,6 +62,54 @@ export default function CameraScreen() {
   const [showExamples, setShowExamples] = useState(true);
   const cameraRef = useRef<CameraView>(null);
   const router = useRouter();
+  
+  // Animations
+  const pulseAnim = useRef(new Animated.Value(1)).current;
+  const scanLineAnim = useRef(new Animated.Value(0)).current;
+  const cornerAnim = useRef(new Animated.Value(1)).current;
+
+  useEffect(() => {
+    // Pulse animation for capture button
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(pulseAnim, {
+          toValue: 1.1,
+          duration: 1000,
+          useNativeDriver: true,
+        }),
+        Animated.timing(pulseAnim, {
+          toValue: 1,
+          duration: 1000,
+          useNativeDriver: true,
+        }),
+      ])
+    ).start();
+
+    // Scan line animation
+    Animated.loop(
+      Animated.timing(scanLineAnim, {
+        toValue: 1,
+        duration: 2000,
+        useNativeDriver: true,
+      })
+    ).start();
+
+    // Corner pulse animation
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(cornerAnim, {
+          toValue: 0.7,
+          duration: 800,
+          useNativeDriver: true,
+        }),
+        Animated.timing(cornerAnim, {
+          toValue: 1,
+          duration: 800,
+          useNativeDriver: true,
+        }),
+      ])
+    ).start();
+  }, []);
 
   // Request camera permission on mount
   useEffect(() => {
@@ -309,10 +359,21 @@ export default function CameraScreen() {
 
       {showExamples ? (
         // Mushroom Examples View
-        <View style={styles.examplesContainer}>
-          <View style={styles.examplesHeader}>
+        <LinearGradient
+          colors={['#0A1A0F', '#0F1F0F', '#1A2D1A']}
+          style={styles.examplesContainer}
+        >
+          <LinearGradient
+            colors={['rgba(123, 160, 91, 0.15)', 'rgba(15, 31, 15, 0.95)']}
+            style={styles.examplesHeader}
+          >
             <TouchableOpacity onPress={() => router.back()} style={styles.headerButton}>
-              <Ionicons name="arrow-back" size={26} color="#7BA05B" />
+              <LinearGradient
+                colors={['rgba(123, 160, 91, 0.3)', 'rgba(123, 160, 91, 0.15)']}
+                style={styles.headerButtonGradient}
+              >
+                <Ionicons name="arrow-back" size={26} color="#7BA05B" />
+              </LinearGradient>
             </TouchableOpacity>
             <View style={styles.headerTitleContainer}>
               <Ionicons name="leaf" size={24} color="#7BA05B" />
@@ -322,9 +383,14 @@ export default function CameraScreen() {
               onPress={() => setShowExamples(false)} 
               style={styles.headerButton}
             >
-              <Ionicons name="camera" size={26} color="#7BA05B" />
+              <LinearGradient
+                colors={['rgba(123, 160, 91, 0.4)', 'rgba(123, 160, 91, 0.2)']}
+                style={styles.headerButtonGradient}
+              >
+                <Ionicons name="camera" size={26} color="#7BA05B" />
+              </LinearGradient>
             </TouchableOpacity>
-          </View>
+          </LinearGradient>
 
           <ScrollView style={styles.examplesScroll} showsVerticalScrollIndicator={false}>
             {/* Guide Section */}
@@ -398,18 +464,25 @@ export default function CameraScreen() {
 
             {/* Start Button */}
             <TouchableOpacity
-              style={styles.startCameraButton}
+              style={styles.startCameraButtonContainer}
               onPress={() => setShowExamples(false)}
               activeOpacity={0.8}
             >
-              <Ionicons name="camera" size={24} color="white" />
-              <Text style={styles.startCameraButtonText}>Start Capturing</Text>
-              <View style={styles.buttonArrow}>
-                <Ionicons name="arrow-forward" size={20} color="white" />
-              </View>
+              <LinearGradient
+                colors={['#7BA05B', '#6A8F4D', '#5A7E40']}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+                style={styles.startCameraButton}
+              >
+                <Ionicons name="camera" size={26} color="white" />
+                <Text style={styles.startCameraButtonText}>Start Capturing</Text>
+                <View style={styles.buttonArrow}>
+                  <Ionicons name="arrow-forward" size={22} color="white" />
+                </View>
+              </LinearGradient>
             </TouchableOpacity>
           </ScrollView>
-        </View>
+        </LinearGradient>
       ) : (
         // Camera View
         <View style={styles.cameraContainer}>
@@ -421,78 +494,129 @@ export default function CameraScreen() {
           />
           <View style={styles.overlay}>
             {/* Top bar */}
-            <View style={styles.topBar}>
+            <LinearGradient
+              colors={['rgba(0, 0, 0, 0.6)', 'rgba(0, 0, 0, 0.3)', 'transparent']}
+              style={styles.topBar}
+            >
               <TouchableOpacity
                 style={styles.backButton}
                 onPress={() => router.back()}
               >
-                <Ionicons name="arrow-back" size={28} color="white" />
+                <LinearGradient
+                  colors={['rgba(0,0,0,0.7)', 'rgba(0,0,0,0.5)']}
+                  style={styles.buttonGradient}
+                >
+                  <Ionicons name="arrow-back" size={28} color="white" />
+                </LinearGradient>
               </TouchableOpacity>
               <View style={styles.titleContainer}>
-                <Ionicons name="leaf" size={24} color="#7BA05B" />
+                <Ionicons name="leaf" size={26} color="#7BA05B" />
                 <Text style={styles.titleText}>SnapShroom</Text>
               </View>
               <TouchableOpacity
                 style={styles.tipsButton}
                 onPress={() => setShowExamples(true)}
               >
-                <Ionicons name="help-circle" size={28} color="white" />
+                <LinearGradient
+                  colors={['rgba(123, 160, 91, 0.7)', 'rgba(123, 160, 91, 0.5)']}
+                  style={styles.buttonGradient}
+                >
+                  <Ionicons name="help-circle" size={28} color="white" />
+                </LinearGradient>
               </TouchableOpacity>
-            </View>
+            </LinearGradient>
 
             {/* Center targeting guide */}
             <View style={styles.targetingGuide}>
               <View style={styles.targetSquare}>
-                <View style={styles.cornerTL} />
-                <View style={styles.cornerTR} />
-                <View style={styles.cornerBL} />
-                <View style={styles.cornerBR} />
-                <Ionicons name="leaf" size={48} color="rgba(123, 160, 91, 0.6)" style={{ marginBottom: 12 }} />
+                {/* Animated corners */}
+                <Animated.View style={[styles.cornerTL, { opacity: cornerAnim }]} />
+                <Animated.View style={[styles.cornerTR, { opacity: cornerAnim }]} />
+                <Animated.View style={[styles.cornerBL, { opacity: cornerAnim }]} />
+                <Animated.View style={[styles.cornerBR, { opacity: cornerAnim }]} />
+                
+                {/* Scanning line effect */}
+                <Animated.View
+                  style={[
+                    styles.scanLine,
+                    {
+                      transform: [{
+                        translateY: scanLineAnim.interpolate({
+                          inputRange: [0, 1],
+                          outputRange: [-120, 120],
+                        }),
+                      }],
+                    },
+                  ]}
+                />
+                
+                <Ionicons name="leaf" size={52} color="rgba(123, 160, 91, 0.7)" style={{ marginBottom: 14, zIndex: 2 }} />
                 <Text style={styles.guideText}>Center the mushroom</Text>
+                <Text style={styles.guideSubtext}>Fill the frame for best results</Text>
               </View>
             </View>
 
             {/* Bottom controls */}
-            <View style={styles.bottomBar}>
+            <LinearGradient
+              colors={['transparent', 'rgba(0, 0, 0, 0.4)', 'rgba(0, 0, 0, 0.7)']}
+              style={styles.bottomBar}
+            >
               <View style={styles.instructions}>
-                <View style={styles.instructionItem}>
-                  <Ionicons name="sunny" size={16} color="#FFD700" />
-                  <Text style={styles.instructionText}>Good lighting</Text>
-                </View>
-                <View style={styles.instructionItem}>
-                  <Ionicons name="eye" size={16} color="#7BA05B" />
-                  <Text style={styles.instructionText}>Clear focus</Text>
-                </View>
-                <View style={styles.instructionItem}>
-                  <Ionicons name="leaf" size={16} color="#4DA6FF" />
-                  <Text style={styles.instructionText}>Full specimen</Text>
-                </View>
+                <LinearGradient
+                  colors={['rgba(0,0,0,0.8)', 'rgba(0,0,0,0.6)']}
+                  style={styles.instructionsGradient}
+                >
+                  <View style={styles.instructionItem}>
+                    <Ionicons name="sunny" size={16} color="#FFD700" />
+                    <Text style={styles.instructionText}>Good lighting</Text>
+                  </View>
+                  <View style={styles.instructionItem}>
+                    <Ionicons name="eye" size={16} color="#7BA05B" />
+                    <Text style={styles.instructionText}>Clear focus</Text>
+                  </View>
+                  <View style={styles.instructionItem}>
+                    <Ionicons name="leaf" size={16} color="#4DA6FF" />
+                    <Text style={styles.instructionText}>Full specimen</Text>
+                  </View>
+                </LinearGradient>
               </View>
 
-              <TouchableOpacity
-                style={[styles.captureButton, isLoading && styles.captureButtonDisabled]}
-                onPress={takePicture}
-                disabled={isLoading}
-              >
-                {isLoading ? (
-                  <View style={styles.loadingContainer}>
-                    <ActivityIndicator size="large" color="white" />
-                    <Text style={styles.loadingButtonText}>Processing...</Text>
-                  </View>
-                ) : (
-                  <View style={styles.captureButtonInner}>
-                    <Ionicons name="camera" size={36} color="white" />
-                  </View>
-                )}
-              </TouchableOpacity>
+              <Animated.View style={{ transform: [{ scale: isLoading ? 1 : pulseAnim }] }}>
+                <TouchableOpacity
+                  style={[styles.captureButton, isLoading && styles.captureButtonDisabled]}
+                  onPress={takePicture}
+                  disabled={isLoading}
+                >
+                  <LinearGradient
+                    colors={isLoading ? ['#556B4F', '#445A3F'] : ['#7BA05B', '#6A8F4D', '#5A7E40']}
+                    style={styles.captureButtonGradient}
+                  >
+                    {isLoading ? (
+                      <View style={styles.loadingContainer}>
+                        <ActivityIndicator size="large" color="white" />
+                        <Text style={styles.loadingButtonText}>Processing...</Text>
+                      </View>
+                    ) : (
+                      <View style={styles.captureButtonInner}>
+                        <Ionicons name="camera" size={40} color="white" />
+                      </View>
+                    )}
+                  </LinearGradient>
+                </TouchableOpacity>
+              </Animated.View>
 
               <View style={styles.captureHint}>
-                <Ionicons name="finger-up" size={16} color="white" />
-                <Text style={styles.hintText}>
-                  {isLoading ? 'Processing...' : 'Tap to capture'}
-                </Text>
+                <LinearGradient
+                  colors={['rgba(0,0,0,0.85)', 'rgba(0,0,0,0.7)']}
+                  style={styles.captureHintGradient}
+                >
+                  <Ionicons name="finger-print" size={16} color="white" />
+                  <Text style={styles.hintText}>
+                    {isLoading ? 'Processing...' : 'Tap to capture'}
+                  </Text>
+                </LinearGradient>
               </View>
-            </View>
+            </LinearGradient>
           </View>
         </View>
       )}
@@ -607,7 +731,6 @@ const styles = StyleSheet.create({
   // Examples View Styles
   examplesContainer: {
     flex: 1,
-    backgroundColor: '#0F1F0F',
     paddingTop: 40,
   },
   examplesHeader: {
@@ -615,20 +738,29 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     paddingHorizontal: 16,
-    paddingVertical: 16,
+    paddingVertical: 18,
     borderBottomWidth: 2,
-    borderBottomColor: '#1A2D1A',
-    backgroundColor: 'rgba(15, 31, 15, 0.95)',
+    borderBottomColor: 'rgba(123, 160, 91, 0.3)',
   },
   headerButton: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: 'rgba(123, 160, 91, 0.1)',
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    overflow: 'hidden',
+    shadowColor: '#7BA05B',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.3,
+    shadowRadius: 6,
+    elevation: 5,
+  },
+  headerButtonGradient: {
+    width: '100%',
+    height: '100%',
     justifyContent: 'center',
     alignItems: 'center',
     borderWidth: 1,
-    borderColor: 'rgba(123, 160, 91, 0.3)',
+    borderColor: 'rgba(123, 160, 91, 0.4)',
+    borderRadius: 24,
   },
   headerTitleContainer: {
     flexDirection: 'row',
@@ -636,9 +768,13 @@ const styles = StyleSheet.create({
     gap: 10,
   },
   examplesTitle: {
-    fontSize: 20,
-    fontWeight: '700',
+    fontSize: 22,
+    fontWeight: '800',
     color: '#E6F4FE',
+    letterSpacing: 0.5,
+    textShadowColor: 'rgba(0, 0, 0, 0.3)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 3,
   },
   examplesScroll: {
     flex: 1,
@@ -660,12 +796,17 @@ const styles = StyleSheet.create({
     color: '#A8B89D',
   },
   tipsContainer: {
-    gap: 14,
-    backgroundColor: 'rgba(123, 160, 91, 0.05)',
-    padding: 16,
-    borderRadius: 12,
-    borderLeftWidth: 4,
+    gap: 16,
+    backgroundColor: 'rgba(123, 160, 91, 0.08)',
+    padding: 18,
+    borderRadius: 16,
+    borderLeftWidth: 5,
     borderLeftColor: '#7BA05B',
+    shadowColor: '#7BA05B',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.2,
+    shadowRadius: 6,
+    elevation: 3,
   },
   tipItem: {
     flexDirection: 'row',
@@ -673,19 +814,21 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   tipIconContainer: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: 'rgba(123, 160, 91, 0.1)',
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: 'rgba(123, 160, 91, 0.15)',
     justifyContent: 'center',
     alignItems: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(123, 160, 91, 0.3)',
   },
   tipText: {
-    fontSize: 14,
+    fontSize: 15,
     color: '#C8D8C8',
     flex: 1,
-    lineHeight: 20,
-    fontWeight: '500',
+    lineHeight: 22,
+    fontWeight: '600',
   },
   examplesGrid: {
     marginBottom: 28,
@@ -704,16 +847,16 @@ const styles = StyleSheet.create({
   exampleCard: {
     flexDirection: 'row',
     backgroundColor: '#1A2D1A',
-    borderRadius: 14,
+    borderRadius: 18,
     overflow: 'hidden',
-    marginBottom: 14,
+    marginBottom: 16,
     borderWidth: 2,
-    borderColor: '#2D3E2D',
+    borderColor: 'rgba(123, 160, 91, 0.3)',
     shadowColor: '#7BA05B',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.15,
-    shadowRadius: 4,
-    elevation: 3,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.25,
+    shadowRadius: 8,
+    elevation: 5,
   },
   exampleImage: {
     width: 120,
@@ -725,10 +868,11 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   exampleTitle: {
-    fontSize: 16,
-    fontWeight: '700',
+    fontSize: 17,
+    fontWeight: '800',
     color: '#E6F4FE',
     marginBottom: 8,
+    letterSpacing: 0.3,
   },
   exampleTipContainer: {
     flexDirection: 'row',
@@ -740,25 +884,28 @@ const styles = StyleSheet.create({
     color: '#A8B89D',
     fontWeight: '500',
   },
+  startCameraButtonContainer: {
+    borderRadius: 16,
+    overflow: 'hidden',
+    marginBottom: 40,
+    shadowColor: '#7BA05B',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.4,
+    shadowRadius: 12,
+    elevation: 8,
+  },
   startCameraButton: {
-    backgroundColor: '#7BA05B',
     flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center',
-    paddingVertical: 16,
-    borderRadius: 12,
-    marginBottom: 40,
-    gap: 12,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 6,
+    paddingVertical: 18,
+    gap: 14,
   },
   startCameraButtonText: {
     color: 'white',
-    fontSize: 16,
-    fontWeight: '700',
+    fontSize: 17,
+    fontWeight: '800',
+    letterSpacing: 0.5,
   },
   buttonArrow: {
     marginLeft: 4,
@@ -781,18 +928,27 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingTop: 50,
     paddingHorizontal: 20,
-    paddingBottom: 20,
-    backgroundColor: 'rgba(0, 0, 0, 0.3)',
+    paddingBottom: 24,
   },
   backButton: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: 'rgba(0,0,0,0.6)',
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.4,
+    shadowRadius: 6,
+    elevation: 5,
+  },
+  buttonGradient: {
+    width: '100%',
+    height: '100%',
     justifyContent: 'center',
     alignItems: 'center',
     borderWidth: 1,
-    borderColor: 'rgba(123, 160, 91, 0.3)',
+    borderColor: 'rgba(123, 160, 91, 0.4)',
+    borderRadius: 24,
   },
   titleContainer: {
     flexDirection: 'row',
@@ -801,19 +957,23 @@ const styles = StyleSheet.create({
   },
   titleText: {
     color: 'white',
-    fontSize: 20,
-    fontWeight: '700',
-    letterSpacing: 0.5,
+    fontSize: 22,
+    fontWeight: '800',
+    letterSpacing: 0.8,
+    textShadowColor: 'rgba(0, 0, 0, 0.5)',
+    textShadowOffset: { width: 0, height: 2 },
+    textShadowRadius: 4,
   },
   tipsButton: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: 'rgba(123, 160, 91, 0.5)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: 'rgba(123, 160, 91, 0.6)',
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    overflow: 'hidden',
+    shadowColor: '#7BA05B',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.4,
+    shadowRadius: 6,
+    elevation: 5,
   },
   targetingGuide: {
     flex: 1,
@@ -821,83 +981,120 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   targetSquare: {
-    width: 240,
-    height: 240,
+    width: 260,
+    height: 260,
     borderWidth: 3,
-    borderColor: 'rgba(123, 160, 91, 0.7)',
-    borderRadius: 16,
+    borderColor: 'rgba(123, 160, 91, 0.6)',
+    borderRadius: 20,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: 'rgba(123, 160, 91, 0.05)',
+    backgroundColor: 'rgba(123, 160, 91, 0.08)',
     position: 'relative',
+    shadowColor: '#7BA05B',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 12,
+    elevation: 5,
+    overflow: 'hidden',
   },
   cornerTL: {
     position: 'absolute',
-    top: -6,
-    left: -6,
-    width: 30,
-    height: 30,
-    borderTopWidth: 3,
-    borderLeftWidth: 3,
+    top: -8,
+    left: -8,
+    width: 40,
+    height: 40,
+    borderTopWidth: 5,
+    borderLeftWidth: 5,
     borderColor: '#7BA05B',
-    borderTopLeftRadius: 4,
+    borderTopLeftRadius: 8,
   },
   cornerTR: {
     position: 'absolute',
-    top: -6,
-    right: -6,
-    width: 30,
-    height: 30,
-    borderTopWidth: 3,
-    borderRightWidth: 3,
+    top: -8,
+    right: -8,
+    width: 40,
+    height: 40,
+    borderTopWidth: 5,
+    borderRightWidth: 5,
     borderColor: '#7BA05B',
-    borderTopRightRadius: 4,
+    borderTopRightRadius: 8,
   },
   cornerBL: {
     position: 'absolute',
-    bottom: -6,
-    left: -6,
-    width: 30,
-    height: 30,
-    borderBottomWidth: 3,
-    borderLeftWidth: 3,
+    bottom: -8,
+    left: -8,
+    width: 40,
+    height: 40,
+    borderBottomWidth: 5,
+    borderLeftWidth: 5,
     borderColor: '#7BA05B',
-    borderBottomLeftRadius: 4,
+    borderBottomLeftRadius: 8,
   },
   cornerBR: {
     position: 'absolute',
-    bottom: -6,
-    right: -6,
-    width: 30,
-    height: 30,
-    borderBottomWidth: 3,
-    borderRightWidth: 3,
+    bottom: -8,
+    right: -8,
+    width: 40,
+    height: 40,
+    borderBottomWidth: 5,
+    borderRightWidth: 5,
     borderColor: '#7BA05B',
-    borderBottomRightRadius: 4,
+    borderBottomRightRadius: 8,
+  },
+  scanLine: {
+    position: 'absolute',
+    width: '100%',
+    height: 3,
+    backgroundColor: 'rgba(123, 160, 91, 0.6)',
+    shadowColor: '#7BA05B',
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.8,
+    shadowRadius: 8,
   },
   guideText: {
     color: 'white',
-    fontSize: 15,
+    fontSize: 16,
     textAlign: 'center',
-    fontWeight: '600',
+    fontWeight: '700',
+    letterSpacing: 0.5,
+    textShadowColor: 'rgba(0, 0, 0, 0.5)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 3,
+    zIndex: 2,
+  },
+  guideSubtext: {
+    color: 'rgba(255, 255, 255, 0.8)',
+    fontSize: 13,
+    textAlign: 'center',
+    fontWeight: '500',
+    marginTop: 4,
+    zIndex: 2,
   },
   bottomBar: {
     paddingBottom: 40,
     paddingHorizontal: 20,
+    paddingTop: 24,
     alignItems: 'center',
-    backgroundColor: 'rgba(0, 0, 0, 0.2)',
   },
   instructions: {
-    backgroundColor: 'rgba(0,0,0,0.7)',
+    borderRadius: 16,
+    marginBottom: 28,
+    width: '100%',
+    overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.4,
+    shadowRadius: 6,
+    elevation: 5,
+  },
+  instructionsGradient: {
     paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderRadius: 12,
-    marginBottom: 24,
+    paddingVertical: 14,
     flexDirection: 'row',
     justifyContent: 'space-around',
-    width: '100%',
     borderWidth: 1,
-    borderColor: 'rgba(123, 160, 91, 0.3)',
+    borderColor: 'rgba(123, 160, 91, 0.4)',
+    borderRadius: 16,
   },
   instructionItem: {
     flexDirection: 'row',
@@ -906,37 +1103,40 @@ const styles = StyleSheet.create({
   },
   instructionText: {
     color: 'white',
-    fontSize: 12,
-    fontWeight: '600',
+    fontSize: 13,
+    fontWeight: '700',
+    letterSpacing: 0.3,
   },
   captureButton: {
-    width: 90,
-    height: 90,
-    borderRadius: 45,
-    backgroundColor: '#7BA05B',
+    width: 100,
+    height: 100,
+    borderRadius: 50,
+    overflow: 'hidden',
+    marginBottom: 20,
+    shadowColor: '#7BA05B',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.5,
+    shadowRadius: 12,
+    elevation: 10,
+  },
+  captureButtonGradient: {
+    width: '100%',
+    height: '100%',
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: 16,
-    shadowColor: '#7BA05B',
-    shadowOffset: {
-      width: 0,
-      height: 4,
-    },
-    shadowOpacity: 0.4,
-    shadowRadius: 8,
-    elevation: 8,
-    borderWidth: 3,
-    borderColor: 'rgba(123, 160, 91, 0.3)',
+    borderWidth: 4,
+    borderColor: 'rgba(255, 255, 255, 0.3)',
+    borderRadius: 50,
   },
   captureButtonDisabled: {
     backgroundColor: '#556B4F',
     opacity: 0.6,
   },
   captureButtonInner: {
-    width: 78,
-    height: 78,
-    borderRadius: 39,
-    backgroundColor: 'rgba(255,255,255,0.15)',
+    width: 84,
+    height: 84,
+    borderRadius: 42,
+    backgroundColor: 'rgba(255,255,255,0.2)',
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -951,19 +1151,28 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   captureHint: {
-    backgroundColor: 'rgba(0,0,0,0.8)',
-    paddingHorizontal: 20,
-    paddingVertical: 10,
-    borderRadius: 24,
+    borderRadius: 28,
+    overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.4,
+    shadowRadius: 6,
+    elevation: 5,
+  },
+  captureHintGradient: {
+    paddingHorizontal: 24,
+    paddingVertical: 12,
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    gap: 10,
     borderWidth: 1,
-    borderColor: 'rgba(123, 160, 91, 0.4)',
+    borderColor: 'rgba(123, 160, 91, 0.5)',
+    borderRadius: 28,
   },
   hintText: {
     color: 'white',
-    fontSize: 14,
-    fontWeight: '600',
+    fontSize: 15,
+    fontWeight: '700',
+    letterSpacing: 0.3,
   },
 });

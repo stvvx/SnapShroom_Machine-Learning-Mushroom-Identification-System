@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { View, TouchableOpacity, Text, Modal, StyleSheet, ScrollView } from 'react-native';
+import React, { useState, useEffect, useRef } from 'react';
+import { View, TouchableOpacity, Text, Modal, StyleSheet, ScrollView, Animated } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { useAuth } from '@/contexts/AuthContext';
@@ -9,6 +9,24 @@ export default function HamburgerMenu() {
   const router = useRouter();
   const { user, logout } = useAuth();
   const isAdmin = user?.role === 'admin';
+  const slideAnim = useRef(new Animated.Value(-300)).current;
+
+  useEffect(() => {
+    if (menuOpen) {
+      Animated.spring(slideAnim, {
+        toValue: 0,
+        useNativeDriver: true,
+        tension: 65,
+        friction: 11,
+      }).start();
+    } else {
+      Animated.timing(slideAnim, {
+        toValue: -300,
+        duration: 250,
+        useNativeDriver: true,
+      }).start();
+    }
+  }, [menuOpen]);
 
   const handleNavigate = (route: string) => {
     setMenuOpen(false);
@@ -32,18 +50,25 @@ export default function HamburgerMenu() {
         style={styles.hamburgerButton}
         onPress={() => setMenuOpen(true)}
       >
-        <Ionicons name="menu" size={28} color="#E6F4FE" />
+        <Ionicons name="menu" size={28} color="#2D3E2D" />
       </TouchableOpacity>
 
       {/* Modal Menu */}
       <Modal
         visible={menuOpen}
         transparent
-        animationType="slide"
+        animationType="fade"
         onRequestClose={() => setMenuOpen(false)}
       >
         <View style={styles.modalOverlay}>
-          <View style={styles.menuContainer}>
+          <Animated.View 
+            style={[
+              styles.menuContainer,
+              {
+                transform: [{ translateX: slideAnim }],
+              },
+            ]}
+          >
             {/* Close Button */}
             <TouchableOpacity
               style={styles.closeButton}
@@ -93,7 +118,7 @@ export default function HamburgerMenu() {
                 <Text style={styles.userRole}>{user.role?.toUpperCase()}</Text>
               </View>
             )}
-          </View>
+          </Animated.View>
 
           {/* Tap outside to close */}
           <TouchableOpacity
@@ -114,6 +139,8 @@ const styles = StyleSheet.create({
   hamburgerButton: {
     padding: 10,
     zIndex: 10,
+    backgroundColor: 'rgba(123, 160, 91, 0.2)',
+    borderRadius: 8,
   },
   modalOverlay: {
     flex: 1,
