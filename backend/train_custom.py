@@ -23,8 +23,9 @@ DATASET_DIR = "datasets/mushroom_dataset"  # YOLO dataset folder
 DATA_YAML = os.path.join(DATASET_DIR, "data.yaml")
 MODEL_PATH = "models/mushroom_classifier.pth"
 CLASSES_PATH = "models/mushroom_classes.json"
+CHECKPOINT_PATH = "models/checkpoint.pth"  # Checkpoint for resuming
 BATCH_SIZE = 32
-EPOCHS = 20
+EPOCHS = 10
 LEARNING_RATE = 0.001
 IMAGE_SIZE = 224
 DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -208,10 +209,25 @@ def train_model():
     optimizer = optim.Adam(model.parameters(), lr=LEARNING_RATE)
     scheduler = optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode='min', factor=0.5, patience=3)
     
-    # Training loop
+    # Resume from checkpoint if exists
+    start_epoch = 0
     best_val_loss = float('inf')
     
-    for epoch in range(EPOCHS):
+    if os.path.exists(CHECKPOINT_PATH):
+        print(f"\n📂 Loading checkpoint from {CHECKPOINT_PATH}...")
+        checkpoint = torch.load(CHECKPOINT_PATH)
+        model.load_state_dict(checkpoint['model_state_dict'])
+        optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
+        start_epoch = checkpoint['epoch'] + 1
+        best_val_loss = checkpoint['best_val_loss']
+        print(f"✅ Resuming from epoch {start_epoch}/{EPOCHS}")
+        print(f"   Best validation loss so far: {best_val_loss:.4f}")
+    else:
+        print("\n🆕 Starting training from scratch...")
+    
+    # Training loop
+    
+    for epoch in range(start_epoch, EPOCHS):
         print(f"\n--- Epoch {epoch+1}/{EPOCHS} ---")
         
         # Training
@@ -269,11 +285,25 @@ def train_model():
         print(f"Train Loss: {train_loss:.4f} | Train Acc: {train_acc:.4f}")
         print(f"Val Loss: {val_loss:.4f} | Val Acc: {val_acc:.4f}")
         
+        # Save checkpoint after every epoch
+        checkpoint = {
+            'epoch': epoch,
+            'model_state_dict': model.state_dict(),
+            'optimizer_state_dict': optimizer.state_dict(),
+            'best_val_loss': best_val_loss,
+            'train_loss': train_loss,
+            'train_acc': train_acc,
+            'val_loss': val_loss,
+            'val_acc': val_acc
+        }
+        torch.save(checkpoint, CHECKPOINT_PATH)
+        print(f"💾 Checkpoint saved to {CHECKPOINT_PATH}")
+        
         # Save best model
         if val_loss < best_val_loss:
             best_val_loss = val_loss
             torch.save(model.state_dict(), MODEL_PATH)
-            print(f"✅ Model saved to {MODEL_PATH}")
+            print(f"✅ Best model saved to {MODEL_PATH}")
         
         scheduler.step(val_loss)
     
@@ -288,6 +318,12 @@ def train_model():
         json.dump(classes_dict, f, indent=2)
     
     print(f"\n✅ Classes saved to {CLASSES_PATH}")
+    
+    # Remove checkpoint after successful completion
+    if os.path.exists(CHECKPOINT_PATH):
+        os.remove(CHECKPOINT_PATH)
+        print(f"🗑️ Checkpoint removed (training complete)")
+    
     print("\n" + "="*50)
     print("✅ TRAINING COMPLETE!")
     print("="*50)

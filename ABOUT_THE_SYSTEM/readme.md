@@ -27,8 +27,8 @@ chang ip and forwarding
 
 ### Training the Detector (Binary Model)
 This trains the model to recognize "mushroom vs not mushroom":
-
 - Run `python train_mushroom_detector.py`
+
 
 ## What train_custom.py Does
 
