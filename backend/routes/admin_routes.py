@@ -2,6 +2,7 @@ from flask import Blueprint, request, jsonify, current_app
 from flask_jwt_extended import jwt_required, get_jwt_identity
 from bson import ObjectId
 from datetime import datetime
+from services.admin_service import AdminService
 
 admin_bp = Blueprint("admin", __name__, url_prefix="/admin")
 
@@ -207,7 +208,7 @@ def activate_user(user_id):
 
 
 # --------------------
-# GET ANALYTICS
+# GET COMPREHENSIVE ANALYTICS
 # --------------------
 @admin_bp.route("/analytics", methods=["GET"])
 @jwt_required()
@@ -221,35 +222,78 @@ def get_analytics():
         return jsonify({"success": False, "message": "Admin access required"}), 403
     
     try:
-        # Get total users
-        total_users = mongo.db.users.count_documents({"is_active": True})
+        admin_service = AdminService(mongo)
         
-        # Get active users (created in last 30 days)
-        from datetime import timedelta
-        thirty_days_ago = datetime.utcnow() - timedelta(days=30)
-        active_users = mongo.db.users.count_documents({
-            "is_active": True,
-            "created_at": {"$gte": thirty_days_ago}
-        })
+        # Get user analytics
+        user_analytics = admin_service.get_user_analytics()
         
-        # Get admins count
-        admins_count = mongo.db.users.count_documents({
-            "is_active": True,
-            "role": "admin"
-        })
+        # Get mushroom analytics
+        mushroom_analytics = admin_service.get_mushroom_analytics()
         
-        # Get inactive users
-        inactive_users = mongo.db.users.count_documents({"is_active": False})
+        # Get scan timeline
+        scan_timeline = admin_service.get_scan_timeline(days=30)
         
         return jsonify({
             "success": True,
             "analytics": {
-                "total_users": total_users,
-                "active_users_30d": active_users,
-                "admin_count": admins_count,
-                "inactive_users": inactive_users,
-                "total_accounts": mongo.db.users.count_documents({})
+                "users": user_analytics,
+                "mushrooms": mushroom_analytics,
+                "timeline": scan_timeline
             }
+        }), 200
+    
+    except Exception as e:
+        return jsonify({"success": False, "message": str(e)}), 500
+
+
+# --------------------
+# GET MUSHROOM ANALYTICS ONLY
+# --------------------
+@admin_bp.route("/analytics/mushrooms", methods=["GET"])
+@jwt_required()
+def get_mushroom_analytics():
+    mongo = current_app.mongo
+    admin_id = get_jwt_identity()
+    
+    # Check if user is admin
+    user = mongo.db.users.find_one({"_id": ObjectId(admin_id)})
+    if not user or user.get("role") != "admin":
+        return jsonify({"success": False, "message": "Admin access required"}), 403
+    
+    try:
+        admin_service = AdminService(mongo)
+        mushroom_analytics = admin_service.get_mushroom_analytics()
+        
+        return jsonify({
+            "success": True,
+            "analytics": mushroom_analytics
+        }), 200
+    
+    except Exception as e:
+        return jsonify({"success": False, "message": str(e)}), 500
+
+
+# --------------------
+# GET USER ANALYTICS ONLY  
+# --------------------
+@admin_bp.route("/analytics/users", methods=["GET"])
+@jwt_required()
+def get_user_analytics():
+    mongo = current_app.mongo
+    admin_id = get_jwt_identity()
+    
+    # Check if user is admin
+    user = mongo.db.users.find_one({"_id": ObjectId(admin_id)})
+    if not user or user.get("role") != "admin":
+        return jsonify({"success": False, "message": "Admin access required"}), 403
+    
+    try:
+        admin_service = AdminService(mongo)
+        user_analytics = admin_service.get_user_analytics()
+        
+        return jsonify({
+            "success": True,
+            "analytics": user_analytics
         }), 200
     
     except Exception as e:

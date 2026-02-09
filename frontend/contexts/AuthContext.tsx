@@ -12,10 +12,15 @@ import axios from 'axios';
 // ==================================================
 // ENV & API URL
 // ==================================================
+// Build fallback URL from environment variables
+const BACKEND_IP = process.env.EXPO_PUBLIC_BACKEND_IP || '192.168.1.102';
+const BACKEND_PORT = process.env.EXPO_PUBLIC_BACKEND_PORT || '5000';
+const FALLBACK_URL = `http://${BACKEND_IP}:${BACKEND_PORT}`;
+
 const API_URL =
   process.env.EXPO_PUBLIC_API_URL?.endsWith('/api')
     ? process.env.EXPO_PUBLIC_API_URL
-    : `${process.env.EXPO_PUBLIC_API_URL || 'http://192.168.1.102:5000'}/api`;
+    : `${process.env.EXPO_PUBLIC_API_URL || FALLBACK_URL}/api`;
 
 console.log('Using API URL:', API_URL);
 

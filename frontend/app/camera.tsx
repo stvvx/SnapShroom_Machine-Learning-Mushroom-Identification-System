@@ -205,7 +205,10 @@ export default function CameraScreen() {
         cleanBase64 = cleanBase64.split(',')[1];
       }
 
-      const apiUrl = process.env.EXPO_PUBLIC_API_URL || 'http://192.168.1.102:5000/api';
+      // Build API URL from environment variables
+      const BACKEND_IP = process.env.EXPO_PUBLIC_BACKEND_IP || '192.168.1.102';
+      const BACKEND_PORT = process.env.EXPO_PUBLIC_BACKEND_PORT || '5000';
+      const apiUrl = process.env.EXPO_PUBLIC_API_URL || `http://${BACKEND_IP}:${BACKEND_PORT}/api`;
       
       const response = await fetch(`${apiUrl}/toxicity/detect`, {
         method: 'POST',

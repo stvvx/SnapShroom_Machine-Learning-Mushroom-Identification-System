@@ -8,8 +8,10 @@ import os
 
 print("[ROUTE] 1. Starting toxicity routes import...", file=sys.stderr, flush=True)
 
-from flask import Blueprint, request, jsonify
+from flask import Blueprint, request, jsonify, current_app
+from flask_jwt_extended import jwt_required, get_jwt_identity
 from datetime import datetime
+from bson import ObjectId
 import logging
 
 print("[ROUTE] 2. Imported Flask...", file=sys.stderr, flush=True)
@@ -97,6 +99,45 @@ def predict_mushroom():
         
         # Run prediction
         result = predictor.predict(image_base64)
+        
+        # Save scan to database
+        try:
+            mongo = current_app.mongo
+            
+            # Get user ID if authenticated (optional)
+            user_id = None
+            try:
+                user_id = get_jwt_identity()
+            except:
+                pass  # Not authenticated, proceed without user_id
+            
+            # Get location data from request if provided
+            location_data = data.get('location', {})
+            
+            # Prepare scan data
+            scan_data = {
+                "user_id": ObjectId(user_id) if user_id else None,
+                "mushroom_detected": result.get('detection', {}).get('found', False),
+                "detection_confidence": result.get('detection', {}).get('confidence', 0),
+                "mushroom_type": result.get('classification', {}).get('label') if result.get('classification') else None,
+                "classification_confidence": result.get('classification', {}).get('confidence', 0) if result.get('classification') else None,
+                "edibility": result.get('classification', {}).get('toxicity_level', '').lower() if result.get('classification') else None,
+                "location": {
+                    "region": location_data.get('region'),
+                    "province": location_data.get('province'),
+                    "city": location_data.get('city')
+                } if location_data else None,
+                "created_at": datetime.utcnow(),
+                "success": result.get("success", False)
+            }
+            
+            # Insert scan record
+            mongo.db.mushroom_scans.insert_one(scan_data)
+            logger.info("✅ Scan data saved to database")
+            
+        except Exception as db_error:
+            logger.warning(f"⚠️ Failed to save scan to database: {str(db_error)}")
+            # Continue even if saving fails
         
         # Log result
         if result.get("success"):

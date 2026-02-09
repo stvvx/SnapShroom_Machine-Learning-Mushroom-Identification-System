@@ -6,13 +6,18 @@ Usage: python make_admin.py <email>
 
 import sys
 import os
-sys.path.insert(0, os.path.abspath(os.path.dirname(__file__)))
+from dotenv import load_dotenv
+
+# Load environment variables
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+load_dotenv(os.path.join(BASE_DIR, ".env"))
 
 from pymongo import MongoClient
 from bson import ObjectId
 
-MONGO_URI = "mongodb://localhost:27017"
-DB_NAME = "mushroom_app"
+# Get MongoDB URI from environment
+MONGO_URI = os.getenv("DB_URI", "mongodb://localhost:27017/snapshroom_db")
+DB_NAME = "snapshroom_db"
 
 def make_admin(email):
     """Promote a user to admin role"""

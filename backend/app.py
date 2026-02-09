@@ -52,12 +52,16 @@ def create_app(config_name="development"):
     # ==================================================
     # CORS (FIXED)
     # ==================================================
+    # Read IP and ports from environment variables
+    backend_ip = os.getenv("BACKEND_IP", "192.168.1.102")
+    frontend_port = os.getenv("FRONTEND_PORT", "8081")
+    ngrok_url = os.getenv("NGROK_URL", "https://eastwardly-retreatal-kerstin.ngrok-free.dev")
+    
     allowed_origins = [
         "http://localhost:8081",
-        "http://192.168.1.102:8081",
-        "http://192.168.1.102:8081",
-        "https://ruthie-unablative-amiya.ngrok-free.dev",
-        "https://eastwardly-retreatal-kerstin.ngrok-free.dev"
+        f"http://{backend_ip}:{frontend_port}",
+        ngrok_url,
+        "https://ruthie-unablative-amiya.ngrok-free.dev",  # Legacy ngrok URL
     ]
     
     CORS(

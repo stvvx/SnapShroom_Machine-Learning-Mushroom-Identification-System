@@ -19,8 +19,10 @@
 // 1️⃣ Primary: Expo public env (BEST for ngrok)
 const ENV_API_URL = process.env.EXPO_PUBLIC_API_URL;
 
-// 2️⃣ Fallback: local LAN (only if env not set)
-const FALLBACK_LAN_URL = 'http://192.168.1.102:5000'; // ← optional, dev only
+// 2️⃣ Fallback: local LAN from env variables (only if env not set)
+const BACKEND_IP = process.env.EXPO_PUBLIC_BACKEND_IP || '192.168.1.102';
+const BACKEND_PORT = process.env.EXPO_PUBLIC_BACKEND_PORT || '5000';
+const FALLBACK_LAN_URL = `http://${BACKEND_IP}:${BACKEND_PORT}`;
 
 // 3️⃣ Final resolved base URL
 const API_BASE_URL = ENV_API_URL || FALLBACK_LAN_URL;

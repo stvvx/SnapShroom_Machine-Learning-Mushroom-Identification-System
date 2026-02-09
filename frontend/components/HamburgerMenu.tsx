@@ -35,12 +35,12 @@ export default function HamburgerMenu() {
 
   const menuItems = [
     { label: 'Home', icon: 'home', route: isAdmin ? '/(tabs)/indexAdmin' : '/(tabs)/' },
+    ...(isAdmin ? [{ label: 'Admin Dashboard', icon: 'shield-checkmark', route: '/(tabs)/admin', isAdmin: true }] : []),
     { label: 'Capture', icon: 'camera', route: '/(tabs)/camera' },
     { label: 'Profile', icon: 'person', route: '/(tabs)/profile' },
     { label: 'Explore', icon: 'search', route: '/(tabs)/explore', hidden: isAdmin },
     { label: 'Map', icon: 'map', route: '/(tabs)/map' },
     { label: 'About', icon: 'information-circle', route: '/(tabs)/about' },
-    ...(isAdmin ? [{ label: 'Admin', icon: 'shield', route: '/(tabs)/admin' }] : []),
   ];
 
   return (
@@ -87,11 +87,28 @@ export default function HamburgerMenu() {
                 .map((item) => (
                   <TouchableOpacity
                     key={item.route}
-                    style={styles.menuItem}
+                    style={[
+                      styles.menuItem,
+                      (item as any).isAdmin && styles.adminMenuItem,
+                    ]}
                     onPress={() => handleNavigate(item.route)}
                   >
-                    <Ionicons name={item.icon as any} size={24} color="#E6F4FE" />
-                    <Text style={styles.menuItemText}>{item.label}</Text>
+                    <Ionicons 
+                      name={item.icon as any} 
+                      size={24} 
+                      color={(item as any).isAdmin ? '#FFD700' : '#E6F4FE'} 
+                    />
+                    <Text style={[
+                      styles.menuItemText,
+                      (item as any).isAdmin && styles.adminMenuText,
+                    ]}>
+                      {item.label}
+                    </Text>
+                    {(item as any).isAdmin && (
+                      <View style={styles.adminBadge}>
+                        <Text style={styles.adminBadgeText}>ADMIN</Text>
+                      </View>
+                    )}
                   </TouchableOpacity>
                 ))}
 
@@ -203,6 +220,28 @@ const styles = StyleSheet.create({
     color: '#7A8F7A',
     fontSize: 12,
     fontWeight: '600',
+  },
+  adminMenuItem: {
+    backgroundColor: 'rgba(255, 215, 0, 0.1)',
+    borderLeftWidth: 3,
+    borderLeftColor: '#FFD700',
+    paddingLeft: 13,
+  },
+  adminMenuText: {
+    color: '#FFD700',
+    fontWeight: '700',
+  },
+  adminBadge: {
+    marginLeft: 'auto',
+    backgroundColor: '#FFD700',
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 10,
+  },
+  adminBadgeText: {
+    color: '#2D3E2D',
+    fontSize: 10,
+    fontWeight: '700',
   },
   backdrop: {
     flex: 1,

@@ -5,6 +5,11 @@ Quick network connectivity check for SnapShroom backend.
 
 import socket
 import sys
+import os
+from dotenv import load_dotenv
+
+# Load environment variables
+load_dotenv()
 
 def check_port(host='0.0.0.0', port=5000):
     """Check if port is accessible."""
@@ -37,20 +42,25 @@ if __name__ == "__main__":
     print("SnapShroom Network Connectivity Check")
     print("=" * 60)
     
+    # Read expected IP from .env file
+    expected_ip = os.getenv("BACKEND_IP", "192.168.1.102")
+    port = int(os.getenv("PORT", "5000"))
+    
     local_ip = get_local_ip()
     print(f"\nYour computer's IP address: {local_ip}")
-    print(f"Expected IP: 192.168.1.102")
+    print(f"Expected IP (from .env): {expected_ip}")
     
-    if local_ip != "192.168.1.102":
+    if local_ip != expected_ip:
         print(f"\n⚠️  WARNING: IP address doesn't match expected value!")
-        print(f"   Update frontend/utils/api.ts with: http://{local_ip}:5000")
+        print(f"   Update backend/.env BACKEND_IP with: {local_ip}")
+        print(f"   Update frontend/.env EXPO_PUBLIC_BACKEND_IP with: {local_ip}")
     
-    print(f"\nChecking if port 5000 is available...")
-    if check_port('0.0.0.0', 5000):
-        print("✅ Port 5000 is available")
+    print(f"\nChecking if port {port} is available...")
+    if check_port('0.0.0.0', port):
+        print(f"✅ Port {port} is available")
     else:
-        print("❌ Port 5000 is already in use or blocked!")
-        print("   - Another program might be using port 5000")
+        print(f"❌ Port {port} is already in use or blocked!")
+        print(f"   - Another program might be using port {port}")
         print("   - Or Windows Firewall is blocking it")
     
     print("\n" + "=" * 60)

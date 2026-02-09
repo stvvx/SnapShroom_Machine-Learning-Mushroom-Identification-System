@@ -1,4 +1,12 @@
 The app’s “AI” is a locally hosted PyTorch pipeline defined in custom_predict.py:1-332
+
+How to Change IP Address Now
+Simply edit these two files:
+chang ip and forwarding
+.env - Change BACKEND_IP=192.168.1.XXX
+.env - Change EXPO_PUBLIC_BACKEND_IP=192.168.1.XXX and EXPO_PUBLIC_API_URL=http://192.168.1.XXX:5000/api
+
+
 ### Step 1: Prepare Your Dataset
 **What happens:**
 - 📊 Loads all images from dataset
@@ -30,3 +38,5 @@ This trains the model to recognize "mushroom vs not mushroom":
 4. **Trains** - Updates model weights based on your data
 5. **Saves** - Best model from all epochs
 6. **Outputs** - Model file + class mapping
+
+
