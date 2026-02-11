@@ -265,7 +265,7 @@ export default function AboutPage() {
             iconColor="#FF9800"
           />
           <CompactVMCard 
-            icon="target"
+            icon="flag"
             title="Mission"
             description="Our mission is to empower individuals and communities with accurate, real-time mushroom identification and comprehensive safety assessment tools through the power of machine learning and scientific research. We are committed to developing and continuously improving our machine learning algorithms to provide the most reliable mushroom identification system available. We strive to educate users about mushroom toxicity, edibility, and ecological importance through detailed species profiles, habitat information, and seasonal data. Our platform serves as both a practical tool for safe foraging and an educational resource for learning about fungal biodiversity. We collaborate with mycological experts, research institutions, and conservation organizations to validate our data and contribute to fungal science. Through user-friendly interfaces and accessible technology, we aim to reduce mushroom-related poisoning incidents while promoting responsible interaction with nature. We are dedicated to making mycological knowledge democratically accessible, fostering environmental stewardship, and supporting the global community of fungi enthusiasts and researchers in their pursuit of knowledge and safety."
             iconColor="#2196F3"
@@ -312,7 +312,7 @@ export default function AboutPage() {
           <View style={styles.techGrid}>
             <TechChip name="React Native" icon="logo-react" />
             <TechChip name="Python Flask" icon="logo-python" />
-            <TechChip name="ML/YOLO" icon="cpu" />
+            <TechChip name="ML/YOLO" icon="hardware-chip" />
             <TechChip name="PyTorch" icon="flash" />
             <TechChip name="MongoDB" icon="server" />
           </View>

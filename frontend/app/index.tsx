@@ -13,7 +13,12 @@ export default function IndexScreen() {
   useEffect(() => {
     if (isLoading) return;
     if (user) {
-      router.replace('/(tabs)');
+      // Redirect admin users to admin dashboard
+      if (user.role === 'admin') {
+        router.replace('/(tabs)/admin');
+      } else {
+        router.replace('/(tabs)');
+      }
     }
   }, [user, isLoading]);
 

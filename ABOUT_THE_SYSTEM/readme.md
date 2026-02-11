@@ -28,7 +28,8 @@ chang ip and forwarding
 ### Training the Detector (Binary Model)
 This trains the model to recognize "mushroom vs not mushroom":
 - Run `python train_mushroom_detector.py`
-
+This for classification
+- Run `python train_custom.py`
 
 ## What train_custom.py Does
 
@@ -39,4 +40,8 @@ This trains the model to recognize "mushroom vs not mushroom":
 5. **Saves** - Best model from all epochs
 6. **Outputs** - Model file + class mapping
 
-
+Check Model Accuracy:
+**Test model**
+python test_model.py
+Test on Validation Set
+python test_model.py --split valid

@@ -4,7 +4,12 @@ import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { useAuth } from '@/contexts/AuthContext';
 
-export default function HamburgerMenu() {
+interface HamburgerMenuProps {
+  onAdminNavigate?: (section: string) => void;
+  currentSection?: string;
+}
+
+export default function HamburgerMenu({ onAdminNavigate, currentSection }: HamburgerMenuProps = {}) {
   const [menuOpen, setMenuOpen] = useState(false);
   const router = useRouter();
   const { user, logout } = useAuth();
@@ -28,20 +33,43 @@ export default function HamburgerMenu() {
     }
   }, [menuOpen]);
 
-  const handleNavigate = (route: string) => {
+  const handleNavigate = (item: any) => {
     setMenuOpen(false);
-    router.push(route as any);
+    if (item.section) {
+      // Always navigate to admin dashboard with section
+      if (onAdminNavigate) {
+        // Already on admin page, just change section
+        onAdminNavigate(item.section);
+      } else {
+        // Navigate to admin page (will default to section)
+        router.push('/(tabs)/admin' as any);
+      }
+    } else if (item.route) {
+      // Navigate to a different route
+      router.push(item.route as any);
+    }
   };
 
-  const menuItems = [
-    { label: 'Home', icon: 'home', route: isAdmin ? '/(tabs)/indexAdmin' : '/(tabs)/' },
-    ...(isAdmin ? [{ label: 'Admin Dashboard', icon: 'shield-checkmark', route: '/(tabs)/admin', isAdmin: true }] : []),
+  // Admin menu items
+  const adminMenuItems = [
+    { label: 'Home', icon: 'home', section: 'home', description: 'Dashboard & Quick Actions' },
+    { label: 'User Management', icon: 'people', section: 'users', description: 'Manage users & roles' },
+    { label: 'Analytics', icon: 'bar-chart', section: 'analytics', description: 'View statistics & insights' },
+    { label: 'About', icon: 'information-circle', route: '/(tabs)/about' },
+    { label: 'Profile', icon: 'person', route: '/(tabs)/profile' },
+  ];
+
+  // Regular user menu items
+  const userMenuItems = [
+    { label: 'Home', icon: 'home', route: '/(tabs)/' },
     { label: 'Capture', icon: 'camera', route: '/(tabs)/camera' },
     { label: 'Profile', icon: 'person', route: '/(tabs)/profile' },
-    { label: 'Explore', icon: 'search', route: '/(tabs)/explore', hidden: isAdmin },
+    { label: 'Explore', icon: 'search', route: '/(tabs)/explore' },
     { label: 'Map', icon: 'map', route: '/(tabs)/map' },
     { label: 'About', icon: 'information-circle', route: '/(tabs)/about' },
   ];
+
+  const menuItems = isAdmin ? adminMenuItems : userMenuItems;
 
   return (
     <View style={styles.container}>
@@ -82,35 +110,40 @@ export default function HamburgerMenu() {
 
             {/* Menu Items */}
             <ScrollView style={styles.menuItems}>
-              {menuItems
-                .filter((item) => !item.hidden)
-                .map((item) => (
+              {menuItems.map((item, index) => {
+                const isActive = currentSection === (item as any).section;
+                
+                return (
                   <TouchableOpacity
-                    key={item.route}
+                    key={(item as any).section || (item as any).route || index}
                     style={[
                       styles.menuItem,
-                      (item as any).isAdmin && styles.adminMenuItem,
+                      isActive && styles.activeMenuItem,
                     ]}
-                    onPress={() => handleNavigate(item.route)}
+                    onPress={() => handleNavigate(item)}
                   >
                     <Ionicons 
                       name={item.icon as any} 
                       size={24} 
-                      color={(item as any).isAdmin ? '#FFD700' : '#E6F4FE'} 
+                      color={isActive ? '#FFD700' : '#E6F4FE'} 
                     />
-                    <Text style={[
-                      styles.menuItemText,
-                      (item as any).isAdmin && styles.adminMenuText,
-                    ]}>
-                      {item.label}
-                    </Text>
-                    {(item as any).isAdmin && (
-                      <View style={styles.adminBadge}>
-                        <Text style={styles.adminBadgeText}>ADMIN</Text>
-                      </View>
-                    )}
+                    <View style={styles.menuItemContent}>
+                      <Text style={[
+                        styles.menuItemText,
+                        isActive && styles.activeMenuText,
+                      ]}>
+                        {item.label}
+                      </Text>
+                      {(item as any).description && (
+                        <Text style={styles.menuItemDescription}>
+                          {(item as any).description}
+                        </Text>
+                      )}
+                    </View>
+                    {isActive && <View style={styles.activeIndicator} />}
                   </TouchableOpacity>
-                ))}
+                );
+              })}
 
               {/* Divider */}
               <View style={styles.divider} />
@@ -190,12 +223,37 @@ const styles = StyleSheet.create({
     paddingVertical: 16,
     borderBottomWidth: 1,
     borderBottomColor: '#3D4E3D',
+    position: 'relative',
+  },
+  menuItemContent: {
+    flex: 1,
+    marginLeft: 16,
   },
   menuItemText: {
-    marginLeft: 16,
     fontSize: 16,
     color: '#E6F4FE',
     fontWeight: '500',
+  },
+  menuItemDescription: {
+    fontSize: 12,
+    color: 'rgba(230, 244, 254, 0.6)',
+    marginTop: 2,
+  },
+  activeMenuItem: {
+    backgroundColor: 'rgba(255, 215, 0, 0.15)',
+    borderLeftWidth: 4,
+    borderLeftColor: '#FFD700',
+  },
+  activeMenuText: {
+    color: '#FFD700',
+    fontWeight: '700',
+  },
+  activeIndicator: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: '#FFD700',
+    marginLeft: 8,
   },
   divider: {
     height: 1,
