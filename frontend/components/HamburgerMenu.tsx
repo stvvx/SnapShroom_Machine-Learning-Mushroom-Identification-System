@@ -55,6 +55,7 @@ export default function HamburgerMenu({ onAdminNavigate, currentSection }: Hambu
     { label: 'Home', icon: 'home', section: 'home', description: 'Dashboard & Quick Actions' },
     { label: 'User Management', icon: 'people', section: 'users', description: 'Manage users & roles' },
     { label: 'Analytics', icon: 'bar-chart', section: 'analytics', description: 'View statistics & insights' },
+    { label: 'Notifications', icon: 'notifications', route: '/(tabs)/adminNotifications' },
     { label: 'About', icon: 'information-circle', route: '/(tabs)/about' },
     { label: 'Profile', icon: 'person', route: '/(tabs)/profile' },
   ];
@@ -66,6 +67,7 @@ export default function HamburgerMenu({ onAdminNavigate, currentSection }: Hambu
     { label: 'Profile', icon: 'person', route: '/(tabs)/profile' },
     { label: 'Explore', icon: 'search', route: '/(tabs)/explore' },
     { label: 'Map', icon: 'map', route: '/(tabs)/map' },
+    { label: 'Notifications', icon: 'notifications', route: '/(tabs)/notifications' },
     { label: 'About', icon: 'information-circle', route: '/(tabs)/about' },
   ];
 
@@ -125,7 +127,7 @@ export default function HamburgerMenu({ onAdminNavigate, currentSection }: Hambu
                     <Ionicons 
                       name={item.icon as any} 
                       size={24} 
-                      color={isActive ? '#FFD700' : '#E6F4FE'} 
+                      color={'#E6F4FE'} 
                     />
                     <View style={styles.menuItemContent}>
                       <Text style={[
@@ -240,19 +242,19 @@ const styles = StyleSheet.create({
     marginTop: 2,
   },
   activeMenuItem: {
-    backgroundColor: 'rgba(255, 215, 0, 0.15)',
+    backgroundColor: 'rgba(18, 58, 10, 0)',
     borderLeftWidth: 4,
-    borderLeftColor: '#FFD700',
+    borderLeftColor: '#023802',
   },
   activeMenuText: {
-    color: '#FFD700',
+    color: 'rgba(255, 255, 255, 0.94)',
     fontWeight: '700',
   },
   activeIndicator: {
     width: 8,
     height: 8,
     borderRadius: 4,
-    backgroundColor: '#FFD700',
+    backgroundColor: '#dad018',
     marginLeft: 8,
   },
   divider: {

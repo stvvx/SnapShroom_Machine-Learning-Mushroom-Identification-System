@@ -3,6 +3,7 @@ import { ScrollView, View, Text, StyleSheet, Image, Linking, TouchableOpacity, A
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import HamburgerMenu from '@/components/HamburgerMenu';
+import NotificationDropdown from '@/components/NotificationDropdown';
 
 // Team member data with image paths
 const TEAM_MEMBERS = [
@@ -212,7 +213,10 @@ export default function AboutPage() {
         colors={['rgba(200, 220, 192, 0.95)', 'rgba(185, 210, 175, 0.92)']}
         style={styles.header}
       >
-        <HamburgerMenu />
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+          <HamburgerMenu />
+          <NotificationDropdown iconColor="#FFF" />
+        </View>
         <Text style={styles.headerTitle}>About SnapShroom</Text>
         <View style={{ width: 40 }} />
       </LinearGradient>

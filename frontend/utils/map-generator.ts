@@ -1,6 +1,6 @@
 /**
  * Web-compatible interactive map for mushroom locations
- * Uses Plotly.js for web and provides fallback for native
+ * Uses Leaflet with OpenStreetMap for all platforms
  */
 
 import type { MushroomLocation } from './mushroom-locations';
@@ -23,31 +23,22 @@ export function generateMushroomLocationMap(
 }
 
 /**
- * Generate interactive HTML map for web platform using Plotly
+ * Generate interactive HTML map for web platform using Leaflet + OpenStreetMap
  */
 function generateWebMapHTML(mushroomName: string, locations: MushroomLocation[]): string {
   // Pre-escape the mushroom name for use in the template
   const escapedMushroomName = escapeHtml(mushroomName);
   
-  // Prepare marker data
-  const lats = locations.map(l => l.lat);
-  const lngs = locations.map(l => l.lng);
-  const colors = locations.map(l => getPrevalenceColor(l.prevalence));
-  const sizes = locations.map(l => {
-    switch (l.prevalence) {
-      case 'high': return 20;
-      case 'medium': return 15;
-      case 'low': return 10;
-      default: return 12;
-    }
-  });
-
-  const hoverTexts = locations.map(l =>
-    '<b>' + escapeHtml(l.name) + '</b><br/>' +
-    'Prevalence: ' + l.prevalence.toUpperCase() + '<br/>' +
-    (l.cultivated ? '🌱 Cultivated' : '🌲 Wild') + '<br/>' +
-    (l.notes ? escapeHtml(l.notes) : '')
-  );
+  // Prepare marker data as JSON for JavaScript
+  const locationsJSON = JSON.stringify(locations.map(l => ({
+    name: escapeHtml(l.name),
+    lat: l.lat,
+    lng: l.lng,
+    prevalence: l.prevalence,
+    cultivated: l.cultivated,
+    notes: l.notes ? escapeHtml(l.notes) : '',
+    color: getPrevalenceColor(l.prevalence)
+  })));
 
   return `
     <!DOCTYPE html>
@@ -55,7 +46,8 @@ function generateWebMapHTML(mushroomName: string, locations: MushroomLocation[])
     <head>
       <meta charset="utf-8">
       <meta name="viewport" content="width=device-width, initial-scale=1.0">
-      <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+      <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+      <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
       <style>
         * {
           margin: 0;
@@ -94,6 +86,7 @@ function generateWebMapHTML(mushroomName: string, locations: MushroomLocation[])
         #map {
           width: 100%;
           height: 500px;
+          border-radius: 0;
         }
         .legend {
           display: grid;
@@ -221,64 +214,70 @@ function generateWebMapHTML(mushroomName: string, locations: MushroomLocation[])
       </div>
 
       <script>
-        const data = [{
-          type: 'scattergeo',
-          lat: [${lats.join(', ')}],
-          lon: [${lngs.join(', ')}],
-          mode: 'markers',
-          marker: {
-            size: [${sizes.join(', ')}],
-            color: [${colors.map(c => "'" + c + "'").join(', ')}],
-            opacity: 0.8,
-            line: {
-              color: 'white',
-              width: 2
-            },
-            sizemode: 'diameter'
-          },
-          text: [${hoverTexts.map(t => "'" + t.replace(/'/g, "\\'") + "'").join(', ')}],
-          hoverinfo: 'text',
-          hovertemplate: '%{text}<extra></extra>'
-        }];
-
-        const layout = {
-          title: {
-            text: '${escapedMushroomName} - Philippine Regions & Cultivation',
-            font: { size: 16 }
-          },
-          geo: {
-            scope: 'asia',
-            projection: { type: 'mercator' },
-            center: { lon: 121.7740, lat: 12.8797 },
-            showland: true,
-            landcolor: '#e5e3df',
-            coastcolor: '#bfbfbf',
-            showocean: true,
-            oceancolor: '#e0f0ff',
-            showlakes: true,
-            lakecolor: '#d4f1f9',
-            coastlinewidth: 1,
-            countrywidth: 1,
-            showcountries: true,
-            showframe: true,
-            frameborder: 1,
-            lataxis: { range: [4, 20] },
-            lonaxis: { range: [115, 128] }
-          },
-          margin: { l: 0, r: 0, t: 50, b: 0 },
-          paper_bgcolor: '#f5f5f5',
-          font: { family: 'Arial, sans-serif' },
-          height: 500
-        };
-
-        const config = {
-          responsive: true,
-          displayModeBar: true,
-          displaylogo: false,
-          modeBarButtonsToRemove: ['select2d', 'lasso2d', 'resetScale2d']
-        };
-
-        Plotly.newPlot('map', data, layout, config);
+        // Initialize Leaflet map with OpenStreetMap tiles
+        const locations = ${locationsJSON};
+        
+        // Center on Philippines
+        const map = L.map('map').setView([12.8797, 121.774], 6);
+        
+        // Add OpenStreetMap tiles
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+          attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+          maxZoom: 19,
+        }).addTo(map);
+        
+        // Add markers for each location
+        locations.forEach(location => {
+          const markerSize = location.prevalence === 'high' ? 50 : 
+                            location.prevalence === 'medium' ? 40 : 30;
+          
+          const iconHtml = \`
+            <div style="
+              width: \${markerSize}px;
+              height: \${markerSize}px;
+              background: \${location.color};
+              border: 3px solid white;
+              border-radius: 50%;
+              display: flex;
+              align-items: center;
+              justify-content: center;
+              font-size: \${markerSize * 0.5}px;
+              box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+              cursor: pointer;
+            ">
+              🍄
+            </div>
+          \`;
+          
+          const customIcon = L.divIcon({
+            html: iconHtml,
+            iconSize: [markerSize, markerSize],
+            iconAnchor: [markerSize / 2, markerSize / 2],
+            popupAnchor: [0, -(markerSize / 2)],
+            className: 'custom-mushroom-marker',
+          });
+          
+          const marker = L.marker([location.lat, location.lng], { icon: customIcon })
+            .addTo(map);
+          
+          // Create popup content
+          const popupContent = \`
+            <div style="min-width: 200px; font-family: -apple-system, sans-serif;">
+              <h3 style="margin: 0 0 8px 0; color: #2E7D32;">\${location.name}</h3>
+              <p style="margin: 4px 0;"><strong>Prevalence:</strong> \${location.prevalence.toUpperCase()}</p>
+              <p style="margin: 4px 0;">\${location.cultivated ? '🌱 Cultivated' : '🌲 Wild'}</p>
+              \${location.notes ? '<p style="margin: 8px 0 0 0; font-size: 12px; color: #666;">📝 ' + location.notes + '</p>' : ''}
+            </div>
+          \`;
+          
+          marker.bindPopup(popupContent);
+        });
+        
+        // Fit bounds to show all markers
+        if (locations.length > 0) {
+          const bounds = locations.map(l => [l.lat, l.lng]);
+          map.fitBounds(bounds, { padding: [50, 50] });
+        }
       </script>
     </body>
     </html>
@@ -286,17 +285,28 @@ function generateWebMapHTML(mushroomName: string, locations: MushroomLocation[])
 }
 
 /**
- * Generate map for native platforms (fallback)
+ * Generate map for native platforms using Leaflet + OpenStreetMap
  */
 function generateNativeMapHTML(mushroomName: string, locations: MushroomLocation[]): string {
   const escapedMushroomName = escapeHtml(mushroomName);
+  const locationsJSON = JSON.stringify(locations.map(l => ({
+    name: escapeHtml(l.name),
+    lat: l.lat,
+    lng: l.lng,
+    prevalence: l.prevalence,
+    cultivated: l.cultivated,
+    notes: l.notes ? escapeHtml(l.notes) : '',
+    color: getPrevalenceColor(l.prevalence)
+  })));
+
   return `
     <!DOCTYPE html>
     <html>
     <head>
       <meta charset="utf-8">
       <meta name="viewport" content="width=device-width, initial-scale=1.0">
-      <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+      <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+      <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
       <style>
         body {
           margin: 0;
@@ -329,6 +339,9 @@ function generateNativeMapHTML(mushroomName: string, locations: MushroomLocation
           font-size: 13px;
           color: #666;
         }
+        .leaflet-popup-content-wrapper {
+          border-radius: 8px;
+        }
       </style>
     </head>
     <body>
@@ -340,45 +353,70 @@ function generateNativeMapHTML(mushroomName: string, locations: MushroomLocation
       </div>
       <div id="map"></div>
       <script>
-        const colors = [${locations.map(l => "'" + getPrevalenceColor(l.prevalence) + "'").join(', ')}];
-        const data = [{
-          type: 'scattergeo',
-          lat: [${locations.map(l => l.lat).join(', ')}],
-          lon: [${locations.map(l => l.lng).join(', ')}],
-          mode: 'markers',
-          marker: {
-            size: ${locations.map(l => {
-              switch (l.prevalence) {
-                case 'high': return 20;
-                case 'medium': return 15;
-                case 'low': return 10;
-                default: return 12;
-              }
-            }).join(', ')},
-            color: colors,
-            opacity: 0.8,
-            line: { color: 'white', width: 2 }
-          },
-          text: [${locations.map(l => "'" + l.name + ' (' + l.prevalence + ')' + "'").join(', ')}],
-          hoverinfo: 'text'
-        }];
-
-        const layout = {
-          title: '${escapedMushroomName} - Philippine Distribution',
-          geo: {
-            scope: 'asia',
-            projection: { type: 'mercator' },
-            center: { lon: 121.7740, lat: 12.8797 },
-            showland: true,
-            landcolor: '#e5e3df',
-            coastcolor: '#bfbfbf',
-            lataxis: { range: [4, 20] },
-            lonaxis: { range: [115, 128] }
-          },
-          margin: { l: 0, r: 0, t: 40, b: 0 }
-        };
-
-        Plotly.newPlot('map', data, layout, {responsive: true, displayModeBar: false});
+        // Initialize Leaflet map with OpenStreetMap tiles
+        const locations = ${locationsJSON};
+        
+        // Center on Philippines
+        const map = L.map('map').setView([12.8797, 121.774], 6);
+        
+        // Add OpenStreetMap tiles
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+          attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+          maxZoom: 19,
+        }).addTo(map);
+        
+        // Add markers for each location
+        locations.forEach(location => {
+          const markerSize = location.prevalence === 'high' ? 45 : 
+                            location.prevalence === 'medium' ? 35 : 28;
+          
+          const iconHtml = \`
+            <div style="
+              width: \${markerSize}px;
+              height: \${markerSize}px;
+              background: \${location.color};
+              border: 3px solid white;
+              border-radius: 50%;
+              display: flex;
+              align-items: center;
+              justify-content: center;
+              font-size: \${markerSize * 0.5}px;
+              box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+              cursor: pointer;
+            ">
+              🍄
+            </div>
+          \`;
+          
+          const customIcon = L.divIcon({
+            html: iconHtml,
+            iconSize: [markerSize, markerSize],
+            iconAnchor: [markerSize / 2, markerSize / 2],
+            popupAnchor: [0, -(markerSize / 2)],
+            className: 'custom-mushroom-marker',
+          });
+          
+          const marker = L.marker([location.lat, location.lng], { icon: customIcon })
+            .addTo(map);
+          
+          // Create popup content
+          const popupContent = \`
+            <div style="min-width: 180px;">
+              <h4 style="margin: 0 0 8px 0; color: #2E7D32;">\${location.name}</h4>
+              <p style="margin: 4px 0; font-size: 13px;"><strong>Prevalence:</strong> \${location.prevalence}</p>
+              <p style="margin: 4px 0; font-size: 13px;">\${location.cultivated ? '🌱 Cultivated' : '🌲 Wild'}</p>
+              \${location.notes ? '<p style="margin: 8px 0 0 0; font-size: 12px; color: #666;">' + location.notes + '</p>' : ''}
+            </div>
+          \`;
+          
+          marker.bindPopup(popupContent);
+        });
+        
+        // Fit bounds to show all markers
+        if (locations.length > 0) {
+          const bounds = locations.map(l => [l.lat, l.lng]);
+          map.fitBounds(bounds, { padding: [50, 50] });
+        }
       </script>
     </body>
     </html>

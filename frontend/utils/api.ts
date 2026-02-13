@@ -92,6 +92,7 @@ class ApiService {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'ngrok-skip-browser-warning': 'true',
         },
         body: JSON.stringify(data),
         signal: controller.signal,
@@ -160,6 +161,9 @@ class ApiService {
 
       const response = await fetch(url, {
         method: 'GET',
+        headers: {
+          'ngrok-skip-browser-warning': 'true',
+        },
         signal: controller.signal,
       });
 
@@ -192,3 +196,47 @@ export const analyzeMushroom = (data: MushroomAnalysisRequest) =>
 
 export const testConnection = () =>
   apiService.testConnection();
+
+// ---------------------------------------------------
+// SPECIES DATABASE API
+// ---------------------------------------------------
+
+export const searchSpecies = async (query: string): Promise<any[]> => {
+  const url = `${API_BASE_URL}/api/species/search?q=${encodeURIComponent(query)}`;
+
+  try {
+    console.log('🔍 Searching species API:', query);
+    console.log('📡 URL:', url);
+    
+    const response = await fetch(url, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+        'ngrok-skip-browser-warning': 'true',
+      },
+    });
+
+    console.log('📥 Response status:', response.status);
+    
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error('❌ API error response:', errorText);
+      throw new Error(`Failed to search species: ${response.status} - ${errorText}`);
+    }
+
+    const data = await response.json();
+    
+    // Extract species array from API response
+    const speciesList = data.species || data || [];
+    
+    console.log('✅ Species search results:', speciesList.length, 'found');
+    if (speciesList.length > 0) {
+      console.log('📋 First result:', speciesList[0].english_name);
+    }
+    return speciesList;
+
+  } catch (error: any) {
+    console.error('❌ Species search error:', error.message);
+    return [];
+  }
+};

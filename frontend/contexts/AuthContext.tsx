@@ -95,16 +95,8 @@ api.interceptors.request.use(
   (error) => Promise.reject(error)
 );
 
-// Response interceptor
-api.interceptors.response.use(
-  (response) => response,
-  (error) => {
-    if (error.response?.status === 401) {
-      console.warn('Unauthorized - token may be invalid');
-    }
-    return Promise.reject(error);
-  }
-);
+// Response interceptor will be set up after AuthProvider is initialized
+// This allows us to access the clearAuth function
 
 // ==================================================
 // CONTEXT
@@ -136,6 +128,28 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     setUser(userData);
     setError(null);
   };
+
+  // -------------------------
+  // Setup response interceptor for auto-logout on 401
+  // -------------------------
+  useEffect(() => {
+    const interceptor = api.interceptors.response.use(
+      (response) => response,
+      async (error) => {
+        if (error.response?.status === 401) {
+          console.warn('Unauthorized - token expired or invalid. Logging out...');
+          await clearAuth();
+          setError('Session expired. Please log in again.');
+        }
+        return Promise.reject(error);
+      }
+    );
+
+    // Cleanup interceptor on unmount
+    return () => {
+      api.interceptors.response.eject(interceptor);
+    };
+  }, []);
 
   // -------------------------
   // Restore auth on start

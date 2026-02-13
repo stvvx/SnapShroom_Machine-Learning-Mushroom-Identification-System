@@ -17,6 +17,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 
 import { ThemedText } from '@/components/themed-text';
 import { useAuth } from '@/contexts/AuthContext';
+import { useToast } from '@/contexts/ToastContext';
 
 const { width, height } = Dimensions.get('window');
 const isSmallScreen = width < 375;
@@ -31,6 +32,7 @@ export default function LoginScreen() {
 
   const router = useRouter();
   const { login, isLoading, error, clearError } = useAuth();
+  const { showToast } = useToast();
   
   const passwordInputRef = useRef<TextInput>(null);
   const scrollViewRef = useRef<ScrollView>(null);
@@ -67,6 +69,7 @@ export default function LoginScreen() {
 
     try {
       await login({ email, password });
+      showToast('Login successful!', 'success');
       router.replace('/(tabs)');
     } catch {
       // Error already handled by AuthContext

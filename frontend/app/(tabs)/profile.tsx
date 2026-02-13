@@ -15,8 +15,10 @@ import {
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { useAuth, api } from '@/contexts/AuthContext';
+import { useToast } from '@/contexts/ToastContext';
 import { Ionicons } from '@expo/vector-icons';
 import HamburgerMenu from '@/components/HamburgerMenu';
+import NotificationDropdown from '@/components/NotificationDropdown';
 import * as ImagePicker from 'expo-image-picker';
 
 type EditMode = 'none' | 'name' | 'password';
@@ -27,6 +29,7 @@ const CLOUDINARY_API_URL = `https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_N
 
 export default function ProfileScreen() {
   const { user, logout, refreshUser } = useAuth();
+  const { showToast } = useToast();
   const [editMode, setEditMode] = useState<EditMode>('none');
   const [loading, setLoading] = useState(false);
   const [uploading, setUploading] = useState(false);
@@ -79,7 +82,7 @@ export default function ProfileScreen() {
       });
 
       if (response.data.success) {
-        Alert.alert('Success', 'Name updated successfully');
+        showToast('Name updated successfully', 'success');
         await refreshUser();
         setEditMode('none');
       }
@@ -116,7 +119,7 @@ export default function ProfileScreen() {
       });
 
       if (response.data.success) {
-        Alert.alert('Success', 'Password updated successfully');
+        showToast('Password updated successfully', 'success');
         await refreshUser();
         setOldPassword('');
         setNewPassword('');
@@ -323,7 +326,7 @@ export default function ProfileScreen() {
             addLog('Refreshing user data...');
             await refreshUser();
             addLog('✅ User data refreshed');
-            Alert.alert('Success', 'Profile picture updated!');
+            showToast('Profile picture updated!', 'success');
           } else {
             const msg = mongoResponse.data.message || 'Unknown error from backend';
             addLog(`⚠️ Backend returned success=false: ${msg}`);
@@ -416,7 +419,10 @@ export default function ProfileScreen() {
     <ThemedView style={styles.container}>
       {/* Header */}
       <View style={styles.profileHeader}>
-        <HamburgerMenu />
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+          <HamburgerMenu />
+          <NotificationDropdown iconColor="#7BA05B" />
+        </View>
         <ThemedText style={styles.headerTitle}>Profile</ThemedText>
         <View style={{ width: 40 }} />
       </View>

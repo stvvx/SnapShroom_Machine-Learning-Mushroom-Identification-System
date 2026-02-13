@@ -4,6 +4,7 @@ import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Ionicons } from '@expo/vector-icons';
 import HamburgerMenu from '@/components/HamburgerMenu';
+import NotificationDropdown from '@/components/NotificationDropdown';
 
 // Mushroom data with Philippine coordinates
 const MUSHROOM_LOCATIONS = [
@@ -144,7 +145,7 @@ export default function MapScreen() {
   const [selectedMushroom, setSelectedMushroom] = useState<typeof MUSHROOM_LOCATIONS[0] | null>(null);
   const [viewMode, setViewMode] = useState<'map' | 'chart'>('map');
 
-  // Prepare data for Plotly
+  // Prepare statistics data
   const edibleCount = MUSHROOM_LOCATIONS.filter(m => m.edible).length;
   const poisonousCount = MUSHROOM_LOCATIONS.filter(m => !m.edible).length;
 
@@ -161,7 +162,10 @@ export default function MapScreen() {
     <ThemedView style={styles.container}>
       {/* Header */}
       <View style={styles.header}>
-        <HamburgerMenu />
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+          <HamburgerMenu />
+          <NotificationDropdown iconColor="#7BA05B" />
+        </View>
         <ThemedText style={styles.headerTitle}>Mushroom Map</ThemedText>
         <View style={{ width: 40 }} />
       </View>

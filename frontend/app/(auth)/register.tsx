@@ -17,6 +17,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 
 import { ThemedText } from '@/components/themed-text';
 import { useAuth } from '@/contexts/AuthContext';
+import { useToast } from '@/contexts/ToastContext';
 
 const { width } = Dimensions.get('window');
 const isSmallScreen = width < 375;
@@ -35,6 +36,7 @@ export default function RegisterScreen() {
   const [confirmPasswordFocused, setConfirmPasswordFocused] = useState(false);
 
   const { signup, isLoading, error, clearError } = useAuth();
+  const { showToast } = useToast();
 
   // Refs for input navigation
   const emailInputRef = useRef<TextInput>(null);
@@ -86,6 +88,8 @@ export default function RegisterScreen() {
         name: username.trim(),
       });
 
+      showToast('Account created successfully!', 'success');
+      
       Alert.alert(
         'Success',
         'Account created successfully',

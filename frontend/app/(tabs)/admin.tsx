@@ -17,6 +17,7 @@ import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { useAuth, api } from '@/contexts/AuthContext';
 import HamburgerMenu from '@/components/HamburgerMenu';
+import NotificationDropdown from '@/components/NotificationDropdown';
 
 const { width } = Dimensions.get('window');
 
@@ -560,10 +561,13 @@ export default function AdminDashboard() {
     <ThemedView style={styles.container}>
       {/* Header */}
       <View style={styles.header}>
-        <HamburgerMenu 
-          onAdminNavigate={(section) => setCurrentSection(section as Section)} 
-          currentSection={currentSection}
-        />
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+          <HamburgerMenu 
+            onAdminNavigate={(section) => setCurrentSection(section as Section)} 
+            currentSection={currentSection}
+          />
+          <NotificationDropdown iconColor="#A8B89D" />
+        </View>
         <View style={styles.headerContent}>
           <ThemedText style={styles.headerTitle}>
             {currentSection === 'home' && '🏠 Admin Dashboard'}
@@ -575,6 +579,7 @@ export default function AdminDashboard() {
             Welcome, {user.name}
           </ThemedText>
         </View>
+        <View style={{ width: 40 }} />
       </View>
 
       {/* Content */}

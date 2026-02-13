@@ -59,28 +59,35 @@ def create_app(config_name="development"):
     
     allowed_origins = [
         "http://localhost:8081",
+        "http://localhost:19006",
+        "http://localhost:3000",
         f"http://{backend_ip}:{frontend_port}",
         ngrok_url,
+        ngrok_url.strip(),
         "https://ruthie-unablative-amiya.ngrok-free.dev",  # Legacy ngrok URL
     ]
     
     CORS(
         app,
-        origins=allowed_origins,
-        supports_credentials=True,
-        allow_headers=[
-            "Content-Type",
-            "Authorization",
-            "Access-Control-Allow-Credentials",
-            "X-Forwarded-Proto",
-            "ngrok-skip-browser-warning"
-        ],
-        expose_headers=[
-            "Content-Type",
-            "Authorization"
-        ],
-        methods=["GET", "POST", "PUT", "DELETE"],
-        max_age=3600
+        resources={
+            r"/*": {
+                "origins": allowed_origins,
+                "methods": ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+                "allow_headers": [
+                    "Content-Type",
+                    "Authorization",
+                    "Access-Control-Allow-Credentials",
+                    "X-Forwarded-Proto",
+                    "ngrok-skip-browser-warning"
+                ],
+                "expose_headers": [
+                    "Content-Type",
+                    "Authorization"
+                ],
+                "supports_credentials": True,
+                "max_age": 3600
+            }
+        }
     )
 
 
@@ -175,6 +182,26 @@ def init_database(db):
     users.create_index("password")
     users.create_index("created_at")
 
+    # Initialize notifications collection
+    if "notifications" not in db.list_collection_names():
+        db.create_collection("notifications")
+    
+    notifications = db.notifications
+    notifications.create_index("user_id")
+    notifications.create_index("created_at")
+    notifications.create_index([("user_id", 1), ("is_read", 1)])
+
+    # Initialize species collection
+    if "species" not in db.list_collection_names():
+        db.create_collection("species")
+    
+    species = db.species
+    species.create_index("english_name")
+    species.create_index("local_name")
+    species.create_index("scientific_name")
+    species.create_index("edible")
+    species.create_index("location")
+
     print("[OK] Database ready")
 
 
@@ -195,6 +222,21 @@ def register_blueprints(app):
         print("[OK] Admin routes loaded")
     except Exception as e:
         print("[WARN] Admin blueprint error:", e)
+    
+    try:
+        from routes.species_routes import species_bp
+        app.register_blueprint(species_bp, url_prefix="/api/species")
+        print("[OK] Species routes loaded")
+    except Exception as e:
+        print("[WARN] Species blueprint error:", e)
+    
+    try:
+        from routes.notification_routes import init_notification_routes
+        notification_bp = init_notification_routes(mongo)
+        app.register_blueprint(notification_bp)
+        print("[OK] Notification routes loaded")
+    except Exception as e:
+        print("[WARN] Notification blueprint error:", e)
     
     try:
         print("[...] Loading toxicity routes...")

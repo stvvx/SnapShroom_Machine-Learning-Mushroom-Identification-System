@@ -11,18 +11,11 @@ class RiskEngine:
     """
 
     def __init__(self, csv_path: str = None):
-        self.csv_path = csv_path or "mushrooms.csv"
-        self.csv_data = None
-        self._load_csv_data()
+        # Database service for species data
+        from services.species_service import SpeciesService
+        self.species_db = SpeciesService()
 
-    def _load_csv_data(self):
-        """Load mushroom risk data from CSV."""
-        try:
-            if os.path.exists(self.csv_path):
-                self.csv_data = pd.read_csv(self.csv_path)
-                print(f"Loaded risk data with {len(self.csv_data)} entries")
-        except Exception as e:
-            print(f"Error loading CSV data: {e}")
+
 
     def assess_overall_risk(self,
                            species_result: Dict,

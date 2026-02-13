@@ -10,6 +10,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { LinearGradient } from 'expo-linear-gradient';
 import { BlurView } from 'expo-blur';
 import HamburgerMenu from '@/components/HamburgerMenu';
+import NotificationDropdown from '@/components/NotificationDropdown';
 
 const { width, height } = Dimensions.get('window');
 const isSmallScreen = width < 768;
@@ -1324,7 +1325,14 @@ export default function LandingPage() {
         ]}
       >
         <View style={styles.headerContent}>
-          {isLoggedIn ? <HamburgerMenu /> : <View style={{ width: 40 }} />}
+          {isLoggedIn ? (
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+              <HamburgerMenu />
+              <NotificationDropdown iconColor={COLORS.forest} />
+            </View>
+          ) : (
+            <View style={{ width: 40 }} />
+          )}
           <View style={styles.logoContainer}>
             <ThemedText style={styles.logoEmoji}>🍄</ThemedText>
             <ThemedText style={styles.logoText}>SnapShroom</ThemedText>

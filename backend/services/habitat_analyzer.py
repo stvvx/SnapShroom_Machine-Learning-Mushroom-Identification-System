@@ -328,24 +328,31 @@ class HabitatAnalyzer:
 
     def get_species_by_location(self, region: str, province: Optional[str] = None) -> List[Dict]:
         """Get species commonly found in a specific location."""
-        if self.csv_data is None:
-            return []
-
-        # Filter by region
-        region_matches = self.csv_data[
-            self.csv_data['location_region'].str.lower().str.contains(region.lower())
-        ]
-
-        # Filter by province if specified
-        if province:
-            province_matches = region_matches[
-                region_matches['location_province'].str.lower().str.contains(province.lower())
+        try:
+            # Search by location in database
+            species_list = self.species_db.get_species_by_location(region)
+            
+            # Filter by province if specified
+            if province and species_list:
+                species_list = [
+                    s for s in species_list 
+                    if province.lower() in s.get('location', '').lower()
+                ]
+            
+            # Return relevant fields only
+            return [
+                {
+                    'scientific_name': s.get('scientific_name'),
+                    'english_name': s.get('english_name'),
+                    'local_name': s.get('local_name'),
+                    'habitat': s.get('habitat'),
+                    'season': s.get('season')
+                }
+                for s in species_list
             ]
-            results = province_matches
-        else:
-            results = region_matches
-
-        return results[['scientific_name', 'english_name', 'local_name', 'habitat', 'season_month']].to_dict('records')
+        except Exception as e:
+            print(f"Error fetching species by location: {e}")
+            return []
 
 
 # Global instance

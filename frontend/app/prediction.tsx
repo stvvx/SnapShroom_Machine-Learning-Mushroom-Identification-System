@@ -14,7 +14,7 @@ import {
 } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import { analyzeMushroom } from '@/utils/api';
+import { analyzeMushroom, searchSpecies } from '@/utils/api';
 import { generateMushroomLocationMap } from '@/utils/map-generator';
 import { getMushroomLocations } from '@/utils/mushroom-locations';
 
@@ -115,11 +115,6 @@ export default function PredictionScreen() {
   // Use cloudinaryUrl if available (persistent), otherwise fall back to imageUri
   const displayImageUrl = normalizedCloudinaryUrl || normalizedImageUri;
 
-  // Load CSV data
-  useEffect(() => {
-    loadMushroomData();
-  }, []);
-
   // Analyze image once loaded
   useEffect(() => {
     if (normalizedImageBase64) {
@@ -127,10 +122,10 @@ export default function PredictionScreen() {
     }
   }, [normalizedImageBase64]);
 
-  // Load and parse CSV when result is available
+  // Fetch mushroom data from database when result is available
   useEffect(() => {
     if (result?.image_analysis?.species) {
-      matchMushroomFromCSV(result.image_analysis.species.english_name || result.image_analysis.species.species);
+      fetchMushroomFromDatabase(result.image_analysis.species.english_name || result.image_analysis.species.species);
     }
   }, [result]);
 
@@ -141,267 +136,63 @@ export default function PredictionScreen() {
     }
   }, [mushroomData]);
 
-  const loadMushroomData = async () => {
-    // Mushroom data is hardcoded in matchMushroomFromCSV
-    console.log('✅ Mushroom database ready');
-  };
-
-  const matchMushroomFromCSV = (detectedSpeciesName: string) => {
-    // Hardcoded CSV data for matching
-    const mushrooms: MushroomData[] = [
-      {
-        mushroom_id: '1',
-        english_name: 'Wood Ear Mushroom',
-        local_name: 'Tainga ng Daga',
-        scientific_name: 'Auricularia polytricha',
-        edible: 'TRUE',
-        poisonous: 'FALSE',
-        location_region: 'Region 1',
-        location_province: 'Pangasinan',
-        habitat: 'wood',
-        cap_color: 'dark_brown',
-        cap_size_cm: '6',
-        gills_present: 'FALSE',
-        gills_color: 'none',
-        stem_color: 'brown',
-        stem_length_cm: '1',
-        size_reference: 'coin_5peso',
-        spore_print_color: 'white',
-        texture: 'gelatinous',
-        season_month: 'July-October',
-        cultivated: 'TRUE',
-        wild: 'TRUE',
-        notes: 'Ear-shaped grows on dead wood - used in soups and stir-fry'
-      },
-      {
-        mushroom_id: '2',
-        english_name: 'White Oyster Mushroom',
-        local_name: 'Kabute',
-        scientific_name: 'Pleurotus ostreatus',
-        edible: 'TRUE',
-        poisonous: 'FALSE',
-        location_region: 'NCR',
-        location_province: 'Manila',
-        habitat: 'wood',
-        cap_color: 'white',
-        cap_size_cm: '10',
-        gills_present: 'TRUE',
-        gills_color: 'white',
-        stem_color: 'white',
-        stem_length_cm: '3',
-        size_reference: 'coin_10peso',
-        spore_print_color: 'white',
-        texture: 'smooth',
-        season_month: 'All_year',
-        cultivated: 'TRUE',
-        wild: 'TRUE',
-        notes: 'Most commonly cultivated mushroom in Philippines - sold in markets'
-      },
-      {
-        mushroom_id: '3',
-        english_name: 'Enoki Mushroom',
-        local_name: 'Enoki',
-        scientific_name: 'Flammulina velutipes',
-        edible: 'TRUE',
-        poisonous: 'FALSE',
-        location_region: 'Region 2',
-        location_province: 'Isabela',
-        habitat: 'wood',
-        cap_color: 'white',
-        cap_size_cm: '2',
-        gills_present: 'TRUE',
-        gills_color: 'white',
-        stem_color: 'white',
-        stem_length_cm: '10',
-        size_reference: 'coin_1peso',
-        spore_print_color: 'white',
-        texture: 'smooth',
-        season_month: 'All_year',
-        cultivated: 'TRUE',
-        wild: 'FALSE',
-        notes: 'Long thin stems with tiny caps - grows in clusters - popular in Japanese dishes'
-      },
-      {
-        mushroom_id: '4',
-        english_name: 'Shiitake Mushroom',
-        local_name: 'Shiitake',
-        scientific_name: 'Lentinula edodes',
-        edible: 'TRUE',
-        poisonous: 'FALSE',
-        location_region: 'Region 4A',
-        location_province: 'Cavite',
-        habitat: 'wood',
-        cap_color: 'brown',
-        cap_size_cm: '7',
-        gills_present: 'TRUE',
-        gills_color: 'cream',
-        stem_color: 'brown',
-        stem_length_cm: '4',
-        size_reference: 'coin_5peso',
-        spore_print_color: 'white',
-        texture: 'smooth',
-        season_month: 'All_year',
-        cultivated: 'TRUE',
-        wild: 'FALSE',
-        notes: 'Popular cultivated variety - brown umbrella-shaped cap with white scales'
-      },
-      {
-        mushroom_id: '5',
-        english_name: 'Death Cap',
-        local_name: 'Kabuting Nakamamatay',
-        scientific_name: 'Amanita phalloides',
-        edible: 'FALSE',
-        poisonous: 'TRUE',
-        location_region: 'Region 4A',
-        location_province: 'Cavite',
-        habitat: 'forest',
-        cap_color: 'greenish_white',
-        cap_size_cm: '10',
-        gills_present: 'TRUE',
-        gills_color: 'white',
-        stem_color: 'white',
-        stem_length_cm: '12',
-        size_reference: 'coin_10peso',
-        spore_print_color: 'white',
-        texture: 'smooth',
-        season_month: 'June-November',
-        cultivated: 'FALSE',
-        wild: 'TRUE',
-        notes: '⚠️ EXTREMELY DEADLY - Contains amatoxins - Can be confused with edible mushrooms - Causes liver failure - DO NOT EAT'
-      },
-      {
-        mushroom_id: '6',
-        english_name: 'False Morel',
-        local_name: 'Kabuting Utak',
-        scientific_name: 'Gyromitra esculenta',
-        edible: 'FALSE',
-        poisonous: 'TRUE',
-        location_region: 'CAR',
-        location_province: 'Benguet',
-        habitat: 'forest',
-        cap_color: 'reddish_brown',
-        cap_size_cm: '8',
-        gills_present: 'FALSE',
-        gills_color: 'none',
-        stem_color: 'white',
-        stem_length_cm: '5',
-        size_reference: 'coin_10peso',
-        spore_print_color: 'white',
-        texture: 'wrinkled',
-        season_month: 'March-May',
-        cultivated: 'FALSE',
-        wild: 'TRUE',
-        notes: '⚠️ DEADLY - Brain-like wrinkled cap - Contains gyromitrin - Can be fatal even when cooked - Found in pine forests'
-      },
-      {
-        mushroom_id: '7',
-        english_name: 'Jack O Lantern Mushroom',
-        local_name: 'Kabuting Nagniningning',
-        scientific_name: 'Omphalotus olearius',
-        edible: 'FALSE',
-        poisonous: 'TRUE',
-        location_region: 'Region 4B',
-        location_province: 'Quezon',
-        habitat: 'wood',
-        cap_color: 'orange',
-        cap_size_cm: '12',
-        gills_present: 'TRUE',
-        gills_color: 'orange',
-        stem_color: 'orange',
-        stem_length_cm: '8',
-        size_reference: 'hand',
-        spore_print_color: 'cream',
-        texture: 'smooth',
-        season_month: 'June-November',
-        cultivated: 'FALSE',
-        wild: 'TRUE',
-        notes: '⚠️ POISONOUS - Bright orange color - Gills glow in the dark - Causes severe cramps and vomiting - Often confused with chanterelles'
-      },
-      {
-        mushroom_id: '8',
-        english_name: 'Funeral Bell',
-        local_name: 'Kabuting Libing',
-        scientific_name: 'Galerina marginata',
-        edible: 'FALSE',
-        poisonous: 'TRUE',
-        location_region: 'Region 2',
-        location_province: 'Isabela',
-        habitat: 'wood',
-        cap_color: 'brown',
-        cap_size_cm: '4',
-        gills_present: 'TRUE',
-        gills_color: 'brown',
-        stem_color: 'brown',
-        stem_length_cm: '6',
-        size_reference: 'coin_5peso',
-        spore_print_color: 'rusty_brown',
-        texture: 'smooth',
-        season_month: 'All_year',
-        cultivated: 'FALSE',
-        wild: 'TRUE',
-        notes: '⚠️ EXTREMELY DEADLY - Small brown mushroom - Contains same toxins as Death Cap - Often mistaken for edible mushrooms - Grows on decaying wood'
-      },
-      {
-        mushroom_id: '9',
-        english_name: 'Red Cage Fungus',
-        local_name: 'Kabuting Kulungan',
-        scientific_name: 'Clathrus ruber',
-        edible: 'FALSE',
-        poisonous: 'TRUE',
-        location_region: 'Region 6',
-        location_province: 'Iloilo',
-        habitat: 'soil',
-        cap_color: 'red',
-        cap_size_cm: '8',
-        gills_present: 'FALSE',
-        gills_color: 'none',
-        stem_color: 'red',
-        stem_length_cm: '5',
-        size_reference: 'coin_10peso',
-        spore_print_color: 'none',
-        texture: 'latticed',
-        season_month: 'May-October',
-        cultivated: 'FALSE',
-        wild: 'TRUE',
-        notes: '⚠️ NOT EDIBLE - Bright red lattice structure - Foul odor attracts flies - Not technically poisonous but inedible - Very distinctive appearance'
-      },
-      {
-        mushroom_id: '10',
-        english_name: 'Button Mushroom',
-        local_name: 'Kabuting Paris',
-        scientific_name: 'Agaricus bisporus',
-        edible: 'TRUE',
-        poisonous: 'FALSE',
-        location_region: 'Northern Luzon',
-        location_province: 'Rizal',
-        habitat: 'farms',
-        cap_color: 'white-light_brown',
-        cap_size_cm: '3-10',
-        gills_present: 'TRUE',
-        gills_color: 'brown',
-        stem_color: 'white',
-        stem_length_cm: '5',
-        size_reference: 'grocery-grade mushroom',
-        spore_print_color: 'dark_brown',
-        texture: 'smooth',
-        season_month: 'All_year',
-        cultivated: 'TRUE',
-        wild: 'FALSE',
-        notes: 'Most commonly consumed mushroom globally; same species as cremini and portobello at different maturity stages.'
+  const fetchMushroomFromDatabase = async (detectedSpeciesName: string) => {
+    try {
+      console.log('🔍 Fetching mushroom data from database:', detectedSpeciesName);
+      
+      // Clean up species name (remove "Mushroom" suffix for better matching)
+      let searchQuery = detectedSpeciesName;
+      
+      // Try exact match first
+      let results = await searchSpecies(searchQuery);
+      
+      // If no results and query contains "Mushroom", try without it
+      if ((!results || results.length === 0) && searchQuery.includes('Mushroom')) {
+        searchQuery = searchQuery.replace(/\s*Mushroom\s*/gi, '').trim();
+        console.log('🔍 Retrying search without "Mushroom":', searchQuery);
+        results = await searchSpecies(searchQuery);
       }
-    ];
-
-    // Match detected species with CSV data
-    const matched = mushrooms.find(m => 
-      m.english_name.toLowerCase().includes(detectedSpeciesName.toLowerCase()) ||
-      detectedSpeciesName.toLowerCase().includes(m.english_name.toLowerCase())
-    );
-
-    if (matched) {
-      setMushroomData(matched);
-      console.log('✅ Matched mushroom from CSV:', matched.english_name);
-    } else {
-      console.log('⚠️ No match found for:', detectedSpeciesName);
+      
+      console.log('📊 Search results:', results?.length || 0, 'matches found');
+      
+      if (results && results.length > 0) {
+        const species = results[0];
+        
+        // Transform database format to frontend format
+        const transformedData: MushroomData = {
+          mushroom_id: species._id || species.mushroom_id || '',
+          english_name: species.english_name || '',
+          local_name: species.local_name || '',
+          scientific_name: species.scientific_name || '',
+          edible: species.edible ? 'TRUE' : 'FALSE',
+          poisonous: !species.edible ? 'TRUE' : 'FALSE',
+          location_region: species.location || '',
+          location_province: species.province || '',
+          habitat: species.habitat || '',
+          cap_color: species.cap_color || '',
+          cap_size_cm: species.cap_size || '',
+          gills_present: species.gills_present ? 'TRUE' : 'FALSE',
+          gills_color: species.gills_color || 'none',
+          stem_color: species.stem_color || '',
+          stem_length_cm: species.stem_length || '',
+          size_reference: species.size_reference || '',
+          spore_print_color: species.spore_print_color || '',
+          texture: species.texture || '',
+          season_month: species.season || '',
+          cultivated: species.cultivated ? 'TRUE' : 'FALSE',
+          wild: species.wild ? 'TRUE' : 'FALSE',
+          notes: species.description || species.notes || ''
+        };
+        
+        setMushroomData(transformedData);
+        console.log('✅ Fetched mushroom from database:', transformedData.english_name);
+      } else {
+        console.log('⚠️ No database match found for:', detectedSpeciesName);
+        setMushroomData(null);
+      }
+    } catch (error) {
+      console.error('❌ Error fetching mushroom data:', error);
+      setMushroomData(null);
     }
   };
 
@@ -520,7 +311,7 @@ export default function PredictionScreen() {
       };
 
       setResult(transformedResult);
-      matchMushroomFromCSV(label);
+    
     } catch (err: any) {
       console.error('Analysis error:', err);
       console.error('Error details:', JSON.stringify(err, null, 2));
@@ -804,7 +595,7 @@ export default function PredictionScreen() {
       <View style={styles.section}>
         <View style={styles.sectionHeader}>
           <Ionicons name="information-circle" size={24} color="#2196F3" />
-          <Text style={styles.sectionTitle}>Mushroom Information (CSV Data)</Text>
+          <Text style={styles.sectionTitle}>Mushroom Information</Text>
         </View>
 
         {/* Map Button */}

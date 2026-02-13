@@ -18,6 +18,7 @@ class Config:
     # Use DB_URI from .env for MongoDB Atlas connection
     MONGO_URI = os.environ.get('DB_URI') or os.environ.get('MONGO_URI') or "mongodb://localhost:27017/snapshroom_db"
     MONGO_DBNAME = 'snapshroom_db'  # Always use snapshroom_db as per your .env
+    DB_NAME = 'snapshroom_db'  # Alias for consistency
     MONGO_CONNECT_TIMEOUT_MS = 20000
     MONGO_SOCKET_TIMEOUT_MS = 20000
     MONGO_SERVER_SELECTION_TIMEOUT_MS = 30000

@@ -9,6 +9,7 @@ from datetime import datetime, timedelta
 from bson import ObjectId
 import re
 from werkzeug.security import generate_password_hash, check_password_hash
+from services.notification_service import NotificationService
 
 auth_bp = Blueprint("auth", __name__, url_prefix="/auth")
 
@@ -96,6 +97,14 @@ def register():
             }}
         )
 
+        # Create welcome notification
+        try:
+            NotificationService.notify_registration_success(
+                mongo, str(result.inserted_id), username
+            )
+        except Exception as notif_error:
+            current_app.logger.warning(f"Notification error: {notif_error}")
+
         return jsonify({
             "success": True,
             "message": "Account created successfully",
@@ -156,6 +165,14 @@ def login():
                 "token_expires_at": datetime.utcnow() + timedelta(hours=24)
             }}
         )
+
+        # Create login notification
+        try:
+            NotificationService.notify_login_success(
+                mongo, str(user["_id"]), user.get("name", user["username"])
+            )
+        except Exception as notif_error:
+            current_app.logger.warning(f"Notification error: {notif_error}")
 
         return jsonify({
             "success": True,
@@ -272,6 +289,12 @@ def update_name():
             {"$set": {"name": name}}
         )
 
+        # Create profile update notification
+        try:
+            NotificationService.notify_profile_updated(mongo, user_id)
+        except Exception as notif_error:
+            current_app.logger.warning(f"Notification error: {notif_error}")
+
         return jsonify({
             "success": True,
             "message": "Name updated successfully",
@@ -327,6 +350,12 @@ def update_password():
             {"$set": {"password_hash": generate_password_hash(new_password)}}
         )
 
+        # Create password change notification
+        try:
+            NotificationService.notify_password_changed(mongo, user_id)
+        except Exception as notif_error:
+            current_app.logger.warning(f"Notification error: {notif_error}")
+
         return jsonify({
             "success": True,
             "message": "Password updated successfully"
@@ -363,6 +392,12 @@ def update_profile_image():
         
         print(f"✅ Avatar updated for user {user_id}: {profile_image_url}")
         print(f"Modified count: {result.modified_count}")
+
+        # Create profile update notification
+        try:
+            NotificationService.notify_profile_updated(mongo, user_id)
+        except Exception as notif_error:
+            current_app.logger.warning(f"Notification error: {notif_error}")
 
         return jsonify({
             "success": True,

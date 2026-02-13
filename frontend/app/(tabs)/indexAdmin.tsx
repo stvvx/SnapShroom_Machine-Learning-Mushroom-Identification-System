@@ -3,6 +3,7 @@ import { View, ScrollView, TouchableOpacity, StyleSheet, Dimensions, RefreshCont
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import HamburgerMenu from '@/components/HamburgerMenu';
+import NotificationDropdown from '@/components/NotificationDropdown';
 import { useAuth, api } from '@/contexts/AuthContext';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -80,7 +81,13 @@ export default function IndexAdmin() {
 
   return (
     <ThemedView style={styles.container}>
-      <HamburgerMenu />
+      <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 16, paddingTop: 50, paddingBottom: 10 }}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+          <HamburgerMenu />
+          <NotificationDropdown iconColor="#7BA05B" />
+        </View>
+        <View style={{ width: 40 }} />
+      </View>
       
       <ScrollView
         style={styles.scrollView}

@@ -15,10 +15,12 @@ class ToxicityDetector:
 
     def __init__(self, model_path: str = None, csv_path: str = None):
         self.model_path = model_path or "models/mushroom_edibility.pth"
-        self.csv_path = csv_path or "mushrooms.csv"
         self.model = None
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-        self.csv_data = None
+
+        # Database service for species data
+        from services.species_service import SpeciesService
+        self.species_db = SpeciesService()
 
         # Image preprocessing (same as training)
         self.transform = transforms.Compose([
@@ -28,7 +30,6 @@ class ToxicityDetector:
         ])
 
         self._load_model()
-        self._load_csv_data()
 
     def _load_model(self):
         """Load the trained PyTorch model."""
@@ -48,14 +49,7 @@ class ToxicityDetector:
             print(f"Error loading toxicity model: {e}")
             self.model = None
 
-    def _load_csv_data(self):
-        """Load mushroom metadata from CSV."""
-        try:
-            if os.path.exists(self.csv_path):
-                self.csv_data = pd.read_csv(self.csv_path)
-                print(f"Loaded CSV data with {len(self.csv_data)} entries")
-        except Exception as e:
-            print(f"Error loading CSV data: {e}")
+
 
     def detect_toxicity(self, image: Image.Image) -> Dict:
         """

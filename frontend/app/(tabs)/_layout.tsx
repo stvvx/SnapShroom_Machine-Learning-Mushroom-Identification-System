@@ -84,19 +84,7 @@ export default function TabLayout() {
           ),
         }}
       />
-
-      {/* EXPLORE - Available to non-admin users */}
-      <Tabs.Screen
-        name="explore"
-        options={{
-          title: 'Explore',
-          tabBarIcon: ({ color, size }) => (
-            <Ionicons name="search" size={size ?? 24} color={color} />
-          ),
-          href: isAdmin ? false : undefined,
-        }}
-      />
-
+      
       {/* MAP - Show mushroom locations across Philippines - Available to all users */}
       <Tabs.Screen
         name="map"
@@ -120,6 +108,7 @@ export default function TabLayout() {
         }}
       />
 
+   
       {/* ADMIN PANEL - Show only for admin users */}
       <Tabs.Screen
         name="admin"
