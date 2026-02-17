@@ -1,109 +1,142 @@
-import React, { useState, useEffect } from 'react';
-import { View, StyleSheet, ActivityIndicator } from 'react-native';
+import React, { useState } from 'react';
+import { View, StyleSheet } from 'react-native';
 import { ThemedText } from './themed-text';
 
-// Web version using Google Maps iframe or Leaflet
-export default function GoogleMap({ mushrooms, selectedMushroom, onSelectMushroom }: any) {
-  const [mapLoaded, setMapLoaded] = useState(false);
+// Web version using @react-google-maps/api
+let GoogleMapComponent: any = null;
 
-  useEffect(() => {
-    // Simulate map loading
-    const timer = setTimeout(() => setMapLoaded(true), 1000);
-    return () => clearTimeout(timer);
-  }, []);
+try {
+  const { GoogleMap, LoadScript, Marker, InfoWindow } = require('@react-google-maps/api');
+  
+  const MapComponent = ({ mushrooms, selectedMushroom, onSelectMushroom }: any) => {
+    const [selected, setSelected] = useState<any>(selectedMushroom);
 
-  // Create markers query string for Google Maps Static API
-  const createMarkersParam = () => {
-    return mushrooms.map((m: any) => {
-      const color = m.edible ? 'green' : 'red';
-      return `color:${color}|${m.lat},${m.lng}`;
-    }).join('&markers=');
+    console.log('GoogleMap.web rendering with mushrooms:', mushrooms?.length, mushrooms);
+
+    const mapContainerStyle = {
+      width: '100%',
+      height: '400px',
+      borderRadius: '12px',
+    };
+
+    const center = {
+      lat: 12.8797, // Center of Philippines
+      lng: 121.7740,
+    };
+
+    const options = {
+      zoomControl: true,
+      mapTypeControl: true,
+      streetViewControl: true,
+      fullscreenControl: true,
+    };
+
+    const handleMarkerClick = (mushroom: any) => {
+      setSelected(mushroom);
+      onSelectMushroom(mushroom);
+    };
+
+    return (
+      <LoadScript googleMapsApiKey="AIzaSyAQKuhDa1x_EaBHo2G18Xm4xJsAIK8QFDg">
+        <GoogleMap
+          mapContainerStyle={mapContainerStyle}
+          center={center}
+          zoom={6}
+          options={options}
+        >
+          {mushrooms.map((mushroom: any) => (
+            <Marker
+              key={mushroom.id}
+              position={{ lat: mushroom.lat, lng: mushroom.lng }}
+              onClick={() => handleMarkerClick(mushroom)}
+              icon={{
+                url: mushroom.edible 
+                  ? 'http://maps.google.com/mapfiles/ms/icons/green-dot.png'
+                  : 'http://maps.google.com/mapfiles/ms/icons/red-dot.png',
+              }}
+            />
+          ))}
+
+          {selected && (
+            <InfoWindow
+              position={{ lat: selected.lat, lng: selected.lng }}
+              onCloseClick={() => {
+                setSelected(null);
+                onSelectMushroom(null);
+              }}
+            >
+              <View style={styles.infoWindow}>
+                <ThemedText style={styles.infoTitle}>{selected.name}</ThemedText>
+                <ThemedText style={styles.infoText}>{selected.localName}</ThemedText>
+                <ThemedText style={styles.infoText}>
+                  {selected.province}, {selected.region}
+                </ThemedText>
+                <ThemedText style={[
+                  styles.infoStatus,
+                  { color: selected.edible ? '#4CAF50' : '#D32F2F' }
+                ]}>
+                  {selected.edible ? '✅ Edible' : '⚠️ Poisonous'}
+                </ThemedText>
+              </View>
+            </InfoWindow>
+          )}
+        </GoogleMap>
+      </LoadScript>
+    );
   };
 
-  // Center of Philippines
-  const center = '12.8797,121.7740';
-  const zoom = 6;
-  
-  // Google Maps embed URL
-  const mapUrl = `https://www.google.com/maps/embed/v1/view?key=AIzaSyAQKuhDa1x_EaBHo2G18Xm4xJsAIK8QFDg&center=${center}&zoom=${zoom}&maptype=roadmap`;
+  GoogleMapComponent = MapComponent;
+} catch (e) {
+  console.warn('Google Maps component not available', e);
+}
 
-  return (
-    <View style={styles.container}>
-      {!mapLoaded && (
-        <View style={styles.loading}>
-          <ActivityIndicator size="large" color="#7BA05B" />
-          <ThemedText style={styles.loadingText}>Loading map...</ThemedText>
-        </View>
-      )}
-      <iframe
-        src={mapUrl}
-        style={{
-          width: '100%',
-          height: '400px',
-          border: 0,
-          borderRadius: '12px',
-          display: mapLoaded ? 'block' : 'none'
-        }}
-        loading="lazy"
-        referrerPolicy="no-referrer-when-downgrade"
-      />
-      
-      {/* Markers info below map */}
-      <View style={styles.markersList}>
-        {mushrooms.slice(0, 3).map((mushroom: any) => (
-          <View key={mushroom.id} style={styles.markerItem}>
-            <View style={[
-              styles.markerDot, 
-              { backgroundColor: mushroom.edible ? '#4CAF50' : '#D32F2F' }
-            ]} />
-            <ThemedText style={styles.markerText}>{mushroom.name}</ThemedText>
-          </View>
-        ))}
+export default function GoogleMap(props: any) {
+  if (GoogleMapComponent) {
+    return <GoogleMapComponent {...props} />;
+  } else {
+    return (
+      <View style={styles.placeholder}>
+        <ThemedText>Map is loading...</ThemedText>
+        <ThemedText style={styles.note}>
+          Install @react-google-maps/api for interactive maps on web
+        </ThemedText>
       </View>
-    </View>
-  );
+    );
+  }
 }
 
 const styles = StyleSheet.create({
-  container: {
-    width: '100%',
-    position: 'relative',
-  },
-  loading: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
+  placeholder: {
     height: 400,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#F5F5F5',
+    backgroundColor: '#F0F0F0',
     borderRadius: 12,
-    zIndex: 10,
+    padding: 20,
   },
-  loadingText: {
+  note: {
     marginTop: 10,
-    color: '#666',
+    fontSize: 12,
+    color: '#999',
+    textAlign: 'center',
   },
-  markersList: {
-    marginTop: 10,
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 10,
+  infoWindow: {
+    padding: 8,
+    maxWidth: 200,
   },
-  markerItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 5,
+  infoTitle: {
+    fontWeight: 'bold',
+    fontSize: 14,
+    marginBottom: 4,
   },
-  markerDot: {
-    width: 10,
-    height: 10,
-    borderRadius: 5,
-  },
-  markerText: {
+  infoText: {
     fontSize: 12,
     color: '#666',
   },
+  infoStatus: {
+    fontSize: 12,
+    fontWeight: '600',
+    marginTop: 4,
+  },
 });
+

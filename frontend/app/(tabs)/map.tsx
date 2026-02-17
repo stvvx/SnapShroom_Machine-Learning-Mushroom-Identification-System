@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Dimensions, Platform, ActivityIndicator } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Dimensions, Platform, ActivityIndicator, Image } from 'react-native';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Ionicons } from '@expo/vector-icons';
@@ -8,18 +8,62 @@ import NotificationDropdown from '@/components/NotificationDropdown';
 import { API_URL } from '@/constants/api';
 import GoogleMap from '@/components/GoogleMap';
 
-// Coordinate mapping for mushroom species (database doesn't store coordinates)
-const COORDINATES_MAP: Record<string, { lat: number; lng: number }> = {
-  'Wood Ear': { lat: 15.8242, lng: 120.5724 }, // Pangasinan
-  'Oyster Mushroom': { lat: 14.5995, lng: 120.9842 }, // Manila
-  'Enoki Mushroom': { lat: 16.8129, lng: 121.7489 }, // Isabela
-  'Shiitake': { lat: 14.3520, lng: 120.8981 }, // Cavite
-  'Death Cap': { lat: 14.3540, lng: 120.9020 }, // Cavite
-  'False Morel': { lat: 16.4023, lng: 120.6026 }, // Benguet
-  'Jack O Lantern': { lat: 14.8242, lng: 121.5041 }, // Quezon
-  'Funeral Bell': { lat: 16.8150, lng: 121.7510 }, // Isabela
-  'Red Cage': { lat: 10.6918, lng: 122.5636 }, // Iloilo
-  'Button Mushroom': { lat: 14.5896, lng: 121.2050 }, // Rizal
+// Mushroom image mapping (placeholder for now - replace with actual images)
+const MUSHROOM_IMAGES: Record<string, any> = {
+  'Oyster Mushroom': require('@/assets/images/react-logo.png'), // Replace with actual image
+  'Enoki Mushroom': require('@/assets/images/react-logo.png'),
+  'Button Mushroom': require('@/assets/images/react-logo.png'),
+  'Shiitake': require('@/assets/images/react-logo.png'),
+  'Wood Ear': require('@/assets/images/react-logo.png'),
+  'Death Cap': require('@/assets/images/react-logo.png'),
+  'False Morel': require('@/assets/images/react-logo.png'),
+  'Jack O Lantern': require('@/assets/images/react-logo.png'),
+  'Funeral Bell': require('@/assets/images/react-logo.png'),
+  'Red Cage': require('@/assets/images/react-logo.png'),
+};
+
+// Coordinate mapping for Philippine regions/provinces from database location field
+const LOCATION_COORDINATES: Record<string, { lat: number; lng: number }> = {
+  // NCR
+  'NCR – Manila': { lat: 14.5995, lng: 120.9842 },
+  'NCR – Quezon City': { lat: 14.6760, lng: 121.0437 },
+  'NCR – Makati': { lat: 14.5547, lng: 121.0244 },
+  
+  // Luzon Regions
+  'CAR – Benguet': { lat: 16.4023, lng: 120.6026 },
+  'CAR – Baguio': { lat: 16.4023, lng: 120.5960 },
+  'Region 1 – Pangasinan': { lat: 15.8949, lng: 120.2863 },
+  'Region 1 – La Union': { lat: 16.6159, lng: 120.3209 },
+  'Region 2 – Isabela': { lat: 16.9754, lng: 121.8107 },
+  'Region 2 – Cagayan': { lat: 18.2490, lng: 121.8870 },
+  'Region 3 – Bulacan': { lat: 14.7942, lng: 120.8799 },
+  'Region 3 – Pampanga': { lat: 15.0794, lng: 120.6200 },
+  'Region 4A – Cavite': { lat: 14.4791, lng: 120.8970 },
+  'Region 4A – Laguna': { lat: 14.2691, lng: 121.4113 },
+  'Region 4A – Batangas': { lat: 13.7565, lng: 121.0583 },
+  'Region 4A – Rizal': { lat: 14.6037, lng: 121.3084 },
+  'Region 4A – Quezon': { lat: 14.0223, lng: 122.1215 },
+  'Region 4B – Mindoro': { lat: 13.1000, lng: 121.0000 },
+  'Region 5 – Albay': { lat: 13.1391, lng: 123.7377 },
+  'Region 5 – Camarines Sur': { lat: 13.5291, lng: 123.3483 },
+  
+  // Visayas Regions
+  'Region 6 – Iloilo': { lat: 10.7202, lng: 122.5621 },
+  'Region 6 – Negros Occidental': { lat: 10.6710, lng: 122.9539 },
+  'Region 6 – Aklan': { lat: 11.9204, lng: 122.0107 },
+  'Region 7 – Cebu': { lat: 10.3157, lng: 123.8854 },
+  'Region 7 – Bohol': { lat: 9.8500, lng: 124.1435 },
+  'Region 8 – Leyte': { lat: 11.2500, lng: 124.8333 },
+  'Region 8 – Samar': { lat: 11.5804, lng: 125.0300 },
+  
+  // Mindanao Regions
+  'Region 9 – Zamboanga': { lat: 6.9214, lng: 122.0790 },
+  'Region 10 – Bukidnon': { lat: 8.0542, lng: 124.9292 },
+  'Region 10 – Misamis Oriental': { lat: 8.5050, lng: 124.6450 },
+  'Region 11 – Davao': { lat: 7.1907, lng: 125.4553 },
+  'Region 12 – South Cotabato': { lat: 6.3333, lng: 124.8333 },
+  'BARMM – Maguindanao': { lat: 6.9414, lng: 124.4111 },
+  'CARAGA – Agusan del Norte': { lat: 8.9472, lng: 125.5281 },
 };
 
 interface MushroomLocation {
@@ -61,12 +105,16 @@ export default function MapScreen() {
         // Transform database format to component format
         const transformedData: MushroomLocation[] = data.species.map((species: any) => {
           // Parse location string (e.g., "Region 2 – Isabela" or "NCR – Manila")
-          const locationParts = species.location?.split('–') || ['Unknown', 'Unknown'];
+          // Handle both en dash (–) and regular hyphen (-)
+          const locationParts = species.location?.split(/[–-]/) || ['Unknown', 'Unknown'];
           const region = locationParts[0]?.trim() || 'Unknown';
           const province = locationParts[1]?.trim() || 'Unknown';
 
-          // Get coordinates from mapping or use default
-          const coords = COORDINATES_MAP[species.english_name] || { lat: 14.5995, lng: 120.9842 };
+          // Normalize location key by replacing hyphens with en dashes for lookup
+          const locationKey = (species.location || 'NCR – Manila').replace(/-/g, '–');
+          const coords = LOCATION_COORDINATES[locationKey] || { lat: 14.5995, lng: 120.9842 }; // Default to Manila
+
+          console.log(`${species.english_name}: location="${species.location}" normalized="${locationKey}" -> lat:${coords.lat}, lng:${coords.lng}`);
 
           return {
             id: species._id || species.id,
@@ -302,38 +350,75 @@ export default function MapScreen() {
           </View>
         )}
 
-        {/* Mushroom List */}
-        <View style={styles.listSection}>
-          <ThemedText style={styles.sectionTitle}>All Mushrooms ({mushroomLocations.length})</ThemedText>
+        {/* Mushroom Gallery/About Section */}
+        <View style={styles.gallerySection}>
+          <ThemedText style={styles.sectionTitle}>Philippine Mushroom Species ({mushroomLocations.length})</ThemedText>
+          <ThemedText style={styles.sectionSubtitle}>
+            Comprehensive guide to edible and poisonous mushrooms found across the Philippines
+          </ThemedText>
 
-          {mushroomLocations.map((mushroom) => (
-            <TouchableOpacity
-              key={mushroom.id}
-              style={[
-                styles.listItem,
-                selectedMushroom?.id === mushroom.id && styles.listItemSelected,
-              ]}
-              onPress={() => setSelectedMushroom(mushroom)}
-            >
-              <View
+          <View style={styles.galleryGrid}>
+            {mushroomLocations.map((mushroom) => (
+              <TouchableOpacity
+                key={mushroom.id}
                 style={[
-                  styles.listItemDot,
-                  { backgroundColor: mushroom.edible ? '#7BA05B' : '#D32F2F' },
+                  styles.galleryCard,
+                  selectedMushroom?.id === mushroom.id && styles.galleryCardSelected,
                 ]}
-              />
-              <View style={styles.listItemContent}>
-                <ThemedText style={styles.listItemName}>{mushroom.name}</ThemedText>
-                <ThemedText style={styles.listItemLocation}>
-                  {mushroom.province} • {mushroom.region}
-                </ThemedText>
-              </View>
-              <Ionicons
-                name={mushroom.edible ? 'checkmark' : 'warning'}
-                size={20}
-                color={mushroom.edible ? '#4CAF50' : '#D32F2F'}
-              />
-            </TouchableOpacity>
-          ))}
+                onPress={() => setSelectedMushroom(mushroom)}
+                activeOpacity={0.7}
+              >
+                {/* Mushroom Image */}
+                <View style={styles.imageContainer}>
+                  <Image
+                    source={MUSHROOM_IMAGES[mushroom.name] || require('@/assets/images/react-logo.png')}
+                    style={styles.mushroomImage}
+                    resizeMode="cover"
+                  />
+                  <View style={[
+                    styles.edibilityBadge,
+                    { backgroundColor: mushroom.edible ? '#4CAF50' : '#D32F2F' }
+                  ]}>
+                    <Ionicons
+                      name={mushroom.edible ? 'checkmark-circle' : 'alert-circle'}
+                      size={12}
+                      color="#FFF"
+                    />
+                    <Text style={styles.badgeText}>
+                      {mushroom.edible ? 'Edible' : 'Toxic'}
+                    </Text>
+                  </View>
+                </View>
+
+                {/* Mushroom Info */}
+                <View style={styles.cardContent}>
+                  <ThemedText style={styles.cardTitle} numberOfLines={1}>{mushroom.name}</ThemedText>
+                  <ThemedText style={styles.cardLocalName} numberOfLines={1}>({mushroom.localName})</ThemedText>
+                  
+                  {mushroom.scientificName && (
+                    <ThemedText style={styles.cardScientific} numberOfLines={1}>
+                      <Text style={{ fontStyle: 'italic' }}>{mushroom.scientificName}</Text>
+                    </ThemedText>
+                  )}
+
+                  <View style={styles.cardInfoRow}>
+                    <Ionicons name="location" size={12} color="#7BA05B" />
+                    <ThemedText style={styles.cardInfoText} numberOfLines={1}>
+                      {mushroom.province}
+                    </ThemedText>
+                  </View>
+
+                  <TouchableOpacity
+                    style={styles.viewMoreButton}
+                    onPress={() => setSelectedMushroom(mushroom)}
+                  >
+                    <ThemedText style={styles.viewMoreText}>View Details</ThemedText>
+                    <Ionicons name="arrow-forward" size={12} color="#7BA05B" />
+                  </TouchableOpacity>
+                </View>
+              </TouchableOpacity>
+            ))}
+          </View>
         </View>
       </ScrollView>
     </ThemedView>
@@ -536,43 +621,127 @@ const styles = StyleSheet.create({
     fontSize: 11,
     color: '#666',
   },
-  listSection: {
+  gallerySection: {
     paddingHorizontal: 20,
     paddingVertical: 16,
   },
-  listItem: {
+  sectionSubtitle: {
+    fontSize: 13,
+    color: '#999',
+    marginTop: 4,
+    marginBottom: 20,
+    lineHeight: 18,
+  },
+  galleryGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 16,
+    justifyContent: 'space-between',
+  },
+  galleryCard: {
+    backgroundColor: '#FFF',
+    borderRadius: 12,
+    overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 6,
+    elevation: 3,
+    borderWidth: 2,
+    borderColor: 'transparent',
+    width: Platform.OS === 'web' ? 'calc(50% - 8px)' : '48%',
+    marginBottom: 4,
+  },
+  galleryCardSelected: {
+    borderColor: '#7BA05B',
+    shadowOpacity: 0.15,
+    transform: [{ scale: 1.02 }],
+  },
+  imageContainer: {
+    width: '100%',
+    height: 160,
+    backgroundColor: '#F5F3EF',
+    position: 'relative',
+  },
+  mushroomImage: {
+    width: '100%',
+    height: '100%',
+  },
+  edibilityBadge: {
+    position: 'absolute',
+    top: 8,
+    right: 8,
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 12,
-    paddingHorizontal: 12,
+    gap: 4,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
+    elevation: 5,
+  },
+  badgeText: {
+    color: '#FFF',
+    fontSize: 10,
+    fontWeight: '600',
+  },
+  cardContent: {
+    padding: 12,
+  },
+  cardTitle: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#2D3E2D',
+    marginBottom: 2,
+  },
+  cardLocalName: {
+    fontSize: 11,
+    color: '#7BA05B',
+    fontWeight: '500',
+    marginBottom: 6,
+  },
+  cardScientific: {
+    fontSize: 10,
+    color: '#999',
+    fontStyle: 'italic',
     marginBottom: 8,
-    backgroundColor: '#F5F3EF',
-    borderRadius: 8,
-    borderLeftWidth: 4,
-    borderLeftColor: 'transparent',
   },
-  listItemSelected: {
-    backgroundColor: '#E8F5E9',
-    borderLeftColor: '#7BA05B',
+  cardInfoRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    marginBottom: 6,
   },
-  listItemDot: {
-    width: 12,
-    height: 12,
-    borderRadius: 6,
-    marginRight: 12,
-  },
-  listItemContent: {
+  cardInfoText: {
+    fontSize: 10,
+    color: '#666',
     flex: 1,
   },
-  listItemName: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#2D3E2D',
+  cardNotes: {
+    fontSize: 11,
+    color: '#555',
+    lineHeight: 16,
+    marginTop: 6,
+    marginBottom: 8,
   },
-  listItemLocation: {
-    fontSize: 12,
-    color: '#999',
-    marginTop: 2,
+  viewMoreButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 4,
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    backgroundColor: '#F5F3EF',
+    borderRadius: 6,
+    marginTop: 4,
+  },
+  viewMoreText: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: '#7BA05B',
   },
   centerContent: {
     justifyContent: 'center',
