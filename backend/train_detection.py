@@ -19,6 +19,8 @@ import torch
 import yaml
 import argparse
 from datetime import datetime
+import shutil
+import random
 
 # ==========================================
 # CONFIGURATION
@@ -30,13 +32,79 @@ MODEL_NAME = "mushroom_detector.pt"
 RUNS_DIR = "runs/detect"
 
 # Default hyperparameters
-DEFAULT_EPOCHS = 50
-DEFAULT_BATCH = 16
+DEFAULT_EPOCHS = 5
+DEFAULT_BATCH = 10
 DEFAULT_IMG_SIZE = 640
 DEFAULT_MODEL = "yolov8n.pt"  # nano, small, medium, large, xlarge
 
 # Device configuration
 DEVICE = "0" if torch.cuda.is_available() else "cpu"
+
+def split_dataset(train_split=0.8):
+    """
+    Split training data into train/validation sets if validation set doesn't exist
+    
+    Args:
+        train_split: Percentage of data to use for training (default: 0.8 = 80%)
+    """
+    print("\n" + "="*60)
+    print("📊 Creating Train/Validation Split")
+    print("="*60)
+    
+    train_img_dir = os.path.join(DATASET_DIR, "train", "images")
+    train_lbl_dir = os.path.join(DATASET_DIR, "train", "labels")
+    val_img_dir = os.path.join(DATASET_DIR, "valid", "images")
+    val_lbl_dir = os.path.join(DATASET_DIR, "valid", "labels")
+    
+    # Create validation directories
+    os.makedirs(val_img_dir, exist_ok=True)
+    os.makedirs(val_lbl_dir, exist_ok=True)
+    
+    # Get all image files
+    image_files = [f for f in os.listdir(train_img_dir) if f.endswith(('.jpg', '.png', '.jpeg'))]
+    
+    if not image_files:
+        print("❌ No images found in training directory")
+        return False
+    
+    # Shuffle and split
+    random.seed(42)  # For reproducibility
+    random.shuffle(image_files)
+    
+    split_idx = int(len(image_files) * train_split)
+    train_files = image_files[:split_idx]
+    val_files = image_files[split_idx:]
+    
+    print(f"📁 Total images: {len(image_files)}")
+    print(f"📁 Training set: {len(train_files)} ({train_split*100:.0f}%)")
+    print(f"📁 Validation set: {len(val_files)} ({(1-train_split)*100:.0f}%)")
+    
+    # Move validation files
+    print("\n🔄 Moving files to validation set...")
+    moved_count = 0
+    for img_file in val_files:
+        # Move image
+        src_img = os.path.join(train_img_dir, img_file)
+        dst_img = os.path.join(val_img_dir, img_file)
+        shutil.move(src_img, dst_img)
+        
+        # Move corresponding label file
+        label_file = os.path.splitext(img_file)[0] + '.txt'
+        src_lbl = os.path.join(train_lbl_dir, label_file)
+        dst_lbl = os.path.join(val_lbl_dir, label_file)
+        
+        if os.path.exists(src_lbl):
+            shutil.move(src_lbl, dst_lbl)
+        
+        moved_count += 1
+        if moved_count % 100 == 0:
+            print(f"   Moved {moved_count}/{len(val_files)} files...")
+    
+    print(f"✅ Dataset split complete!")
+    print(f"   Training: {len(train_files)} images in {train_img_dir}")
+    print(f"   Validation: {len(val_files)} images in {val_img_dir}")
+    
+    return True
 
 def check_dataset():
     """Verify dataset structure and configuration"""
@@ -79,6 +147,20 @@ def check_dataset():
     else:
         print(f"⚠️  Validation directory not found: {val_dir}")
         val_images = 0
+        
+        # Automatically split dataset if validation set is missing but training set exists
+        if train_images > 0:
+            print("\n💡 Validation set missing. Automatically splitting training data...")
+            if split_dataset(train_split=0.8):
+                # Re-check after split
+                val_images = len([f for f in os.listdir(val_dir) if f.endswith(('.jpg', '.png', '.jpeg'))])
+                train_images = len([f for f in os.listdir(train_dir) if f.endswith(('.jpg', '.png', '.jpeg'))])
+                print(f"\n✅ After split:")
+                print(f"   Training images: {train_images}")
+                print(f"   Validation images: {val_images}")
+            else:
+                print("❌ Failed to create train/val split")
+                return False
     
     # Print class information
     names = data_config.get('names', [])

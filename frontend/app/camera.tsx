@@ -12,6 +12,7 @@ import {
   Animated,
 } from 'react-native';
 import { Camera, CameraView } from 'expo-camera';
+import * as ImagePicker from 'expo-image-picker';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
@@ -306,6 +307,92 @@ export default function CameraScreen() {
     }
   };
 
+  // Pick image from gallery
+  const pickImage = async () => {
+    if (isLoading) return;
+
+    try {
+      // Request permission for media library
+      const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      
+      if (status !== 'granted') {
+        Alert.alert(
+          'Permission Required',
+          'Please grant permission to access your photo library to upload mushroom images.',
+          [{ text: 'OK' }]
+        );
+        return;
+      }
+
+      // Launch image picker
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: true,
+        aspect: [4, 3],
+        quality: 0.8,
+        base64: true,
+      });
+
+      if (result.canceled) {
+        return;
+      }
+
+      const asset = result.assets[0];
+      
+      if (asset?.base64 || asset?.uri) {
+        setIsLoading(true);
+        console.log('📁 Image picked from gallery, checking for mushroom...');
+        
+        // Check if image contains a mushroom
+        const { isMushroom, confidence } = await checkForMushroom(asset.base64 || '', asset.uri);
+        
+        if (!isMushroom || confidence < 0.3) {
+          setIsLoading(false);
+          Alert.alert(
+            'No Mushroom Detected',
+            'Please select an image with a clearly visible mushroom. Tips:\n\n• Choose a photo with good lighting\n• Ensure the mushroom fills most of the frame\n• Avoid blurry or distant photos',
+            [
+              {
+                text: 'Try Again',
+                onPress: () => pickImage(),
+                style: 'default',
+              },
+              {
+                text: 'Cancel',
+                style: 'cancel',
+              },
+            ]
+          );
+          return;
+        }
+
+        console.log('✅ Mushroom detected in uploaded image with confidence:', confidence);
+
+        // Upload to Cloudinary
+        const cloudinaryData = await uploadToCloudinary(asset.base64 || '', asset.uri);
+
+        // Navigate to prediction screen with the uploaded image
+        router.push({
+          pathname: '/prediction',
+          params: {
+            imageUri: asset.uri,
+            imageBase64: asset.base64 || '',
+            cloudinaryUrl: cloudinaryData.cloudinaryUrl,
+            cloudinaryId: cloudinaryData.cloudinaryId,
+          },
+        });
+      }
+    } catch (error) {
+      console.error('❌ Error picking image:', error);
+      Alert.alert(
+        'Error',
+        'Failed to process the selected image. Please try again.'
+      );
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   // Request permission handler
   const requestPermission = async () => {
     const { status } = await Camera.requestCameraPermissionsAsync();
@@ -484,6 +571,26 @@ export default function CameraScreen() {
                 </View>
               </LinearGradient>
             </TouchableOpacity>
+
+            {/* Upload Button */}
+            <TouchableOpacity
+              style={styles.uploadButtonContainer}
+              onPress={pickImage}
+              activeOpacity={0.8}
+            >
+              <LinearGradient
+                colors={['rgba(123, 160, 91, 0.8)', 'rgba(106, 143, 77, 0.8)', 'rgba(90, 126, 64, 0.8)']}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+                style={styles.uploadButton}
+              >
+                <Ionicons name="images" size={26} color="white" />
+                <Text style={styles.uploadButtonText}>Upload from Gallery</Text>
+                <View style={styles.buttonArrow}>
+                  <Ionicons name="cloud-upload" size={22} color="white" />
+                </View>
+              </LinearGradient>
+            </TouchableOpacity>
           </ScrollView>
         </LinearGradient>
       ) : (
@@ -608,6 +715,24 @@ export default function CameraScreen() {
                 </TouchableOpacity>
               </Animated.View>
 
+              {/* Gallery Upload Button */}
+              <TouchableOpacity
+                style={[styles.galleryButton, isLoading && styles.captureButtonDisabled]}
+                onPress={pickImage}
+                disabled={isLoading}
+                activeOpacity={0.8}
+              >
+                <LinearGradient
+                  colors={isLoading ? ['rgba(85, 107, 79, 0.8)', 'rgba(68, 90, 63, 0.8)'] : ['rgba(123, 160, 91, 0.9)', 'rgba(106, 143, 77, 0.9)']}
+                  style={styles.galleryButtonGradient}
+                >
+                  <Ionicons name="images" size={24} color="white" />
+                  <Text style={styles.galleryButtonText}>
+                    {isLoading ? 'Processing...' : 'Upload from Gallery'}
+                  </Text>
+                </LinearGradient>
+              </TouchableOpacity>
+
               <View style={styles.captureHint}>
                 <LinearGradient
                   colors={['rgba(0,0,0,0.85)', 'rgba(0,0,0,0.7)']}
@@ -615,7 +740,7 @@ export default function CameraScreen() {
                 >
                   <Ionicons name="finger-print" size={16} color="white" />
                   <Text style={styles.hintText}>
-                    {isLoading ? 'Processing...' : 'Tap to capture'}
+                    {isLoading ? 'Processing...' : 'Tap to capture or upload'}
                   </Text>
                 </LinearGradient>
               </View>
@@ -913,6 +1038,29 @@ const styles = StyleSheet.create({
   buttonArrow: {
     marginLeft: 4,
   },
+  uploadButtonContainer: {
+    borderRadius: 16,
+    overflow: 'hidden',
+    marginBottom: 40,
+    shadowColor: '#7BA05B',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 10,
+    elevation: 6,
+  },
+  uploadButton: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingVertical: 18,
+    gap: 14,
+  },
+  uploadButtonText: {
+    color: 'white',
+    fontSize: 17,
+    fontWeight: '800',
+    letterSpacing: 0.5,
+  },
 
   // Camera View Styles
   overlay: {
@@ -1177,5 +1325,33 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: '700',
     letterSpacing: 0.3,
+  },
+  galleryButton: {
+    width: '85%',
+    borderRadius: 16,
+    overflow: 'hidden',
+    marginBottom: 16,
+    shadowColor: '#7BA05B',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 6,
+  },
+  galleryButtonGradient: {
+    paddingVertical: 16,
+    paddingHorizontal: 24,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 12,
+    borderWidth: 2,
+    borderColor: 'rgba(255, 255, 255, 0.2)',
+    borderRadius: 16,
+  },
+  galleryButtonText: {
+    color: 'white',
+    fontSize: 16,
+    fontWeight: '700',
+    letterSpacing: 0.5,
   },
 });

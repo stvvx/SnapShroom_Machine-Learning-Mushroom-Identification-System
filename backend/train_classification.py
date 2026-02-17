@@ -52,8 +52,8 @@ CHECKPOINT_PATH = os.path.join(OUTPUT_DIR, "classifier_checkpoint.pth")
 RESULTS_PATH = os.path.join(OUTPUT_DIR, "classification_results.json")
 
 # Default hyperparameters
-DEFAULT_EPOCHS = 30
-DEFAULT_BATCH = 32
+DEFAULT_EPOCHS = 5
+DEFAULT_BATCH = 10
 DEFAULT_LR = 0.001
 IMAGE_SIZE = 224
 
