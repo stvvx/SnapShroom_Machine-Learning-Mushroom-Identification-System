@@ -55,6 +55,7 @@ export default function HamburgerMenu({ onAdminNavigate, currentSection }: Hambu
     { label: 'Home', icon: 'home', section: 'home', description: 'Dashboard & Quick Actions' },
     { label: 'User Management', icon: 'people', section: 'users', description: 'Manage users & roles' },
     { label: 'Analytics', icon: 'bar-chart', section: 'analytics', description: 'View statistics & insights' },
+    { label: 'History', icon: 'time', route: '/history' },
     { label: 'Notifications', icon: 'notifications', route: '/(tabs)/adminNotifications' },
     { label: 'About', icon: 'information-circle', route: '/(tabs)/about' },
     { label: 'Profile', icon: 'person', route: '/(tabs)/profile' },
@@ -64,6 +65,7 @@ export default function HamburgerMenu({ onAdminNavigate, currentSection }: Hambu
   const userMenuItems = [
     { label: 'Home', icon: 'home', route: '/(tabs)/' },
     { label: 'Capture', icon: 'camera', route: '/(tabs)/camera' },
+    { label: 'History', icon: 'time', route: '/history' },
     { label: 'Profile', icon: 'person', route: '/(tabs)/profile' },
     { label: 'Explore', icon: 'search', route: '/(tabs)/explore' },
     { label: 'Map', icon: 'map', route: '/(tabs)/map' },

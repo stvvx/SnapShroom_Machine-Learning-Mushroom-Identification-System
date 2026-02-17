@@ -1,162 +1,136 @@
-import React, { useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Dimensions, Platform } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Dimensions, Platform, ActivityIndicator } from 'react-native';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Ionicons } from '@expo/vector-icons';
 import HamburgerMenu from '@/components/HamburgerMenu';
 import NotificationDropdown from '@/components/NotificationDropdown';
+import { API_URL } from '@/constants/api';
+import GoogleMap from '@/components/GoogleMap';
 
-// Mushroom data with Philippine coordinates
-const MUSHROOM_LOCATIONS = [
-  {
-    id: 1,
-    name: 'Wood Ear Mushroom',
-    localName: 'Tainga ng Daga',
-    region: 'Region 1',
-    province: 'Pangasinan',
-    lat: 15.8242,
-    lng: 120.5724,
-    edible: true,
-    notes: 'Ear-shaped grows on dead wood - used in soups and stir-fry',
-    capColor: 'dark brown',
-  },
-  {
-    id: 2,
-    name: 'White Oyster Mushroom',
-    localName: 'Kabute',
-    region: 'NCR',
-    province: 'Manila',
-    lat: 14.5995,
-    lng: 120.9842,
-    edible: true,
-    notes: 'Most commonly cultivated mushroom in Philippines - sold in markets',
-    capColor: 'white',
-  },
-  {
-    id: 3,
-    name: 'Enoki Mushroom',
-    localName: 'Enoki',
-    region: 'Region 2',
-    province: 'Isabela',
-    lat: 16.8129,
-    lng: 121.7489,
-    edible: true,
-    notes: 'Long thin stems with tiny caps - grows in clusters - popular in Japanese dishes',
-    capColor: 'white',
-  },
-  {
-    id: 4,
-    name: 'Shiitake Mushroom',
-    localName: 'Shiitake',
-    region: 'Region 4A',
-    province: 'Cavite',
-    lat: 14.3520,
-    lng: 120.8981,
-    edible: true,
-    notes: 'Popular cultivated variety - brown umbrella-shaped cap with white scales',
-    capColor: 'brown',
-  },
-  {
-    id: 5,
-    name: 'Death Cap',
-    localName: 'Kabuting Nakamamatay',
-    region: 'Region 4A',
-    province: 'Cavite',
-    lat: 14.3540,
-    lng: 120.9020,
-    edible: false,
-    notes: '⚠️ EXTREMELY DEADLY - Contains amatoxins - Can be confused with edible mushrooms',
-    capColor: 'greenish white',
-  },
-  {
-    id: 6,
-    name: 'False Morel',
-    localName: 'Kabuting Utak',
-    region: 'CAR',
-    province: 'Benguet',
-    lat: 16.4023,
-    lng: 120.6026,
-    edible: false,
-    notes: '⚠️ DEADLY - Brain-like wrinkled cap - Contains gyromitrin',
-    capColor: 'reddish brown',
-  },
-  {
-    id: 7,
-    name: 'Jack O Lantern Mushroom',
-    localName: 'Kabuting Nagniningning',
-    region: 'Region 4B',
-    province: 'Quezon',
-    lat: 14.8242,
-    lng: 121.5041,
-    edible: false,
-    notes: '⚠️ POISONOUS - Bright orange color - Gills glow in the dark',
-    capColor: 'orange',
-  },
-  {
-    id: 8,
-    name: 'Funeral Bell',
-    localName: 'Kabuting Libing',
-    region: 'Region 2',
-    province: 'Isabela',
-    lat: 16.8150,
-    lng: 121.7510,
-    edible: false,
-    notes: '⚠️ EXTREMELY DEADLY - Small brown mushroom - Contains same toxins as Death Cap',
-    capColor: 'brown',
-  },
-  {
-    id: 9,
-    name: 'Red Cage Fungus',
-    localName: 'Kabuting Kulungan',
-    region: 'Region 6',
-    province: 'Iloilo',
-    lat: 10.6918,
-    lng: 122.5636,
-    edible: false,
-    notes: '⚠️ NOT EDIBLE - Bright red lattice structure - Foul odor attracts flies',
-    capColor: 'red',
-  },
-  {
-    id: 10,
-    name: 'Button Mushroom',
-    localName: 'Kabuting Paris',
-    region: 'Northern Luzon',
-    province: 'Rizal',
-    lat: 14.5896,
-    lng: 121.2050,
-    edible: true,
-    notes: 'Most commonly consumed mushroom globally; same species as cremini and portobello',
-    capColor: 'white-light brown',
-  },
-];
+// Coordinate mapping for mushroom species (database doesn't store coordinates)
+const COORDINATES_MAP: Record<string, { lat: number; lng: number }> = {
+  'Wood Ear': { lat: 15.8242, lng: 120.5724 }, // Pangasinan
+  'Oyster Mushroom': { lat: 14.5995, lng: 120.9842 }, // Manila
+  'Enoki Mushroom': { lat: 16.8129, lng: 121.7489 }, // Isabela
+  'Shiitake': { lat: 14.3520, lng: 120.8981 }, // Cavite
+  'Death Cap': { lat: 14.3540, lng: 120.9020 }, // Cavite
+  'False Morel': { lat: 16.4023, lng: 120.6026 }, // Benguet
+  'Jack O Lantern': { lat: 14.8242, lng: 121.5041 }, // Quezon
+  'Funeral Bell': { lat: 16.8150, lng: 121.7510 }, // Isabela
+  'Red Cage': { lat: 10.6918, lng: 122.5636 }, // Iloilo
+  'Button Mushroom': { lat: 14.5896, lng: 121.2050 }, // Rizal
+};
 
-// Web-only Leaflet Map Component
-let LeafletMapComponent: any = null;
-
-if (Platform.OS === 'web') {
-  try {
-    LeafletMapComponent = require('@/components/LeafletMap').default;
-  } catch (e) {
-    console.warn('LeafletMap component not available');
-  }
+interface MushroomLocation {
+  id: string;
+  name: string;
+  localName: string;
+  region: string;
+  province: string;
+  lat: number;
+  lng: number;
+  edible: boolean;
+  notes: string;
+  capColor: string;
+  scientificName?: string;
+  habitat?: string;
 }
 
 export default function MapScreen() {
-  const [selectedMushroom, setSelectedMushroom] = useState<typeof MUSHROOM_LOCATIONS[0] | null>(null);
+  const [mushroomLocations, setMushroomLocations] = useState<MushroomLocation[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [selectedMushroom, setSelectedMushroom] = useState<MushroomLocation | null>(null);
   const [viewMode, setViewMode] = useState<'map' | 'chart'>('map');
 
+  // Fetch mushroom species from database
+  useEffect(() => {
+    fetchMushroomData();
+  }, []);
+
+  const fetchMushroomData = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      
+      const response = await fetch(`${API_URL}/api/species/all`);
+      const data = await response.json();
+
+      if (data.success && data.species) {
+        // Transform database format to component format
+        const transformedData: MushroomLocation[] = data.species.map((species: any) => {
+          // Parse location string (e.g., "Region 2 – Isabela" or "NCR – Manila")
+          const locationParts = species.location?.split('–') || ['Unknown', 'Unknown'];
+          const region = locationParts[0]?.trim() || 'Unknown';
+          const province = locationParts[1]?.trim() || 'Unknown';
+
+          // Get coordinates from mapping or use default
+          const coords = COORDINATES_MAP[species.english_name] || { lat: 14.5995, lng: 120.9842 };
+
+          return {
+            id: species._id || species.id,
+            name: species.english_name || 'Unknown',
+            localName: species.local_name || 'Unknown',
+            region,
+            province,
+            lat: coords.lat,
+            lng: coords.lng,
+            edible: species.edible === true || species.edible === 'true',
+            notes: species.notes || species.description || 'No information available',
+            capColor: species.cap || 'Unknown',
+            scientificName: species.scientific_name,
+            habitat: species.habitat,
+          };
+        });
+
+        setMushroomLocations(transformedData);
+      } else {
+        throw new Error('Failed to fetch mushroom data');
+      }
+    } catch (err) {
+      console.error('Error fetching mushroom data:', err);
+      setError('Unable to load mushroom data. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   // Prepare statistics data
-  const edibleCount = MUSHROOM_LOCATIONS.filter(m => m.edible).length;
-  const poisonousCount = MUSHROOM_LOCATIONS.filter(m => !m.edible).length;
+  const edibleCount = mushroomLocations.filter(m => m.edible).length;
+  const poisonousCount = mushroomLocations.filter(m => !m.edible).length;
 
   // Data by region for bar chart
-  const regionCounts = MUSHROOM_LOCATIONS.reduce((acc, mushroom) => {
+  const regionCounts = mushroomLocations.reduce((acc, mushroom) => {
     const region = mushroom.region;
     if (!acc[region]) acc[region] = { edible: 0, poisonous: 0 };
     if (mushroom.edible) acc[region].edible++;
     else acc[region].poisonous++;
     return acc;
   }, {} as Record<string, { edible: number; poisonous: number }>);
+
+  // Show loading state
+  if (loading) {
+    return (
+      <ThemedView style={[styles.container, styles.centerContent]}>
+        <ActivityIndicator size="large" color="#7BA05B" />
+        <ThemedText style={styles.loadingText}>Loading mushroom data...</ThemedText>
+      </ThemedView>
+    );
+  }
+
+  // Show error state
+  if (error) {
+    return (
+      <ThemedView style={[styles.container, styles.centerContent]}>
+        <Ionicons name="alert-circle" size={48} color="#D32F2F" />
+        <ThemedText style={styles.errorText}>{error}</ThemedText>
+        <TouchableOpacity style={styles.retryButton} onPress={fetchMushroomData}>
+          <ThemedText style={styles.retryButtonText}>Retry</ThemedText>
+        </TouchableOpacity>
+      </ThemedView>
+    );
+  }
 
   return (
     <ThemedView style={styles.container}>
@@ -195,18 +169,12 @@ export default function MapScreen() {
             <View style={styles.mapSection}>
               <ThemedText style={styles.sectionTitle}>Philippine Mushroom Locations</ThemedText>
               
-              {/* OpenStreetMap via Leaflet */}
-              {Platform.OS === 'web' && LeafletMapComponent ? (
-                <LeafletMapComponent 
-                  mushrooms={MUSHROOM_LOCATIONS}
-                  selectedMushroom={selectedMushroom}
-                  onSelectMushroom={setSelectedMushroom}
-                />
-              ) : (
-                <View style={styles.mapPlaceholder}>
-                  <ThemedText>Map available on web platform</ThemedText>
-                </View>
-              )}
+              {/* Google Maps - Auto selects web/native version */}
+              <GoogleMap 
+                mushrooms={mushroomLocations}
+                selectedMushroom={selectedMushroom}
+                onSelectMushroom={setSelectedMushroom}
+              />
 
               <View style={styles.legend}>
                 <View style={styles.legendItem}>
@@ -249,13 +217,33 @@ export default function MapScreen() {
                     </View>
                   </View>
 
+                  {selectedMushroom.scientificName && (
+                    <View style={styles.detailRow}>
+                      <Ionicons name="flask" size={18} color="#6B7C61" />
+                      <View style={styles.detailContent}>
+                        <ThemedText style={styles.detailLabel}>Scientific Name</ThemedText>
+                        <ThemedText style={[styles.detailValue, { fontStyle: 'italic' }]}>{selectedMushroom.scientificName}</ThemedText>
+                      </View>
+                    </View>
+                  )}
+
                   <View style={styles.detailRow}>
                     <Ionicons name="color-palette" size={18} color="#6B7C61" />
                     <View style={styles.detailContent}>
-                      <ThemedText style={styles.detailLabel}>Cap Color</ThemedText>
+                      <ThemedText style={styles.detailLabel}>Cap Description</ThemedText>
                       <ThemedText style={styles.detailValue}>{selectedMushroom.capColor}</ThemedText>
                     </View>
                   </View>
+
+                  {selectedMushroom.habitat && (
+                    <View style={styles.detailRow}>
+                      <Ionicons name="leaf" size={18} color="#6B7C61" />
+                      <View style={styles.detailContent}>
+                        <ThemedText style={styles.detailLabel}>Habitat</ThemedText>
+                        <ThemedText style={styles.detailValue}>{selectedMushroom.habitat}</ThemedText>
+                      </View>
+                    </View>
+                  )}
 
                   <View style={styles.detailRow}>
                     <Ionicons name={selectedMushroom.edible ? 'checkmark-circle' : 'alert-circle'} size={18} color={selectedMushroom.edible ? '#4CAF50' : '#D32F2F'} />
@@ -316,9 +304,9 @@ export default function MapScreen() {
 
         {/* Mushroom List */}
         <View style={styles.listSection}>
-          <ThemedText style={styles.sectionTitle}>All Mushrooms</ThemedText>
+          <ThemedText style={styles.sectionTitle}>All Mushrooms ({mushroomLocations.length})</ThemedText>
 
-          {MUSHROOM_LOCATIONS.map((mushroom) => (
+          {mushroomLocations.map((mushroom) => (
             <TouchableOpacity
               key={mushroom.id}
               style={[
@@ -410,21 +398,6 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: '600',
     color: '#2D3E2D',
-    marginBottom: 16,
-  },
-  mapLoader: {
-    height: 400,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: '#F0F0F0',
-    borderRadius: 12,
-  },
-  mapPlaceholder: {
-    height: 400,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: '#F0F0F0',
-    borderRadius: 12,
     marginBottom: 16,
   },
   legend: {
@@ -600,5 +573,33 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: '#999',
     marginTop: 2,
+  },
+  centerContent: {
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  loadingText: {
+    marginTop: 12,
+    fontSize: 14,
+    color: '#666',
+  },
+  errorText: {
+    marginTop: 12,
+    fontSize: 14,
+    color: '#D32F2F',
+    textAlign: 'center',
+  },
+  retryButton: {
+    marginTop: 16,
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+    backgroundColor: '#7BA05B',
+    borderRadius: 8,
+  },
+  retryButtonText: {
+    color: '#FFF',
+    fontSize: 14,
+    fontWeight: '600',
   },
 });

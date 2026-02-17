@@ -233,6 +233,8 @@ export default function PredictionScreen() {
       // Send image to backend for analysis
       const backendResult: BackendResult = await analyzeMushroom({
         image_base64: cleanBase64,
+        image_url: normalizedCloudinaryUrl,  // Include Cloudinary URL for database storage
+        cloudinary_url: normalizedCloudinaryUrl,  // Alternative key
         location: {
           region: "Region 4A",
           province: "Laguna"

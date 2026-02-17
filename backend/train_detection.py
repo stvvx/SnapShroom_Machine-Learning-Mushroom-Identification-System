@@ -34,7 +34,7 @@ RUNS_DIR = "runs/detect"
 # Default hyperparameters
 DEFAULT_EPOCHS = 5
 DEFAULT_BATCH = 10
-DEFAULT_IMG_SIZE = 640
+DEFAULT_IMG_SIZE = 400
 DEFAULT_MODEL = "yolov8n.pt"  # nano, small, medium, large, xlarge
 
 # Device configuration

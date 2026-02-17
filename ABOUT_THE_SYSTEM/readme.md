@@ -1,47 +1,31 @@
-The app’s “AI” is a locally hosted PyTorch pipeline defined in custom_predict.py:1-332
 
-How to Change IP Address Now
-Simply edit these two files:
-chang ip and forwarding
-.env - Change BACKEND_IP=192.168.1.XXX
-.env - Change EXPO_PUBLIC_BACKEND_IP=192.168.1.XXX and EXPO_PUBLIC_API_URL=http://192.168.1.XXX:5000/api
+start ngrok:
+ngrok http 5000
+
+change ip and forwarding
+.env - both backend and frontend
+
+run the system:
+cd frontend/
+npx expo start --clear
+
+cd backend/
+python app.py
+
+make_admin.py
+Usage: python make_admin.py <email>
+
+dataset location:
+backend/datasets/
+
+train model:
+train_detection.py  ---> run this first
+train_classification.py
+
+defaults: you can change this
+epoch:5
+batch:10
+image size:400 nalang boi or pwede 255
 
 
-### Step 1: Prepare Your Dataset
-**What happens:**
-- 📊 Loads all images from dataset
-- 🧠 Trains ResNet50 for 20 epochs
-- 💾 Saves model to `models/mushroom_classifier.pth`
-- 📝 Saves classes to `models/mushroom_classes.json`
 
----
-**Output:**
-- ✅ `models/mushroom_classifier.pth` - Trained model weights
-- ✅ `models/mushroom_classes.json` - Class names and mappings
-
-**update the model?**
-- Put new images in `datasets/mushroom_dataset/`
-- Run `python train_custom.py` again
-- Old model is replaced with new one
-
-
-### Training the Detector (Binary Model)
-This trains the model to recognize "mushroom vs not mushroom":
-- Run `python train_mushroom_detector.py`
-This for classification
-- Run `python train_custom.py`
-
-## What train_custom.py Does
-
-1. **Loads Data** - Reads from CSV and image files
-2. **Splits** - 80% training, 20% validation
-3. **Uses ResNet50** - Pre-trained deep learning model
-4. **Trains** - Updates model weights based on your data
-5. **Saves** - Best model from all epochs
-6. **Outputs** - Model file + class mapping
-
-Check Model Accuracy:
-**Test model**
-python test_model.py
-Test on Validation Set
-python test_model.py --split valid

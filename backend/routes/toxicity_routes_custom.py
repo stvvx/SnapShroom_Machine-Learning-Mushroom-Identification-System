@@ -114,6 +114,9 @@ def predict_mushroom():
             # Get location data from request if provided
             location_data = data.get('location', {})
             
+            # Get image URL (Cloudinary URL) from request if provided
+            image_url = data.get('image_url') or data.get('cloudinary_url')
+            
             # Prepare scan data
             scan_data = {
                 "user_id": ObjectId(user_id) if user_id else None,
@@ -122,6 +125,7 @@ def predict_mushroom():
                 "mushroom_type": result.get('classification', {}).get('label') if result.get('classification') else None,
                 "classification_confidence": result.get('classification', {}).get('confidence', 0) if result.get('classification') else None,
                 "edibility": result.get('classification', {}).get('toxicity_level', '').lower() if result.get('classification') else None,
+                "image_url": image_url,  # Store Cloudinary URL
                 "location": {
                     "region": location_data.get('region'),
                     "province": location_data.get('province'),
@@ -161,6 +165,54 @@ def predict_mushroom():
         return jsonify({
             "success": False,
             "error": f"Prediction error: {str(e)}"
+        }), 500
+
+
+@toxicity_bp.route('/scans/history', methods=['GET'])
+def get_scan_history():
+    """
+    Get user's scan history (all scans or filtered by user_id)
+    Query params:
+        - user_id: Filter by specific user (optional)
+        - limit: Max number of records (default: 50)
+    """
+    try:
+        mongo = current_app.mongo
+        
+        # Get query parameters
+        user_id = request.args.get('user_id')
+        limit = int(request.args.get('limit', 50))
+        
+        # Build query
+        query = {}
+        if user_id:
+            try:
+                query['user_id'] = ObjectId(user_id)
+            except:
+                query['user_id'] = None  # Invalid ObjectId, search for null
+        
+        # Fetch scans sorted by most recent first
+        scans = list(mongo.db.mushroom_scans.find(query)
+                    .sort('created_at', -1)
+                    .limit(limit))
+        
+        # Convert ObjectId to string for JSON serialization
+        for scan in scans:
+            scan['_id'] = str(scan['_id'])
+            if scan.get('user_id'):
+                scan['user_id'] = str(scan['user_id'])
+        
+        return jsonify({
+            "success": True,
+            "count": len(scans),
+            "scans": scans
+        }), 200
+        
+    except Exception as e:
+        logger.error(f"❌ Error fetching scan history: {str(e)}")
+        return jsonify({
+            "success": False,
+            "error": str(e)
         }), 500
 
 
