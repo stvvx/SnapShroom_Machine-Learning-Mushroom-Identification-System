@@ -1,3 +1,4 @@
+
 // contexts/AuthContext.tsx
 import React, {
   createContext,
@@ -8,6 +9,8 @@ import React, {
 } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import axios from 'axios';
+import { auth } from '@/firebase/config';
+import { signOut } from 'firebase/auth';
 
 // ==================================================
 // ENV & API URL
@@ -37,6 +40,7 @@ export interface User {
   created_at?: string;
   profileImage?: string;
   avatar?: string;
+  provider?: 'email' | 'google'; // Track authentication provider
 }
 
 export interface LoginCredentials {
@@ -58,12 +62,15 @@ interface AuthContextType {
   isAuthenticated: boolean;
   error: string | null;
   accessToken: string | null;
+  isGoogleLoading: boolean;
 
   login: (credentials: LoginCredentials) => Promise<void>;
   signup: (data: SignupData) => Promise<void>;
   logout: () => Promise<void>;
   refreshUser: () => Promise<void>;
   clearError: () => void;
+  handleGoogleAuth: (idToken: string) => Promise<void>;
+  setGoogleLoading: (loading: boolean) => void;
 }
 
 // ==================================================
@@ -72,6 +79,7 @@ interface AuthContextType {
 const STORAGE_KEYS = {
   TOKEN: 'snapshroom_access_token',
   USER: 'snapshroom_user',
+  PROVIDER: 'snapshroom_auth_provider',
 };
 
 // ==================================================
@@ -95,9 +103,6 @@ api.interceptors.request.use(
   (error) => Promise.reject(error)
 );
 
-// Response interceptor will be set up after AuthProvider is initialized
-// This allows us to access the clearAuth function
-
 // ==================================================
 // CONTEXT
 // ==================================================
@@ -108,6 +113,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [accessToken, setAccessToken] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [isGoogleLoading, setIsGoogleLoading] = useState(false);
+  const [authProvider, setAuthProvider] = useState<'email' | 'google' | null>(null);
 
   // -------------------------
   // Helpers
@@ -115,17 +122,34 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const clearAuth = async () => {
     setUser(null);
     setAccessToken(null);
+    setAuthProvider(null);
     delete api.defaults.headers.common.Authorization;
-    await AsyncStorage.multiRemove([STORAGE_KEYS.TOKEN, STORAGE_KEYS.USER]);
+    
+    // Sign out from Firebase if using Google auth
+    try {
+      if (auth?.currentUser) {
+        await signOut(auth);
+      }
+    } catch (err) {
+      console.error('Firebase signout error:', err);
+    }
+    
+    await AsyncStorage.multiRemove([
+      STORAGE_KEYS.TOKEN, 
+      STORAGE_KEYS.USER,
+      STORAGE_KEYS.PROVIDER
+    ]);
   };
 
-  const storeAuth = async (token: string, userData: User) => {
+  const storeAuth = async (token: string, userData: User, provider: 'email' | 'google') => {
     await AsyncStorage.setItem(STORAGE_KEYS.TOKEN, token);
     await AsyncStorage.setItem(STORAGE_KEYS.USER, JSON.stringify(userData));
+    await AsyncStorage.setItem(STORAGE_KEYS.PROVIDER, provider);
 
     api.defaults.headers.common.Authorization = `Bearer ${token}`;
     setAccessToken(token);
     setUser(userData);
+    setAuthProvider(provider);
     setError(null);
   };
 
@@ -159,14 +183,16 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       try {
         const token = await AsyncStorage.getItem(STORAGE_KEYS.TOKEN);
         const userStr = await AsyncStorage.getItem(STORAGE_KEYS.USER);
+        const provider = await AsyncStorage.getItem(STORAGE_KEYS.PROVIDER) as 'email' | 'google' | null;
 
-        if (token && userStr) {
+        if (token && userStr && provider) {
           const userData = JSON.parse(userStr);
           api.defaults.headers.common.Authorization = `Bearer ${token}`;
           setAccessToken(token);
           setUser(userData);
+          setAuthProvider(provider);
           setError(null);
-          console.log('Restored auth from storage:', userData.email);
+          console.log('Restored auth from storage:', userData.email, 'provider:', provider);
         }
       } catch (err) {
         console.error('Error restoring auth:', err);
@@ -198,7 +224,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
       if (!res.data.success) throw new Error(res.data.message);
 
-      await storeAuth(res.data.access_token, res.data.user);
+      await storeAuth(res.data.access_token, res.data.user, 'email');
     } catch (err: any) {
       let msg = 'Login failed';
       if (axios.isAxiosError(err)) msg = err.response?.data?.message || msg;
@@ -242,11 +268,56 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   };
 
   // -------------------------
-  // LOGOUT
+  // 🔥 GOOGLE AUTH HANDLER
+  // -------------------------
+  const handleGoogleAuth = async (idToken: string) => {
+    setIsGoogleLoading(true);
+    setError(null);
+
+    try {
+      // Send the Firebase token to your backend
+      const res = await api.post('/auth/google', {
+        id_token: idToken,
+      }, {
+        withCredentials: true,
+      });
+
+      if (!res.data.success) throw new Error(res.data.message);
+
+      // Store the backend token and user data
+      await storeAuth(res.data.access_token, res.data.user, 'google');
+      
+      console.log('Google authentication successful');
+    } catch (err: any) {
+      let msg = 'Google authentication failed';
+      if (axios.isAxiosError(err)) {
+        msg = err.response?.data?.message || msg;
+        console.error('Google auth error details:', err.response?.data);
+      }
+      setError(msg);
+      throw new Error(msg);
+    } finally {
+      setIsGoogleLoading(false);
+    }
+  };
+
+  // -------------------------
+  // LOGOUT (Enhanced for Google)
   // -------------------------
   const logout = async () => {
     setIsLoading(true);
     try {
+      // Call backend logout endpoint if needed
+      if (accessToken) {
+        try {
+          await api.post('/auth/logout', {}, {
+            headers: { Authorization: `Bearer ${accessToken}` }
+          });
+        } catch (err) {
+          console.error('Backend logout error:', err);
+        }
+      }
+      
       await clearAuth();
     } catch (err) {
       console.error('Logout error:', err);
@@ -264,8 +335,12 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
       const res = await api.get('/auth/me');
       if (res.data.success && res.data.user) {
-        setUser(res.data.user);
-        await AsyncStorage.setItem(STORAGE_KEYS.USER, JSON.stringify(res.data.user));
+        const updatedUser = {
+          ...res.data.user,
+          provider: authProvider, // Preserve the provider info
+        };
+        setUser(updatedUser);
+        await AsyncStorage.setItem(STORAGE_KEYS.USER, JSON.stringify(updatedUser));
       }
     } catch (err) {
       console.error('Error refreshing user:', err);
@@ -273,6 +348,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   };
 
   const clearError = () => setError(null);
+  const setGoogleLoading = (loading: boolean) => setIsGoogleLoading(loading);
 
   // -------------------------
   // PROVIDER
@@ -285,11 +361,14 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         error,
         accessToken,
         isAuthenticated: !!user && !!accessToken,
+        isGoogleLoading,
         login,
         signup,
         logout,
         refreshUser,
         clearError,
+        handleGoogleAuth,
+        setGoogleLoading,
       }}
     >
       {children}
@@ -304,4 +383,4 @@ export const useAuth = () => {
   const ctx = useContext(AuthContext);
   if (!ctx) throw new Error('useAuth must be used inside AuthProvider');
   return ctx;
-};
+  };

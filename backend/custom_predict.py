@@ -68,7 +68,11 @@ class MushroomClassifier(nn.Module):
         super(MushroomClassifier, self).__init__()
         self.backbone = models.resnet50(pretrained=False)
         num_features = self.backbone.fc.in_features
-        self.backbone.fc = nn.Linear(num_features, num_classes)
+        # Match training architecture: Sequential with Dropout + Linear
+        self.backbone.fc = nn.Sequential(
+            nn.Dropout(0.5),
+            nn.Linear(num_features, num_classes)
+        )
     
     def forward(self, x):
         return self.backbone(x)
@@ -152,7 +156,20 @@ class CustomMushroomPredictor:
         
         try:
             self.detector = MushroomDetector()
-            self.detector.load_state_dict(torch.load(self.detector_path, map_location=self.device))
+            
+            # Load checkpoint
+            checkpoint = torch.load(self.detector_path, map_location=self.device)
+            
+            # Handle different checkpoint formats
+            if isinstance(checkpoint, dict) and 'model_state_dict' in checkpoint:
+                # Checkpoint saved with metadata
+                logger.info("Loading detector from checkpoint with metadata")
+                self.detector.load_state_dict(checkpoint['model_state_dict'])
+            else:
+                # Checkpoint is just the state dict
+                logger.info("Loading detector from plain state dict")
+                self.detector.load_state_dict(checkpoint)
+            
             self.detector.to(self.device)
             self.detector.eval()
             
@@ -188,12 +205,27 @@ class CustomMushroomPredictor:
             with open(self.classes_path, 'r') as f:
                 classes_dict = json.load(f)
             
-            num_classes = len(classes_dict['classes'])
+            num_classes = len(classes_dict['class_names'])
             logger.info(f"Loading classifier for {num_classes} classes")
             
-            # Initialize and load classifier
+            # Initialize classifier
             self.classifier = MushroomClassifier(num_classes=num_classes)
-            self.classifier.load_state_dict(torch.load(self.classifier_path, map_location=self.device))
+            
+            # Load checkpoint
+            checkpoint = torch.load(self.classifier_path, map_location=self.device)
+            
+            # Handle different checkpoint formats
+            if isinstance(checkpoint, dict) and 'model_state_dict' in checkpoint:
+                # Checkpoint saved with metadata
+                logger.info("Loading model from checkpoint with metadata")
+                self.classifier.load_state_dict(checkpoint['model_state_dict'])
+                if 'best_accuracy' in checkpoint:
+                    logger.info(f"Model best accuracy: {checkpoint['best_accuracy']:.2%}")
+            else:
+                # Checkpoint is just the state dict
+                logger.info("Loading model from plain state dict")
+                self.classifier.load_state_dict(checkpoint)
+            
             self.classifier.to(self.device)
             self.classifier.eval()
             
@@ -217,14 +249,14 @@ class CustomMushroomPredictor:
                 classes_dict = json.load(f)
             
             # Validate required fields
-            required_fields = ['classes', 'class_to_id', 'id_to_class']
+            required_fields = ['class_names', 'class_to_idx', 'idx_to_class']
             for field in required_fields:
                 if field not in classes_dict:
                     raise ValueError(f"Missing required field '{field}' in classes file")
             
-            self.classes = classes_dict['classes']
-            self.class_to_id = classes_dict['class_to_id']
-            self.id_to_class = classes_dict['id_to_class']
+            self.classes = classes_dict['class_names']
+            self.class_to_id = classes_dict['class_to_idx']
+            self.id_to_class = classes_dict['idx_to_class']
             
             logger.info(f"Classes loaded: {len(self.classes)} mushroom species")
             logger.debug(f"Species: {', '.join(self.classes)}")

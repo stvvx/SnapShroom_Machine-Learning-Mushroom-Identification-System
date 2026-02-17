@@ -34,25 +34,5 @@
     "7": "Red Cage Mushroom",
     "8": "Shiitake Mushroom",
     "9": "Wood Ear Mushroom"
-  },
-  "num_classes": 10,
-  "description": "Mushroom species classification classes - matches english_name in database",
-  "dataset_path": "datasets/classification/mushroom_classification.v1-1.folder",
-  "notes": {
-    "edible": [
-      "Button Mushroom",
-      "Enoki Mushroom",
-      "Oyster Mushroom",
-      "Shiitake Mushroom",
-      "Wood Ear Mushroom"
-    ],
-    "poisonous": [
-      "Death Cap",
-      "False Morel",
-      "Funeral Bell Mushroom",
-      "Jack O Lantern Mushroom",
-      "Red Cage Mushroom"
-    ],
-    "database_mapping": "These class names must match the 'english_name' field in your MongoDB 'species' collection"
   }
 }

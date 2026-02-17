@@ -360,7 +360,7 @@ def train_classifier(epochs=DEFAULT_EPOCHS, batch_size=DEFAULT_BATCH,
     criterion = nn.CrossEntropyLoss()
     optimizer = optim.Adam(model.parameters(), lr=learning_rate)
     scheduler = optim.lr_scheduler.ReduceLROnPlateau(
-        optimizer, mode='max', factor=0.5, patience=5, verbose=True
+        optimizer, mode='max', factor=0.5, patience=5
     )
     
     # Resume from checkpoint if requested
