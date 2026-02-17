@@ -1,38 +1,58 @@
 {
-  "classes": [
-    "Wood Ear Mushroom",
-    "White Oyster Mushroom",
-    "Enoki Mushroom",
-    "Shiitake Mushroom",
+  "class_names": [
+    "Button Mushroom",
     "Death Cap",
+    "Enoki Mushroom",
     "False Morel",
+    "Funeral Bell Mushroom",
     "Jack O Lantern Mushroom",
-    "Funeral Bell",
-    "Red Cage Fungus",
-    "Button Mushroom"
+    "Oyster Mushroom",
+    "Red Cage Mushroom",
+    "Shiitake Mushroom",
+    "Wood Ear Mushroom"
   ],
-  "class_to_id": {
-    "Wood Ear Mushroom": 0,
-    "White Oyster Mushroom": 1,
+  "class_to_idx": {
+    "Button Mushroom": 0,
+    "Death Cap": 1,
     "Enoki Mushroom": 2,
-    "Shiitake Mushroom": 3,
-    "Death Cap": 4,
-    "False Morel": 5,
-    "Jack O Lantern Mushroom": 6,
-    "Funeral Bell": 7,
-    "Red Cage Fungus": 8,
-    "Button Mushroom": 9
+    "False Morel": 3,
+    "Funeral Bell Mushroom": 4,
+    "Jack O Lantern Mushroom": 5,
+    "Oyster Mushroom": 6,
+    "Red Cage Mushroom": 7,
+    "Shiitake Mushroom": 8,
+    "Wood Ear Mushroom": 9
   },
-  "id_to_class": {
-    "0": "Wood Ear Mushroom",
-    "1": "White Oyster Mushroom",
+  "idx_to_class": {
+    "0": "Button Mushroom",
+    "1": "Death Cap",
     "2": "Enoki Mushroom",
-    "3": "Shiitake Mushroom",
-    "4": "Death Cap",
-    "5": "False Morel",
-    "6": "Jack O Lantern Mushroom",
-    "7": "Funeral Bell",
-    "8": "Red Cage Fungus",
-    "9": "Button Mushroom"
+    "3": "False Morel",
+    "4": "Funeral Bell Mushroom",
+    "5": "Jack O Lantern Mushroom",
+    "6": "Oyster Mushroom",
+    "7": "Red Cage Mushroom",
+    "8": "Shiitake Mushroom",
+    "9": "Wood Ear Mushroom"
+  },
+  "num_classes": 10,
+  "description": "Mushroom species classification classes - matches english_name in database",
+  "dataset_path": "datasets/classification/mushroom_classification.v1-1.folder",
+  "notes": {
+    "edible": [
+      "Button Mushroom",
+      "Enoki Mushroom",
+      "Oyster Mushroom",
+      "Shiitake Mushroom",
+      "Wood Ear Mushroom"
+    ],
+    "poisonous": [
+      "Death Cap",
+      "False Morel",
+      "Funeral Bell Mushroom",
+      "Jack O Lantern Mushroom",
+      "Red Cage Mushroom"
+    ],
+    "database_mapping": "These class names must match the 'english_name' field in your MongoDB 'species' collection"
   }
 }

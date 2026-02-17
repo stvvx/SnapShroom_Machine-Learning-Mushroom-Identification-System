@@ -5,7 +5,9 @@
 ## ✅ What You're Using Now
 
 ### Backend
-- **Model Training**: `backend/train_custom.py` ← Use this!
+- **Model Training**: 
+python train_classification.py --epochs 30
+python train_detection.py --epochs 50
 - **Model Type**: PyTorch ResNet50 (CPU/GPU compatible)
 - **Prediction Routes**: `backend/routes/toxicity_routes_custom.py`
 - **Database**: MongoDB (for user data)
@@ -95,49 +97,3 @@ EPOCHS = 20              # Increase for better accuracy
 LEARNING_RATE = 0.001    # Adjust learning speed
 IMAGE_SIZE = 224         # ResNet50 standard size
 ```
-
----
-
-## 📦 Requirements
-
-Already installed:
-- `torch` - Deep learning
-- `torchvision` - Image processing
-- `opencv-python` - Image handling
-- `pandas` - CSV reading
-- `numpy` - Math operations
-
----
-
-## ✨ Frontend Integration
-
-The frontend automatically uses your model:
-1. User takes mushroom photo
-2. Sends to API
-3. Gets predictions from your trained model
-4. Shows results with location data
-
----
-
-## 🐛 Troubleshooting
-
-| Issue | Solution |
-|-------|----------|
-| Out of memory | Reduce BATCH_SIZE to 8-16 |
-| Low accuracy | More images, more epochs |
-| Slow training | Use GPU (check DEVICE shows CUDA) |
-| Model not found | Run train_custom.py first |
-
----
-
-## 🎯 Next Steps
-
-1. ✅ Run cleanup script
-2. ✅ Organize images in `datasets/mushroom_dataset/`
-3. ✅ Run `python train_custom.py`
-4. ✅ Start backend with `python app.py`
-5. ✅ Test on mobile/web app
-
----
-
-**You're all set! No more Roboflow needed.** 🎉
