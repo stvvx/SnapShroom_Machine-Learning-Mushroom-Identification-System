@@ -202,7 +202,7 @@ export const testConnection = () =>
 // ---------------------------------------------------
 
 export const searchSpecies = async (query: string): Promise<any[]> => {
-  const url = `${API_BASE_URL}/api/species/search?q=${encodeURIComponent(query)}`;
+  const url = `${API_BASE_URL}/species/search?q=${encodeURIComponent(query)}`;
 
   try {
     console.log('🔍 Searching species API:', query);

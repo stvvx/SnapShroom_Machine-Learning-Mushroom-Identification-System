@@ -91,6 +91,15 @@ interface DetectionStatus extends BackendDetection {
   message?: string;
 }
 
+const InfoRow = ({ label, value }: { label: string; value: string }) => (
+  <View style={styles.infoRow}>
+    <Text style={styles.infoLabel}>{label}</Text>
+    <Text style={styles.infoValue}>{value || '—'}</Text>
+  </View>
+);
+
+const Divider = () => <View style={styles.divider} />;
+
 export default function PredictionScreen() {
   const { imageUri, imageBase64, cloudinaryUrl } = useLocalSearchParams();
   const router = useRouter();
@@ -169,8 +178,8 @@ export default function PredictionScreen() {
           location_region: species.location || '',
           location_province: species.province || '',
           habitat: species.habitat || '',
-          cap_color: species.cap_color || '',
-          cap_size_cm: species.cap_size || '',
+          cap_color: '', // required wag tanggalin, pero di nalabas :P
+          cap_size_cm: '', // required wag tanggalin, pero di nalabas sa mismong result
           gills_present: species.gills_present ? 'TRUE' : 'FALSE',
           gills_color: species.gills_color || 'none',
           stem_color: species.stem_color || '',
@@ -535,6 +544,53 @@ export default function PredictionScreen() {
     );
   };
 
+  const renderDatabaseSection = () => {
+  if (!mushroomData) return null;
+
+  return (
+    <View style={styles.section}>
+      <View style={styles.sectionHeader}>
+        <Ionicons name="server" size={24} color="#1976D2" />
+        <Text style={styles.sectionTitle}>Mushroom Database Record</Text>
+      </View>
+
+      <View style={styles.databaseCard}>
+        <InfoRow label="English Name" value={mushroomData.english_name} />
+        <InfoRow label="Local Name" value={mushroomData.local_name} />
+        <InfoRow label="Scientific Name" value={mushroomData.scientific_name} />
+
+        <Divider />
+
+        <InfoRow label="Edible" value={mushroomData.edible} />
+        <InfoRow label="Poisonous" value={mushroomData.poisonous} />
+
+        <Divider />
+
+        <InfoRow label="Habitat" value={mushroomData.habitat} />
+        <InfoRow label="Region" value={mushroomData.location_region} />
+        <InfoRow label="Province" value={mushroomData.location_province} />
+        <InfoRow label="Season" value={mushroomData.season_month} />
+
+        <Divider />
+
+        <InfoRow label="Stem Color" value={mushroomData.stem_color} />
+        <InfoRow label="Stem Length (cm)" value={mushroomData.stem_length_cm} />
+        <InfoRow label="Texture" value={mushroomData.texture} />
+        <InfoRow label="Spore Print" value={mushroomData.spore_print_color} />
+
+        {mushroomData.notes && (
+          <>
+            <Divider />
+            <Text style={styles.notesLabel}>Notes</Text>
+            <Text style={styles.notesText}>{mushroomData.notes}</Text>
+          </>
+        )}
+      </View>
+    </View>
+  );
+};
+
+
   const renderRecommendations = () => {
     if (!result?.recommendations?.length) return null;
 
@@ -626,18 +682,9 @@ export default function PredictionScreen() {
             <Text style={styles.detailValue}>{mushroomData.scientific_name}</Text>
           </View>
 
-          {/* Size Information */}
+
+          {/* Size Information - REMOVED cap size, cap color, scap shape */}
           <Text style={styles.categoryTitle}>Physical Characteristics</Text>
-
-          <View style={styles.detailRow}>
-            <Text style={styles.detailLabel}>Cap Size:</Text>
-            <Text style={styles.detailValue}>{mushroomData.cap_size_cm} cm</Text>
-          </View>
-
-          <View style={styles.detailRow}>
-            <Text style={styles.detailLabel}>Cap Color:</Text>
-            <Text style={styles.detailValue}>{mushroomData.cap_color.replace(/_/g, ' ')}</Text>
-          </View>
 
           <View style={styles.detailRow}>
             <Text style={styles.detailLabel}>Stem Length:</Text>
@@ -731,6 +778,7 @@ export default function PredictionScreen() {
       </View>
     );
   };
+  
 
   if (isAnalyzing) {
     return (
@@ -1275,8 +1323,8 @@ const styles = StyleSheet.create({
   },
   divider: {
     height: 1,
-    backgroundColor: '#E0E0E0',
-    marginVertical: 12,
+    backgroundColor: '#DDD',
+    marginVertical: 10,
   },
   notesContainer: {
     marginTop: 12,
@@ -1285,14 +1333,12 @@ const styles = StyleSheet.create({
     borderTopColor: '#F0F0F0',
   },
   notesLabel: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#666',
-    marginBottom: 8,
+    fontWeight: '700',
+    marginTop: 8,
+    marginBottom: 4,
   },
   notesText: {
-    fontSize: 13,
-    color: '#555',
+    color: '#444',
     lineHeight: 20,
   },
   actionButtons: {
@@ -1364,4 +1410,32 @@ const styles = StyleSheet.create({
     color: '#666',
     marginTop: 15,
   },
+  databaseCard: {
+  backgroundColor: '#F5F7FA',
+  borderRadius: 12,
+  padding: 16,
+  borderWidth: 1,
+  borderColor: '#E0E0E0',
+},
+
+infoRow: {
+  flexDirection: 'row',
+  justifyContent: 'space-between',
+  paddingVertical: 6,
+},
+
+infoLabel: {
+  fontSize: 14,
+  color: '#555',
+  fontWeight: '600',
+},
+
+infoValue: {
+  fontSize: 14,
+  color: '#111',
+  maxWidth: '55%',
+  textAlign: 'right',
+},
+
+  // ...existing code...
 });
