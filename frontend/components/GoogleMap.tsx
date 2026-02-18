@@ -1,40 +1,55 @@
 import React from 'react';
-import { View, StyleSheet } from 'react-native';
-import MapView, { Marker, Callout } from 'react-native-maps';
+import { View, StyleSheet, Platform } from 'react-native';
 import { ThemedText } from './themed-text';
 
-// Native version (iOS/Android) using react-native-maps
+// For mobile (Expo Go), use a WebView to display a Google Map iframe
+let WebView: any = null;
+if (Platform.OS !== 'web') {
+  try {
+    WebView = require('react-native-webview').WebView;
+  } catch (e) {
+    console.warn('WebView not available');
+  }
+}
+
+function generateMapHtml(mushrooms: any[]) {
+  // Generates a simple Google Map with markers for mushrooms
+  const centerLat = 12.8797;
+  const centerLng = 121.7740;
+  const markers = mushrooms.map((m: any) => `new google.maps.Marker({position: {lat: ${m.lat}, lng: ${m.lng}}, map, title: '${m.name}', icon: { url: '${m.edible ? 'http://maps.google.com/mapfiles/ms/icons/green-dot.png' : 'http://maps.google.com/mapfiles/ms/icons/red-dot.png'}' }});`).join('\n');
+  return `<!DOCTYPE html>
+  <html><head><meta name='viewport' content='width=device-width, initial-scale=1.0'>
+  <style>html,body,#map{height:100%;margin:0;padding:0;}#map{border-radius:12px;}</style>
+  <script src='https://maps.googleapis.com/maps/api/js?key=AIzaSyAQKuhDa1x_EaBHo2G18Xm4xJsAIK8QFDg'></script>
+  </head><body><div id='map' style='width:100vw;height:400px;'></div>
+  <script>const map=new google.maps.Map(document.getElementById('map'),{center:{lat:${centerLat},lng:${centerLng}},zoom:6});${markers}</script>
+  </body></html>`;
+}
+
 export default function GoogleMap({ mushrooms, selectedMushroom, onSelectMushroom }: any) {
+  if (Platform.OS === 'web') {
+    // Dynamically import the web version (uses @react-google-maps/api)
+    const GoogleMapWeb = require('./GoogleMap.web').default;
+    return <GoogleMapWeb mushrooms={mushrooms} selectedMushroom={selectedMushroom} onSelectMushroom={onSelectMushroom} />;
+  }
+  if (WebView) {
+    const html = generateMapHtml(mushrooms);
+    return (
+      <View style={styles.map}>
+        <WebView
+          originWhitelist={["*"]}
+          source={{ html }}
+          style={{ flex: 1, borderRadius: 12, overflow: 'hidden' }}
+          javaScriptEnabled
+          domStorageEnabled
+        />
+      </View>
+    );
+  }
   return (
-    <MapView
-      style={styles.map}
-      initialRegion={{
-        latitude: 12.8797,
-        longitude: 121.7740,
-        latitudeDelta: 8,
-        longitudeDelta: 8,
-      }}
-    >
-      {mushrooms.map((mushroom: any) => (
-        <Marker
-          key={mushroom.id}
-          coordinate={{ latitude: mushroom.lat, longitude: mushroom.lng }}
-          pinColor={mushroom.edible ? '#4CAF50' : '#D32F2F'}
-          onPress={() => onSelectMushroom(mushroom)}
-        >
-          <Callout>
-            <View style={styles.callout}>
-              <ThemedText style={styles.calloutTitle}>{mushroom.name}</ThemedText>
-              <ThemedText>{mushroom.localName}</ThemedText>
-              <ThemedText>{mushroom.province}</ThemedText>
-              <ThemedText style={{ color: mushroom.edible ? '#4CAF50' : '#D32F2F' }}>
-                {mushroom.edible ? 'Edible' : 'Poisonous'}
-              </ThemedText>
-            </View>
-          </Callout>
-        </Marker>
-      ))}
-    </MapView>
+    <View style={styles.placeholder}>
+      <ThemedText>Map is not available on this platform.</ThemedText>
+    </View>
   );
 }
 
@@ -43,14 +58,14 @@ const styles = StyleSheet.create({
     width: '100%',
     height: 400,
     borderRadius: 12,
+    overflow: 'hidden',
   },
-  callout: {
-    padding: 8,
-    minWidth: 150,
-  },
-  calloutTitle: {
-    fontWeight: 'bold',
-    fontSize: 14,
-    marginBottom: 4,
+  placeholder: {
+    height: 400,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#F0F0F0',
+    borderRadius: 12,
+    padding: 20,
   },
 });

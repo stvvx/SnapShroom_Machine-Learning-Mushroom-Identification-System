@@ -1,3 +1,45 @@
+// Check if image contains a mushroom
+const checkForMushroom = async (base64: string, photoUri?: string): Promise<{ isMushroom: boolean; confidence: number }> => {
+  try {
+    // Clean base64 string (remove data:image/jpeg;base64, prefix if present)
+    let cleanBase64 = base64 || '';
+    if (cleanBase64.includes(',')) {
+      cleanBase64 = cleanBase64.split(',')[1];
+    }
+    // Build API URL from environment variables
+    const BACKEND_IP = process.env.EXPO_PUBLIC_BACKEND_IP || '192.168.1.102';
+    const BACKEND_PORT = process.env.EXPO_PUBLIC_BACKEND_PORT || '5000';
+    const apiUrl = process.env.EXPO_PUBLIC_API_URL || `http://${BACKEND_IP}:${BACKEND_PORT}/api`;
+    const response = await fetch(`${apiUrl}/toxicity/detect`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        image_base64: cleanBase64,
+      }),
+    });
+    if (!response.ok) {
+      console.warn('⚠️ Mushroom detection failed:', response.status);
+      // If detection fails, allow proceeding (fail-open approach)
+      return { isMushroom: true, confidence: 0.5 };
+    }
+    const data = await response.json();
+    console.log('Detection result:', data);
+    // Check if detection found objects with mushroom confidence
+    const hasMushroom = data.detection_results?.detected === true || 
+                       (data.objects && data.objects.length > 0);
+    const confidence = data.confidence || 0;
+    return {
+      isMushroom: hasMushroom,
+      confidence: confidence
+    };
+  } catch (error) {
+    console.error('❌ Mushroom detection error:', error);
+    // If detection fails, allow proceeding (fail-open approach)
+    return { isMushroom: true, confidence: 0.5 };
+  }
+};
 import React, { useState, useRef, useEffect } from 'react';
 import {
   View,
@@ -122,90 +164,70 @@ export default function CameraScreen() {
 
   // Upload image to Cloudinary
   const uploadToCloudinary = async (base64: string, photoUri?: string) => {
+
     try {
-      let blobData: Blob;
+      let blobData: Blob | null = null;
+      // Debug: Log incoming data
+      console.log('[Cloudinary] base64 length:', base64 ? base64.length : 0);
+      console.log('[Cloudinary] photoUri:', photoUri);
 
-      // Try base64 first (native)
-      if (base64) {
-        console.log('📦 Using base64 method for camera upload');
-        try {
-          // Convert base64 to Uint8Array to avoid Buffer reference
-          const binaryString = atob(base64);
-          const bytes = new Uint8Array(binaryString.length);
-          for (let i = 0; i < binaryString.length; i++) {
-            bytes[i] = binaryString.charCodeAt(i);
-          }
-          blobData = new Blob([bytes], { type: 'image/jpeg' });
-        } catch (base64Error) {
-          console.warn('⚠️ Failed to process base64, trying URI fallback:', base64Error);
-          if (photoUri) {
-            const response = await fetch(photoUri);
-            blobData = await response.blob();
-          } else {
-            throw new Error('No base64 or URI available');
-          }
-        }
-      } else if (photoUri) {
-        // Fallback to URI method (web)
-        console.log('📦 Using URI method for camera upload');
-        const response = await fetch(photoUri);
-        blobData = await response.blob();
-      } else {
-        throw new Error('No image data available');
-      }
-
-      console.log('✅ Blob created:', {
-        size: blobData.size,
-        type: blobData.type,
-      });
-
+      // Clean base64 string (remove data:image/jpeg;base64, prefix if present)
+      let uploadResponse = null;
       const uploadPreset = CLOUDINARY_UPLOAD_PRESET || 'snapshroom';
       console.log('📤 Uploading to Cloudinary with preset:', uploadPreset);
 
-      const formData = new FormData();
-      formData.append('file', blobData, 'mushroom.jpg');
-      formData.append('upload_preset', uploadPreset);
-      formData.append('folder', 'snapshroom/mushroom-captures');
-
-      const response = await fetch(CLOUDINARY_API_URL, {
-        method: 'POST',
-        body: formData,
-      });
-
-      if (!response.ok) {
-        const errorData = await response.text();
-        console.error('❌ Cloudinary error response:', errorData);
-        throw new Error(`Cloudinary upload failed: ${response.status}`);
+      // Always use base64 data URL for mobile (Expo Go)
+      try {
+        let blobData: Blob | null = null;
+        // Debug: Log incoming data
+        console.log('[Cloudinary] base64 length:', base64 ? base64.length : 0);
+        console.log('[Cloudinary] photoUri:', photoUri);
+        // Clean base64 string (remove data:image/jpeg;base64, prefix if present)
+        let cleanBase64 = base64 || '';
+        if (cleanBase64.includes(',')) {
+          cleanBase64 = cleanBase64.split(',')[1];
+        }
+        // Debug: Print first 100 chars of base64
+        console.log('[Cloudinary] base64 preview:', cleanBase64.slice(0, 100));
+        let uploadResponse = null;
+        const uploadPreset = CLOUDINARY_UPLOAD_PRESET || 'snapshroom';
+        console.log('📤 Uploading to Cloudinary with preset:', uploadPreset);
+        // Always use base64 data URL for mobile (Expo Go)
+        if (cleanBase64) {
+          const formData = new FormData();
+          formData.append('file', `data:image/jpeg;base64,${cleanBase64}`);
+          formData.append('upload_preset', uploadPreset);
+          formData.append('folder', 'snapshroom/mushroom-captures');
+          for (let pair of (formData as any)._parts || []) {
+            console.log('[Cloudinary] FormData part:', pair[0], typeof pair[1] === 'string' ? pair[1].slice(0, 100) : pair[1]);
+          }
+          uploadResponse = await fetch(CLOUDINARY_API_URL, {
+            method: 'POST',
+            body: formData,
+          });
+        } else {
+          throw new Error('No valid image data to upload.');
+        }
+        if (!uploadResponse.ok) {
+          const errorData = await uploadResponse.text();
+          console.error('❌ Cloudinary error response:', errorData);
+          throw new Error(`Cloudinary upload failed: ${uploadResponse.status}`);
+        }
+        const data = await uploadResponse.json();
+        console.log('✅ Cloudinary upload successful:', {
+          url: data.secure_url,
+          public_id: data.public_id,
+        });
+        return {
+          cloudinaryUrl: data.secure_url,
+          cloudinaryId: data.public_id,
+          width: data.width,
+          height: data.height,
+        };
+      } catch (error) {
+        console.error('❌ Cloudinary upload error:', error);
+        throw error;
       }
-
-      const data = await response.json();
-      console.log('✅ Cloudinary upload successful:', {
-        url: data.secure_url,
-        public_id: data.public_id,
-      });
-
-      return {
-        cloudinaryUrl: data.secure_url,
-        cloudinaryId: data.public_id,
-        width: data.width,
-        height: data.height,
-      };
-    } catch (error) {
-      console.error('❌ Cloudinary upload error:', error);
-      throw error;
-    }
-  };
-
-  // Check if image contains a mushroom
-  const checkForMushroom = async (base64: string, photoUri?: string): Promise<{ isMushroom: boolean; confidence: number }> => {
-    try {
-      console.log('🔍 Checking if image contains a mushroom...');
-      
-      let cleanBase64 = base64 || '';
-      if (cleanBase64.includes(',')) {
-        cleanBase64 = cleanBase64.split(',')[1];
-      }
-
       // Build API URL from environment variables
       const BACKEND_IP = process.env.EXPO_PUBLIC_BACKEND_IP || '192.168.1.102';
       const BACKEND_PORT = process.env.EXPO_PUBLIC_BACKEND_PORT || '5000';
@@ -257,44 +279,42 @@ export default function CameraScreen() {
           exif: false,
         });
 
-        if (photo?.base64 || photo?.uri) {
-          console.log('📸 Photo captured, checking for mushroom...');
-          
-          // Check if image contains a mushroom
-          const { isMushroom, confidence } = await checkForMushroom(photo.base64 || '', photo.uri);
-          
-          if (!isMushroom || confidence < 0.3) {
-            setIsLoading(false);
-            Alert.alert(
-              'No Mushroom Detected',
-              'Please make sure the mushroom is clearly visible in the frame. Tips:\n\n• Focus on the mushroom cap\n• Ensure good lighting\n• Fill most of the frame with the mushroom\n• Avoid blurry photos',
-              [
-                {
-                  text: 'Try Again',
-                  onPress: () => console.log('Retaking photo'),
-                  style: 'default',
-                },
-              ]
-            );
-            return;
-          }
-
-          console.log('✅ Mushroom detected with confidence:', confidence);
-
-          // Upload to Cloudinary
-          const cloudinaryData = await uploadToCloudinary(photo.base64 || '', photo.uri);
-
-          // Navigate to prediction screen with the captured image
-          router.push({
-            pathname: '/prediction',
-            params: {
-              imageUri: photo.uri,
-              imageBase64: photo.base64 || '',
-              cloudinaryUrl: cloudinaryData.cloudinaryUrl,
-              cloudinaryId: cloudinaryData.cloudinaryId,
-            },
-          });
+        if (!photo?.base64 && !photo?.uri) {
+          setIsLoading(false);
+          Alert.alert('Error', 'No image data found. Please retake the photo.');
+          return;
         }
+        console.log('📸 Photo captured, checking for mushroom...');
+        // Check if image contains a mushroom
+        const { isMushroom, confidence } = await checkForMushroom(photo.base64 || '', photo.uri);
+        if (!isMushroom || confidence < 0.3) {
+          setIsLoading(false);
+          Alert.alert(
+            'No Mushroom Detected',
+            'Please make sure the mushroom is clearly visible in the frame. Tips:\n\n• Focus on the mushroom cap\n• Ensure good lighting\n• Fill most of the frame with the mushroom\n• Avoid blurry photos',
+            [
+              {
+                text: 'Try Again',
+                onPress: () => console.log('Retaking photo'),
+                style: 'default',
+              },
+            ]
+          );
+          return;
+        }
+        console.log('✅ Mushroom detected with confidence:', confidence);
+        // Upload to Cloudinary
+        const cloudinaryData = await uploadToCloudinary(photo.base64 || '', photo.uri);
+        // Navigate to prediction screen with the captured image
+        router.push({
+          pathname: '/prediction',
+          params: {
+            imageUri: photo.uri,
+            imageBase64: photo.base64 || '',
+            cloudinaryUrl: cloudinaryData.cloudinaryUrl,
+            cloudinaryId: cloudinaryData.cloudinaryId,
+          },
+        });
       } catch (error) {
         console.error('❌ Error taking picture:', error);
         Alert.alert(
@@ -340,12 +360,15 @@ export default function CameraScreen() {
       const asset = result.assets[0];
       
       if (asset?.base64 || asset?.uri) {
+        if (!asset?.base64 && !asset?.uri) {
+          setIsLoading(false);
+          Alert.alert('Error', 'No image data found. Please select another image.');
+          return;
+        }
         setIsLoading(true);
         console.log('📁 Image picked from gallery, checking for mushroom...');
-        
         // Check if image contains a mushroom
         const { isMushroom, confidence } = await checkForMushroom(asset.base64 || '', asset.uri);
-        
         if (!isMushroom || confidence < 0.3) {
           setIsLoading(false);
           Alert.alert(
@@ -365,12 +388,9 @@ export default function CameraScreen() {
           );
           return;
         }
-
         console.log('✅ Mushroom detected in uploaded image with confidence:', confidence);
-
         // Upload to Cloudinary
         const cloudinaryData = await uploadToCloudinary(asset.base64 || '', asset.uri);
-
         // Navigate to prediction screen with the uploaded image
         router.push({
           pathname: '/prediction',
