@@ -1382,7 +1382,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    backgroundColor: '#2196F3',
+    backgroundColor: '#4CAF50', // changed from #2196F3 to green
     paddingBottom: 12,
     paddingHorizontal: 15,
     paddingTop: Platform.OS === 'ios' ? 50 : 12,
