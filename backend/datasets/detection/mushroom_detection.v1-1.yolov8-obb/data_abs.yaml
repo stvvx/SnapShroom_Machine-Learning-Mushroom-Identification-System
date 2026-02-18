@@ -1,5 +1,0 @@
-names:
-  0: mushroom
-test: C:\Users\telfa\Downloads\mushroom\SnapShroom\backend\datasets\detection\mushroom_detection.v1-1.yolov8-obb\test\images
-train: C:\Users\telfa\Downloads\mushroom\SnapShroom\backend\datasets\detection\mushroom_detection.v1-1.yolov8-obb\train\images
-val: C:\Users\telfa\Downloads\mushroom\SnapShroom\backend\datasets\detection\mushroom_detection.v1-1.yolov8-obb\valid\images
