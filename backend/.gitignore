@@ -59,5 +59,9 @@ Thumbs.db
 
 
 #dataset
- backend/datasets/ 
- datasets/
+backend/datasets/
+backend/**/datasets/
+datasets/
+*.zip
+*.tar
+*.tar.gz
