@@ -145,65 +145,64 @@ export default function PredictionScreen() {
     }
   }, [mushroomData]);
 
-  const fetchMushroomFromDatabase = async (detectedSpeciesName: string) => {
-    try {
-      console.log('🔍 Fetching mushroom data from database:', detectedSpeciesName);
-      
-      // Clean up species name (remove "Mushroom" suffix for better matching)
-      let searchQuery = detectedSpeciesName;
-      
-      // Try exact match first
-      let results = await searchSpecies(searchQuery);
-      
-      // If no results and query contains "Mushroom", try without it
-      if ((!results || results.length === 0) && searchQuery.includes('Mushroom')) {
-        searchQuery = searchQuery.replace(/\s*Mushroom\s*/gi, '').trim();
-        console.log('🔍 Retrying search without "Mushroom":', searchQuery);
-        results = await searchSpecies(searchQuery);
-      }
-      
-      console.log('📊 Search results:', results?.length || 0, 'matches found');
-      
-      if (results && results.length > 0) {
-        const species = results[0];
-        
-        // Transform database format to frontend format
-        const transformedData: MushroomData = {
-          mushroom_id: species._id || species.mushroom_id || '',
-          english_name: species.english_name || '',
-          local_name: species.local_name || '',
-          scientific_name: species.scientific_name || '',
-          edible: species.edible ? 'TRUE' : 'FALSE',
-          poisonous: !species.edible ? 'TRUE' : 'FALSE',
-          location_region: species.location || '',
-          location_province: species.province || '',
-          habitat: species.habitat || '',
-          cap_color: '', // required wag tanggalin, pero di nalabas :P
-          cap_size_cm: '', // required wag tanggalin, pero di nalabas sa mismong result
-          gills_present: species.gills_present ? 'TRUE' : 'FALSE',
-          gills_color: species.gills_color || 'none',
-          stem_color: species.stem_color || '',
-          stem_length_cm: species.stem_length || '',
-          size_reference: species.size_reference || '',
-          spore_print_color: species.spore_print_color || '',
-          texture: species.texture || '',
-          season_month: species.season || '',
-          cultivated: species.cultivated ? 'TRUE' : 'FALSE',
-          wild: species.wild ? 'TRUE' : 'FALSE',
-          notes: species.description || species.notes || ''
-        };
-        
-        setMushroomData(transformedData);
-        console.log('✅ Fetched mushroom from database:', transformedData.english_name);
-      } else {
-        console.log('⚠️ No database match found for:', detectedSpeciesName);
-        setMushroomData(null);
-      }
-    } catch (error) {
-      console.error('❌ Error fetching mushroom data:', error);
+const fetchMushroomFromDatabase = async (detectedSpeciesName: string) => {
+  try {
+    console.log('🔍 Fetching mushroom data from database:', detectedSpeciesName);
+
+    // Normalize species name for DB search
+    let searchQuery = detectedSpeciesName
+      .replace(/\s*Mushroom\s*/gi, '')    // remove "Mushroom"
+      .replace(/\bJack O Lantern\b/i, "Jack O' Lantern")  // fix apostrophe
+      .trim();
+
+    let results = await searchSpecies(searchQuery);
+
+    if ((!results || results.length === 0) && searchQuery !== detectedSpeciesName) {
+      console.log('🔍 Retry original name as fallback:', detectedSpeciesName);
+      results = await searchSpecies(detectedSpeciesName);
+    }
+
+    console.log('📊 Search results:', results?.length || 0, 'matches found');
+
+    if (results && results.length > 0) {
+      const species = results[0];
+      const transformedData: MushroomData = {
+        mushroom_id: species._id || '',
+        english_name: species.english_name || '',
+        local_name: species.local_name || '',
+        scientific_name: species.scientific_name || '',
+        edible: species.edible ? 'TRUE' : 'FALSE',
+        poisonous: !species.edible ? 'TRUE' : 'FALSE',
+        location_region: species.location || '',
+        location_province: species.province || '',
+        habitat: species.habitat || '',
+        cap_color: '',
+        cap_size_cm: '',
+        gills_present: species.gills_present ? 'TRUE' : 'FALSE',
+        gills_color: species.gills_color || 'none',
+        stem_color: species.stem_color || '',
+        stem_length_cm: species.stem_length || '',
+        size_reference: species.size_reference || '',
+        spore_print_color: species.spore_print_color || '',
+        texture: species.texture || '',
+        season_month: species.season || '',
+        cultivated: species.cultivated ? 'TRUE' : 'FALSE',
+        wild: species.wild ? 'TRUE' : 'FALSE',
+        notes: species.description || species.notes || ''
+      };
+
+      setMushroomData(transformedData);
+      console.log('✅ Fetched mushroom from database:', transformedData.english_name);
+    } else {
+      console.log('⚠️ No database match found for:', detectedSpeciesName);
       setMushroomData(null);
     }
-  };
+  } catch (error) {
+    console.error('❌ Error fetching mushroom data:', error);
+    setMushroomData(null);
+  }
+};
+
 
   const generateMap = () => {
     if (!mushroomData) return;
