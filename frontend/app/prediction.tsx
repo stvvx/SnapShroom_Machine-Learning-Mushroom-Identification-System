@@ -29,6 +29,7 @@ if (Platform.OS !== 'web') {
 }
 
 const { width } = Dimensions.get('window');
+const isWeb = Platform.OS === 'web';
 
 interface PredictionResult {
   timestamp: string;
@@ -851,6 +852,143 @@ const fetchMushroomFromDatabase = async (detectedSpeciesName: string) => {
     );
   }
 
+  // ── WEB LAYOUT ──────────────────────────────────────────────────────────────
+  if (isWeb) {
+    return (
+      <>
+        <View style={webStyles.pageWrapper}>
+          {/* LEFT COLUMN — sticky image panel */}
+          <View style={webStyles.leftColumn}>
+            {displayImageUrl && (
+              <View style={webStyles.imageCard}>
+                <Image
+                  source={{ uri: displayImageUrl }}
+                  style={webStyles.squareImage}
+                  resizeMode="cover"
+                />
+                <View style={webStyles.imageOverlayBadge}>
+                  <Ionicons name="camera" size={14} color="white" />
+                  <Text style={webStyles.imageOverlayText}>Captured Image</Text>
+                </View>
+              </View>
+            )}
+
+            {/* Quick stats below image */}
+            {result && (
+              <View style={webStyles.quickStats}>
+                {/* Risk badge */}
+                <View style={[
+                  webStyles.statBadge,
+                  { backgroundColor: getRiskColor(result.risk_assessment?.risk_level) + '18',
+                    borderColor: getRiskColor(result.risk_assessment?.risk_level) }
+                ]}>
+                  <Ionicons
+                    name={getRiskIcon(result.risk_assessment?.risk_level)}
+                    size={18}
+                    color={getRiskColor(result.risk_assessment?.risk_level)}
+                  />
+                  <Text style={[webStyles.statBadgeText, { color: getRiskColor(result.risk_assessment?.risk_level) }]}>
+                    {result.risk_assessment?.risk_level?.toUpperCase()} RISK
+                  </Text>
+                </View>
+
+                {/* Edible badge */}
+                {result.image_analysis?.toxicity?.edible !== undefined && (
+                  <View style={[
+                    webStyles.statBadge,
+                    {
+                      backgroundColor: result.image_analysis.toxicity.edible ? '#E8F5E920' : '#FFEBEE',
+                      borderColor: result.image_analysis.toxicity.edible ? '#4CAF50' : '#F44336'
+                    }
+                  ]}>
+                    <Ionicons
+                      name={result.image_analysis.toxicity.edible ? 'shield-checkmark' : 'warning'}
+                      size={18}
+                      color={result.image_analysis.toxicity.edible ? '#4CAF50' : '#F44336'}
+                    />
+                    <Text style={[webStyles.statBadgeText, {
+                      color: result.image_analysis.toxicity.edible ? '#2E7D32' : '#C62828'
+                    }]}>
+                      {result.image_analysis.toxicity.edible ? 'EDIBLE' : 'POISONOUS'}
+                    </Text>
+                  </View>
+                )}
+
+                {/* Confidence badge */}
+                {result.image_analysis?.species?.confidence !== undefined && (
+                  <View style={[webStyles.statBadge, { backgroundColor: '#E3F2FD', borderColor: '#2196F3' }]}>
+                    <Ionicons name="analytics" size={18} color="#2196F3" />
+                    <Text style={[webStyles.statBadgeText, { color: '#1565C0' }]}>
+                      {Math.round(result.image_analysis.species.confidence * 100)}% CONFIDENCE
+                    </Text>
+                  </View>
+                )}
+              </View>
+            )}
+
+            {/* Action buttons in left panel on web */}
+            <View style={webStyles.leftActions}>
+              <TouchableOpacity
+                style={styles.primaryButton}
+                onPress={() => router.push('/camera')}
+              >
+                <Ionicons name="camera" size={18} color="white" />
+                <Text style={styles.primaryButtonText}>Take Another Photo</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={styles.secondaryButton}
+                onPress={() => router.push('/')}
+              >
+                <Text style={styles.secondaryButtonText}>Home</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+
+          {/* RIGHT COLUMN — scrollable results */}
+          <ScrollView style={webStyles.rightColumn} contentContainerStyle={webStyles.rightColumnContent}>
+            <SafeComponent component={renderDetectionSummary()} />
+            <SafeComponent component={renderRiskAssessment()} />
+            <SafeComponent component={renderSpeciesInfo()} />
+            <SafeComponent component={renderToxicityInfo()} />
+            <SafeComponent component={renderMushroomDetails()} />
+            <SafeComponent component={renderDatabaseSection()} />
+            <SafeComponent component={renderRecommendations()} />
+            <SafeComponent component={renderSafetyActions()} />
+          </ScrollView>
+        </View>
+
+        {/* Map Modal - Web */}
+        {showMap && mapHtml && (
+          <Modal
+            visible={showMap}
+            animationType="fade"
+            onRequestClose={() => setShowMap(false)}
+          >
+            <View style={styles.mapContainer}>
+              <View style={styles.mapHeader}>
+                <Text style={styles.mapTitle}>Mushroom Location Map</Text>
+                <TouchableOpacity
+                  onPress={() => setShowMap(false)}
+                  style={styles.closeMapButton}
+                >
+                  <Ionicons name="close" size={28} color="white" />
+                </TouchableOpacity>
+              </View>
+              <View style={{ flex: 1, overflow: 'hidden' }}>
+                <iframe
+                  srcDoc={mapHtml}
+                  style={{ width: '100%', height: '100%', border: 'none' }}
+                />
+              </View>
+            </View>
+          </Modal>
+        )}
+      </>
+    );
+  }
+
+  // ── MOBILE LAYOUT (unchanged) ────────────────────────────────────────────────
   return (
     <>
       <ScrollView style={styles.container}>
@@ -923,37 +1061,98 @@ const fetchMushroomFromDatabase = async (detectedSpeciesName: string) => {
           </View>
         </Modal>
       )}
-
-      {/* Map Modal - Web */}
-      {Platform.OS === 'web' && showMap && mapHtml && (
-        <Modal
-          visible={showMap}
-          animationType="fade"
-          onRequestClose={() => setShowMap(false)}
-        >
-          <View style={styles.mapContainer}>
-            <View style={styles.mapHeader}>
-              <Text style={styles.mapTitle}>Mushroom Location Map</Text>
-              <TouchableOpacity
-                onPress={() => setShowMap(false)}
-                style={styles.closeMapButton}
-              >
-                <Ionicons name="close" size={28} color="white" />
-              </TouchableOpacity>
-            </View>
-            <View style={{ flex: 1, overflow: 'hidden' }}>
-              <iframe
-                srcDoc={mapHtml}
-                style={{ width: '100%', height: '100%', border: 'none' }}
-              />
-            </View>
-          </View>
-        </Modal>
-      )}
     </>
   );
 }
 
+// ── WEB-SPECIFIC STYLES ────────────────────────────────────────────────────────
+const webStyles = StyleSheet.create({
+  pageWrapper: {
+    flex: 1,
+    flexDirection: 'row',
+    backgroundColor: '#F0F2F5',
+    height: '100%' as any,
+  },
+  leftColumn: {
+    width: 340,
+    backgroundColor: '#fff',
+    borderRightWidth: 1,
+    borderRightColor: '#E8EAF0',
+    padding: 24,
+    gap: 16,
+    // sticky via position fixed-like: on web ScrollView doesn't clip this
+    position: 'sticky' as any,
+    top: 0,
+    alignSelf: 'flex-start',
+    height: '100vh' as any,
+    overflowY: 'auto' as any,
+  },
+  imageCard: {
+    borderRadius: 16,
+    overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.12,
+    shadowRadius: 12,
+    elevation: 6,
+    position: 'relative',
+    backgroundColor: '#000',
+  },
+  squareImage: {
+    width: '100%',
+    aspectRatio: 1,          // 1:1 square
+    borderRadius: 16,
+  },
+  imageOverlayBadge: {
+    position: 'absolute',
+    bottom: 10,
+    left: 10,
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(0,0,0,0.55)',
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 20,
+    gap: 5,
+  },
+  imageOverlayText: {
+    color: 'white',
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  quickStats: {
+    gap: 8,
+  },
+  statBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    paddingVertical: 10,
+    paddingHorizontal: 14,
+    borderRadius: 10,
+    borderWidth: 1.5,
+  },
+  statBadgeText: {
+    fontSize: 13,
+    fontWeight: '700',
+    letterSpacing: 0.4,
+  },
+  leftActions: {
+    gap: 10,
+    marginTop: 8,
+  },
+  rightColumn: {
+    flex: 1,
+    height: '100vh' as any,
+  },
+  rightColumnContent: {
+    padding: 24,
+    paddingTop: 16,
+    gap: 0,
+  },
+});
+
+// ── MOBILE STYLES (original, untouched) ────────────────────────────────────────
 const styles = StyleSheet.create({
   container: {
     flex: 1,
@@ -1086,6 +1285,7 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 4,
     elevation: 3,
+    marginBottom: 12,
   },
   sectionHeader: {
     flexDirection: 'row',
@@ -1382,7 +1582,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    backgroundColor: '#4CAF50', // changed from #2196F3 to green
+    backgroundColor: '#4CAF50',
     paddingBottom: 12,
     paddingHorizontal: 15,
     paddingTop: Platform.OS === 'ios' ? 50 : 12,
@@ -1410,31 +1610,26 @@ const styles = StyleSheet.create({
     marginTop: 15,
   },
   databaseCard: {
-  backgroundColor: '#F5F7FA',
-  borderRadius: 12,
-  padding: 16,
-  borderWidth: 1,
-  borderColor: '#E0E0E0',
-},
-
-infoRow: {
-  flexDirection: 'row',
-  justifyContent: 'space-between',
-  paddingVertical: 6,
-},
-
-infoLabel: {
-  fontSize: 14,
-  color: '#555',
-  fontWeight: '600',
-},
-
-infoValue: {
-  fontSize: 14,
-  color: '#111',
-  maxWidth: '55%',
-  textAlign: 'right',
-},
-
-  // ...existing code...
+    backgroundColor: '#F5F7FA',
+    borderRadius: 12,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: '#E0E0E0',
+  },
+  infoRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    paddingVertical: 6,
+  },
+  infoLabel: {
+    fontSize: 14,
+    color: '#555',
+    fontWeight: '600',
+  },
+  infoValue: {
+    fontSize: 14,
+    color: '#111',
+    maxWidth: '55%',
+    textAlign: 'right',
+  },
 });

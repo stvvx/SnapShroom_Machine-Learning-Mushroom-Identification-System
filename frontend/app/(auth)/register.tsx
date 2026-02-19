@@ -27,6 +27,7 @@ WebBrowser.maybeCompleteAuthSession();
 
 const { width } = Dimensions.get('window');
 const isSmallScreen = width < 375;
+const isWideScreen = width >= 768;
 
 export default function RegisterScreen() {
   const [username, setUsername] = useState('');
@@ -35,7 +36,7 @@ export default function RegisterScreen() {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
-  
+
   // Focus states
   const [usernameFocused, setUsernameFocused] = useState(false);
   const [emailFocused, setEmailFocused] = useState(false);
@@ -75,11 +76,8 @@ export default function RegisterScreen() {
       const credential = GoogleAuthProvider.credential(idToken);
       const userCredential = await signInWithCredential(auth, credential);
 
-      // Get the Firebase token
       const firebaseToken = await userCredential.user.getIdToken();
 
-      // Here you would typically send this token to your backend
-      // to create/update the user in your database
       await fetch('http://localhost:8000/protected', {
         method: 'GET',
         headers: {
@@ -109,10 +107,7 @@ export default function RegisterScreen() {
     }
 
     if (password.length < 6) {
-      Alert.alert(
-        'Error',
-        'Password must be at least 6 characters'
-      );
+      Alert.alert('Error', 'Password must be at least 6 characters');
       return false;
     }
 
@@ -141,17 +136,13 @@ export default function RegisterScreen() {
       });
 
       showToast('Account created successfully!', 'success');
-      
-      Alert.alert(
-        'Success',
-        'Account created successfully',
-        [
-          {
-            text: 'Continue',
-            onPress: () => router.replace('/(tabs)'),
-          },
-        ]
-      );
+
+      Alert.alert('Success', 'Account created successfully', [
+        {
+          text: 'Continue',
+          onPress: () => router.replace('/(tabs)'),
+        },
+      ]);
     } catch {
       // error handled by AuthContext
     }
@@ -185,6 +176,255 @@ export default function RegisterScreen() {
     }, 200);
   };
 
+  // ─── WEB LAYOUT (form left, hero right) ─────────────────────────────────────
+  if (isWideScreen) {
+    return (
+      <View style={styles.webRoot}>
+        {/* Left form panel */}
+        <ScrollView
+          contentContainerStyle={styles.webFormScroll}
+          showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
+        >
+          <View style={styles.webCard}>
+            <View style={styles.cardHeader}>
+              <ThemedText style={styles.cardTitle}>Create Account</ThemedText>
+              <ThemedText style={styles.cardSubtitle}>
+                Choose your preferred sign-up method
+              </ThemedText>
+            </View>
+
+            {/* Google Sign Up Button */}
+            <TouchableOpacity
+              style={styles.googleButton}
+              onPress={() => promptAsync()}
+              disabled={!request || googleLoading || isLoading}
+              activeOpacity={0.8}
+            >
+              {googleLoading ? (
+                <ActivityIndicator color="#7BA05B" />
+              ) : (
+                <>
+                  <Ionicons name="logo-google" size={20} color="#DB4437" />
+                  <ThemedText style={styles.googleText}>Continue with Google</ThemedText>
+                </>
+              )}
+            </TouchableOpacity>
+
+            {/* Divider */}
+            <View style={styles.divider}>
+              <View style={styles.dividerLine} />
+              <ThemedText style={styles.dividerText}>OR</ThemedText>
+              <View style={styles.dividerLine} />
+            </View>
+
+            {/* Error Message */}
+            {error && (
+              <View style={styles.errorContainer}>
+                <View style={styles.errorIconContainer}>
+                  <Ionicons name="alert-circle" size={20} color="#DC2626" />
+                </View>
+                <ThemedText style={styles.errorText}>{error}</ThemedText>
+              </View>
+            )}
+
+            {/* Username Input */}
+            <View style={styles.inputGroup}>
+              <ThemedText style={styles.inputLabel}>Username</ThemedText>
+              <View style={[styles.inputContainer, usernameFocused && styles.inputContainerFocused]}>
+                <View style={styles.inputIconContainer}>
+                  <Ionicons name="person" size={20} color={usernameFocused ? '#7BA05B' : '#6B7C61'} />
+                </View>
+                <TextInput
+                  style={styles.input}
+                  placeholder="Choose a username"
+                  placeholderTextColor="#9CA897"
+                  value={username}
+                  onChangeText={setUsername}
+                  onFocus={handleUsernameFocus}
+                  onBlur={() => setUsernameFocused(false)}
+                  editable={!isLoading && !googleLoading}
+                  returnKeyType="next"
+                  blurOnSubmit={false}
+                  onSubmitEditing={() => emailInputRef.current?.focus()}
+                />
+              </View>
+            </View>
+
+            {/* Email Input */}
+            <View style={styles.inputGroup}>
+              <ThemedText style={styles.inputLabel}>Email Address</ThemedText>
+              <View style={[styles.inputContainer, emailFocused && styles.inputContainerFocused]}>
+                <View style={styles.inputIconContainer}>
+                  <Ionicons name="mail" size={20} color={emailFocused ? '#7BA05B' : '#6B7C61'} />
+                </View>
+                <TextInput
+                  ref={emailInputRef}
+                  style={styles.input}
+                  placeholder="your.email@example.com"
+                  placeholderTextColor="#9CA897"
+                  value={email}
+                  onChangeText={setEmail}
+                  onFocus={handleEmailFocus}
+                  onBlur={() => setEmailFocused(false)}
+                  autoCapitalize="none"
+                  keyboardType="email-address"
+                  editable={!isLoading && !googleLoading}
+                  returnKeyType="next"
+                  blurOnSubmit={false}
+                  onSubmitEditing={() => passwordInputRef.current?.focus()}
+                />
+              </View>
+            </View>
+
+            {/* Password Input */}
+            <View style={styles.inputGroup}>
+              <ThemedText style={styles.inputLabel}>Password</ThemedText>
+              <View style={[styles.inputContainer, passwordFocused && styles.inputContainerFocused]}>
+                <View style={styles.inputIconContainer}>
+                  <Ionicons name="lock-closed" size={20} color={passwordFocused ? '#7BA05B' : '#6B7C61'} />
+                </View>
+                <TextInput
+                  ref={passwordInputRef}
+                  style={styles.input}
+                  placeholder="Create a password (min. 6 chars)"
+                  placeholderTextColor="#9CA897"
+                  value={password}
+                  onChangeText={setPassword}
+                  onFocus={handlePasswordFocus}
+                  onBlur={() => setPasswordFocused(false)}
+                  secureTextEntry={!showPassword}
+                  editable={!isLoading && !googleLoading}
+                  returnKeyType="next"
+                  blurOnSubmit={false}
+                  onSubmitEditing={() => confirmPasswordInputRef.current?.focus()}
+                />
+                <TouchableOpacity
+                  onPress={() => setShowPassword(!showPassword)}
+                  disabled={isLoading || googleLoading}
+                  style={styles.eyeButton}
+                  hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                >
+                  <Ionicons name={showPassword ? 'eye-off' : 'eye'} size={20} color="#6B7C61" />
+                </TouchableOpacity>
+              </View>
+            </View>
+
+            {/* Confirm Password Input */}
+            <View style={styles.inputGroup}>
+              <ThemedText style={styles.inputLabel}>Confirm Password</ThemedText>
+              <View style={[styles.inputContainer, confirmPasswordFocused && styles.inputContainerFocused]}>
+                <View style={styles.inputIconContainer}>
+                  <Ionicons name="lock-closed" size={20} color={confirmPasswordFocused ? '#7BA05B' : '#6B7C61'} />
+                </View>
+                <TextInput
+                  ref={confirmPasswordInputRef}
+                  style={styles.input}
+                  placeholder="Re-enter your password"
+                  placeholderTextColor="#9CA897"
+                  value={confirmPassword}
+                  onChangeText={setConfirmPassword}
+                  onFocus={handleConfirmPasswordFocus}
+                  onBlur={() => setConfirmPasswordFocused(false)}
+                  secureTextEntry={!showPassword}
+                  editable={!isLoading && !googleLoading}
+                  returnKeyType="done"
+                  onSubmitEditing={handleRegister}
+                />
+              </View>
+            </View>
+
+            {/* Password Requirements */}
+            <View style={styles.requirementsContainer}>
+              <View style={styles.requirementRow}>
+                <Ionicons
+                  name={password.length >= 6 ? 'checkmark-circle' : 'ellipse-outline'}
+                  size={16}
+                  color={password.length >= 6 ? '#22C55E' : '#9CA897'}
+                />
+                <ThemedText style={[styles.requirementText, password.length >= 6 && styles.requirementMet]}>
+                  At least 6 characters
+                </ThemedText>
+              </View>
+              <View style={styles.requirementRow}>
+                <Ionicons
+                  name={password && confirmPassword && password === confirmPassword ? 'checkmark-circle' : 'ellipse-outline'}
+                  size={16}
+                  color={password && confirmPassword && password === confirmPassword ? '#22C55E' : '#9CA897'}
+                />
+                <ThemedText
+                  style={[
+                    styles.requirementText,
+                    password && confirmPassword && password === confirmPassword && styles.requirementMet,
+                  ]}
+                >
+                  Passwords match
+                </ThemedText>
+              </View>
+            </View>
+
+            {/* Create Account Button */}
+            <TouchableOpacity
+              style={[styles.submitButton, (isLoading || googleLoading) && styles.submitButtonDisabled]}
+              onPress={handleRegister}
+              disabled={isLoading || googleLoading}
+              activeOpacity={0.8}
+            >
+              <LinearGradient
+                colors={isLoading || googleLoading ? ['#B5C9A7', '#A3B895'] : ['#7BA05B', '#5A8040']}
+                style={styles.submitGradient}
+              >
+                {isLoading ? (
+                  <ActivityIndicator color="#FFFFFF" size="small" />
+                ) : (
+                  <>
+                    <ThemedText style={styles.submitButtonText}>Create Account</ThemedText>
+                    <Ionicons name="arrow-forward" size={20} color="#FFFFFF" />
+                  </>
+                )}
+              </LinearGradient>
+            </TouchableOpacity>
+
+            {/* Sign In Link */}
+            <View style={styles.signinContainer}>
+              <ThemedText style={styles.signinText}>Already have an account? </ThemedText>
+              <TouchableOpacity
+                onPress={() => { clearError(); router.push('/(auth)/login'); }}
+                disabled={isLoading || googleLoading}
+              >
+                <ThemedText style={styles.signinLink}>Sign in</ThemedText>
+              </TouchableOpacity>
+            </View>
+
+            {/* Footer */}
+            <View style={styles.webFooter}>
+              <ThemedText style={styles.footerText}>
+                By creating an account, you agree to our{' '}
+                <ThemedText style={styles.footerLink}>Terms of Service</ThemedText>
+                {' '}and{' '}
+                <ThemedText style={styles.footerLink}>Privacy Policy</ThemedText>
+              </ThemedText>
+            </View>
+          </View>
+        </ScrollView>
+
+        {/* Right hero panel */}
+        <LinearGradient colors={['#3A5A28', '#5A8040', '#7BA05B']} style={styles.webHero}>
+          <View style={styles.webHeroInner}>
+            <LinearGradient colors={['#7BA05B', '#5A8040']} style={styles.webHeroIconGradient}>
+              <Ionicons name="leaf" size={48} color="#FFFFFF" />
+            </LinearGradient>
+            <ThemedText style={styles.webHeroTitle}>SnapShroom</ThemedText>
+            <ThemedText style={styles.webHeroSubtitle}>
+              Create your account to start identifying mushrooms
+            </ThemedText>
+          </View>
+        </LinearGradient>
+      </View>
+    );
+  }
+
+  // ─── MOBILE LAYOUT (original — completely untouched) ────────────────────────
   return (
     <View style={styles.container}>
       {/* Background with Gradient */}
@@ -536,6 +776,7 @@ export default function RegisterScreen() {
 // ================= STYLES =================
 
 const styles = StyleSheet.create({
+  // ── MOBILE (original, not changed at all) ─────────────────────────────────
   container: {
     flex: 1,
     backgroundColor: '#F8FAF6',
@@ -573,8 +814,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 24,
     paddingTop: Platform.OS === 'ios' ? 60 : 40,
   },
-
-  // Header Section
   header: {
     alignItems: 'center',
     marginBottom: isSmallScreen ? 30 : 40,
@@ -609,8 +848,6 @@ const styles = StyleSheet.create({
     maxWidth: 300,
     lineHeight: isSmallScreen ? 18 : 22,
   },
-
-  // Card
   card: {
     backgroundColor: '#FFFFFF',
     borderRadius: 24,
@@ -638,8 +875,6 @@ const styles = StyleSheet.create({
     color: '#6B7C61',
     lineHeight: 20,
   },
-
-  // 🔥 Google Button
   googleButton: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -657,8 +892,6 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#3A4D33',
   },
-
-  // Divider
   divider: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -675,8 +908,6 @@ const styles = StyleSheet.create({
     color: '#9CA897',
     fontWeight: '600',
   },
-
-  // Error Container
   errorContainer: {
     flexDirection: 'row',
     alignItems: 'flex-start',
@@ -698,8 +929,6 @@ const styles = StyleSheet.create({
     lineHeight: 20,
     fontWeight: '500',
   },
-
-  // Input Group
   inputGroup: {
     marginBottom: 20,
   },
@@ -745,8 +974,6 @@ const styles = StyleSheet.create({
     padding: 8,
     marginLeft: 4,
   },
-
-  // Password Requirements
   requirementsContainer: {
     backgroundColor: '#F8FAF6',
     padding: 14,
@@ -767,8 +994,6 @@ const styles = StyleSheet.create({
   requirementMet: {
     color: '#22C55E',
   },
-
-  // Submit Button
   submitButton: {
     borderRadius: 14,
     overflow: 'hidden',
@@ -796,8 +1021,6 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     letterSpacing: 0.3,
   },
-
-  // Sign In Container
   signinContainer: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -812,8 +1035,6 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: '#7BA05B',
   },
-
-  // Footer
   footer: {
     paddingTop: 32,
     paddingHorizontal: 20,
@@ -827,5 +1048,68 @@ const styles = StyleSheet.create({
   footerLink: {
     fontWeight: '600',
     color: '#7BA05B',
+  },
+
+  // ── WEB ONLY ──────────────────────────────────────────────────────────────
+  webRoot: {
+    flex: 1,
+    flexDirection: 'row',
+    minHeight: '100vh' as any,
+    backgroundColor: '#F0F4ED',
+  },
+  webFormScroll: {
+    flexGrow: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 40,
+  },
+  webCard: {
+    width: '100%',
+    maxWidth: 440,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 24,
+    padding: 40,
+    shadowColor: '#3A5A28',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.1,
+    shadowRadius: 32,
+    elevation: 12,
+    borderWidth: 1,
+    borderColor: '#E8F0E3',
+  },
+  webHero: {
+    width: '45%',
+    minHeight: '100vh' as any,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 48,
+  },
+  webHeroInner: {
+    alignItems: 'center',
+  },
+  webHeroIconGradient: {
+    width: 96,
+    height: 96,
+    borderRadius: 48,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 24,
+  },
+  webHeroTitle: {
+    fontSize: 40,
+    fontWeight: '800',
+    color: '#FFFFFF',
+    marginBottom: 16,
+    letterSpacing: -0.5,
+    textAlign: 'center',
+  },
+  webHeroSubtitle: {
+    fontSize: 17,
+    color: 'rgba(255,255,255,0.82)',
+    lineHeight: 26,
+    textAlign: 'center',
+  },
+  webFooter: {
+    marginTop: 24,
   },
 });
