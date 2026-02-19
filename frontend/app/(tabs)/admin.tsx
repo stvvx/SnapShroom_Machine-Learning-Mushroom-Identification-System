@@ -90,16 +90,18 @@ interface User {
 }
 type Section = 'home' | 'users' | 'analytics' | 'about';
 
-/* ─── PDF export helper with proper print options ─── */
+/* ─── PDF export helper with proper formatting ─── */
 const exportPDF = async (html: string, filename: string) => {
   try {
     Alert.alert('Generating PDF', 'Please wait...');
     
+    // Generate PDF with A4 dimensions and proper formatting
     const { uri } = await Print.printToFileAsync({ 
       html, 
       base64: false,
-      width: 595, // A4 width in points
-      height: 842, // A4 height in points
+      width: 595, // A4 width in points (210mm)
+      height: 842, // A4 height in points (297mm)
+      orientation: 'portrait',
     });
     
     const fileInfo = await FileSystem.getInfoAsync(uri);
@@ -145,716 +147,6 @@ const SectionExportButton = ({
     </ThemedText>
   </TouchableOpacity>
 );
-
-/* ─── Helper functions to generate focused reports ─── */
-const generateOverviewStatsHTML = (analytics: Analytics, adminName: string) => {
-  const now = new Date().toLocaleString('en-US', {
-    year: 'numeric', month: 'long', day: 'numeric',
-    hour: '2-digit', minute: '2-digit',
-  });
-
-  return `
-    <!DOCTYPE html>
-    <html>
-    <head>
-      <meta charset="UTF-8">
-      <title>Overview Statistics</title>
-      <style>
-        @media print {
-          @page { size: A4; margin: 1.5cm; }
-          body { print-color-adjust: exact; }
-        }
-        body {
-          font-family: 'Helvetica', 'Arial', sans-serif;
-          background: #fff;
-          color: #0F1A0F;
-          line-height: 1.5;
-          padding: 20px;
-        }
-        .header {
-          border-bottom: 2px solid #1E3020;
-          padding-bottom: 15px;
-          margin-bottom: 25px;
-        }
-        .header h1 {
-          color: #1E3020;
-          font-size: 28px;
-          margin: 0 0 5px 0;
-        }
-        .header p {
-          color: #6B7C6B;
-          margin: 0;
-        }
-        .stats-grid {
-          display: grid;
-          grid-template-columns: repeat(2, 1fr);
-          gap: 20px;
-          margin-bottom: 30px;
-        }
-        .stat-card {
-          background: #F7FAF7;
-          border: 1px solid #C8D8C8;
-          border-radius: 8px;
-          padding: 20px;
-        }
-        .stat-value {
-          font-size: 36px;
-          font-weight: bold;
-          color: #1E3020;
-          margin: 0 0 5px 0;
-        }
-        .stat-label {
-          color: #6B7C6B;
-          font-size: 14px;
-          text-transform: uppercase;
-          letter-spacing: 1px;
-        }
-        table {
-          width: 100%;
-          border-collapse: collapse;
-          margin-top: 20px;
-        }
-        th {
-          background: #1E3020;
-          color: #fff;
-          padding: 12px;
-          text-align: left;
-        }
-        td {
-          padding: 10px 12px;
-          border-bottom: 1px solid #C8D8C8;
-        }
-        .footer {
-          margin-top: 40px;
-          padding-top: 20px;
-          border-top: 1px solid #C8D8C8;
-          font-size: 12px;
-          color: #6B7C6B;
-        }
-      </style>
-    </head>
-    <body>
-      <div class="header">
-        <h1>SnapShroom Overview Statistics</h1>
-        <p>Generated: ${now} | Prepared by: ${adminName}</p>
-      </div>
-
-      <div class="stats-grid">
-        <div class="stat-card">
-          <div class="stat-value">${analytics.users.total_users}</div>
-          <div class="stat-label">Total Users</div>
-        </div>
-        <div class="stat-card">
-          <div class="stat-value">${analytics.users.active_users}</div>
-          <div class="stat-label">Active Users</div>
-        </div>
-        <div class="stat-card">
-          <div class="stat-value">${analytics.mushrooms.total_scans}</div>
-          <div class="stat-label">Total Scans</div>
-        </div>
-        <div class="stat-card">
-          <div class="stat-value">${analytics.mushrooms.scans_last_30d}</div>
-          <div class="stat-label">Scans (30 Days)</div>
-        </div>
-      </div>
-
-      <h2 style="color: #1E3020;">User Status</h2>
-      <table>
-        <tr>
-          <th>Status</th>
-          <th>Count</th>
-          <th>Percentage</th>
-        </tr>
-        <tr>
-          <td>Active Users</td>
-          <td>${analytics.users.active_users}</td>
-          <td>${((analytics.users.active_users / analytics.users.total_users) * 100).toFixed(1)}%</td>
-        </tr>
-        <tr>
-          <td>Inactive Users</td>
-          <td>${analytics.users.inactive_users}</td>
-          <td>${((analytics.users.inactive_users / analytics.users.total_users) * 100).toFixed(1)}%</td>
-        </tr>
-        <tr>
-          <td>Administrators</td>
-          <td>${analytics.users.admin_count}</td>
-          <td>${((analytics.users.admin_count / analytics.users.total_users) * 100).toFixed(1)}%</td>
-        </tr>
-      </table>
-
-      <h2 style="color: #1E3020; margin-top: 30px;">Scan Information</h2>
-      <table>
-        <tr>
-          <th>Metric</th>
-          <th>Value</th>
-        </tr>
-        <tr>
-          <td>Detection Success Rate</td>
-          <td>${analytics.mushrooms.detection_success_rate}%</td>
-        </tr>
-        <tr>
-          <td>Edible Scans</td>
-          <td>${analytics.mushrooms.edible_vs_toxic.edible}</td>
-        </tr>
-        <tr>
-          <td>Toxic Scans</td>
-          <td>${analytics.mushrooms.edible_vs_toxic.toxic}</td>
-        </tr>
-        <tr>
-          <td>Unknown Classification</td>
-          <td>${analytics.mushrooms.edible_vs_toxic.unknown}</td>
-        </tr>
-      </table>
-
-      <div class="footer">
-        <p>Confidential - SnapShroom Internal Report</p>
-      </div>
-    </body>
-    </html>
-  `;
-};
-
-const generateScanTimelineHTML = (analytics: Analytics, adminName: string) => {
-  const now = new Date().toLocaleString('en-US', {
-    year: 'numeric', month: 'long', day: 'numeric',
-    hour: '2-digit', minute: '2-digit',
-  });
-
-  const totalScans = analytics.timeline.reduce((sum, day) => sum + day.scans, 0);
-  const avgDaily = (totalScans / analytics.timeline.length).toFixed(1);
-  const peakDay = analytics.timeline.reduce((max, day) => day.scans > max.scans ? day : max, analytics.timeline[0]);
-
-  return `
-    <!DOCTYPE html>
-    <html>
-    <head>
-      <meta charset="UTF-8">
-      <title>Scan Timeline Report</title>
-      <style>
-        @media print {
-          @page { size: A4; margin: 1.5cm; }
-          body { print-color-adjust: exact; }
-        }
-        body {
-          font-family: 'Helvetica', 'Arial', sans-serif;
-          background: #fff;
-          color: #0F1A0F;
-          line-height: 1.5;
-          padding: 20px;
-        }
-        .header {
-          border-bottom: 2px solid #1E3020;
-          padding-bottom: 15px;
-          margin-bottom: 25px;
-        }
-        .header h1 {
-          color: #1E3020;
-          font-size: 28px;
-          margin: 0 0 5px 0;
-        }
-        .header p {
-          color: #6B7C6B;
-          margin: 0;
-        }
-        .summary-stats {
-          display: flex;
-          gap: 20px;
-          margin-bottom: 30px;
-        }
-        .summary-box {
-          flex: 1;
-          background: #F7FAF7;
-          border: 1px solid #C8D8C8;
-          border-radius: 8px;
-          padding: 20px;
-          text-align: center;
-        }
-        .summary-value {
-          font-size: 32px;
-          font-weight: bold;
-          color: #1E3020;
-          margin: 0 0 5px 0;
-        }
-        .summary-label {
-          color: #6B7C6B;
-          font-size: 13px;
-          text-transform: uppercase;
-          letter-spacing: 1px;
-        }
-        table {
-          width: 100%;
-          border-collapse: collapse;
-          margin-top: 20px;
-        }
-        th {
-          background: #1E3020;
-          color: #fff;
-          padding: 12px;
-          text-align: left;
-        }
-        td {
-          padding: 10px 12px;
-          border-bottom: 1px solid #C8D8C8;
-        }
-        tr:nth-child(even) {
-          background: #F7FAF7;
-        }
-        .footer {
-          margin-top: 40px;
-          padding-top: 20px;
-          border-top: 1px solid #C8D8C8;
-          font-size: 12px;
-          color: #6B7C6B;
-        }
-      </style>
-    </head>
-    <body>
-      <div class="header">
-        <h1>SnapShroom Scan Timeline Report</h1>
-        <p>Generated: ${now} | Prepared by: ${adminName}</p>
-      </div>
-
-      <div class="summary-stats">
-        <div class="summary-box">
-          <div class="summary-value">${totalScans.toLocaleString()}</div>
-          <div class="summary-label">Total Scans (Period)</div>
-        </div>
-        <div class="summary-box">
-          <div class="summary-value">${avgDaily}</div>
-          <div class="summary-label">Average Daily Scans</div>
-        </div>
-        <div class="summary-box">
-          <div class="summary-value">${peakDay.scans}</div>
-          <div class="summary-label">Peak Day (${peakDay.date})</div>
-        </div>
-        <div class="summary-box">
-          <div class="summary-value">${analytics.timeline.length}</div>
-          <div class="summary-label">Days Tracked</div>
-        </div>
-      </div>
-
-      <h2 style="color: #1E3020;">Daily Scan Activity</h2>
-      <table>
-        <tr>
-          <th>Date</th>
-          <th>Scan Count</th>
-          <th>% of Total</th>
-        </tr>
-        ${analytics.timeline.map(day => `
-          <tr>
-            <td>${day.date}</td>
-            <td>${day.scans.toLocaleString()}</td>
-            <td>${((day.scans / totalScans) * 100).toFixed(1)}%</td>
-          </tr>
-        `).join('')}
-      </table>
-
-      <div class="footer">
-        <p>Confidential - SnapShroom Internal Report</p>
-      </div>
-    </body>
-    </html>
-  `;
-};
-
-const generateMostScannedHTML = (analytics: Analytics, adminName: string) => {
-  const now = new Date().toLocaleString('en-US', {
-    year: 'numeric', month: 'long', day: 'numeric',
-    hour: '2-digit', minute: '2-digit',
-  });
-
-  return `
-    <!DOCTYPE html>
-    <html>
-    <head>
-      <meta charset="UTF-8">
-      <title>Most Scanned Mushrooms Report</title>
-      <style>
-        @media print {
-          @page { size: A4; margin: 1.5cm; }
-          body { print-color-adjust: exact; }
-        }
-        body {
-          font-family: 'Helvetica', 'Arial', sans-serif;
-          background: #fff;
-          color: #0F1A0F;
-          line-height: 1.5;
-          padding: 20px;
-        }
-        .header {
-          border-bottom: 2px solid #1E3020;
-          padding-bottom: 15px;
-          margin-bottom: 25px;
-        }
-        .header h1 {
-          color: #1E3020;
-          font-size: 28px;
-          margin: 0 0 5px 0;
-        }
-        .header p {
-          color: #6B7C6B;
-          margin: 0;
-        }
-        table {
-          width: 100%;
-          border-collapse: collapse;
-          margin-top: 20px;
-        }
-        th {
-          background: #1E3020;
-          color: #fff;
-          padding: 15px;
-          text-align: left;
-          font-size: 14px;
-        }
-        td {
-          padding: 15px;
-          border-bottom: 1px solid #C8D8C8;
-        }
-        .rank-1 td:first-child {
-          font-weight: bold;
-          color: #1E3020;
-        }
-        .medal {
-          font-size: 20px;
-        }
-        tr:nth-child(even) {
-          background: #F7FAF7;
-        }
-        .total-scans {
-          margin-top: 20px;
-          text-align: right;
-          font-weight: bold;
-          color: #1E3020;
-        }
-        .footer {
-          margin-top: 40px;
-          padding-top: 20px;
-          border-top: 1px solid #C8D8C8;
-          font-size: 12px;
-          color: #6B7C6B;
-        }
-      </style>
-    </head>
-    <body>
-      <div class="header">
-        <h1>Most Scanned Mushrooms Report</h1>
-        <p>Generated: ${now} | Prepared by: ${adminName}</p>
-        <p>Total Scans Analyzed: ${analytics.mushrooms.total_scans.toLocaleString()}</p>
-      </div>
-
-      <table>
-        <tr>
-          <th>Rank</th>
-          <th>Mushroom Name</th>
-          <th>Scan Count</th>
-          <th>Percentage</th>
-        </tr>
-        ${analytics.mushrooms.most_scanned_mushrooms.map((m, i) => `
-          <tr class="rank-${i + 1}">
-            <td><span class="medal">${i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : `#${i + 1}`}</span></td>
-            <td><strong>${m.name}</strong></td>
-            <td>${m.count.toLocaleString()}</td>
-            <td>${((m.count / analytics.mushrooms.total_scans) * 100).toFixed(1)}%</td>
-          </tr>
-        `).join('')}
-      </table>
-
-      <div class="total-scans">
-        Total Unique Species: ${analytics.mushrooms.most_scanned_mushrooms.length}
-      </div>
-
-      <div class="footer">
-        <p>Confidential - SnapShroom Internal Report</p>
-      </div>
-    </body>
-    </html>
-  `;
-};
-
-const generateTopLocationsHTML = (analytics: Analytics, adminName: string) => {
-  const now = new Date().toLocaleString('en-US', {
-    year: 'numeric', month: 'long', day: 'numeric',
-    hour: '2-digit', minute: '2-digit',
-  });
-
-  return `
-    <!DOCTYPE html>
-    <html>
-    <head>
-      <meta charset="UTF-8">
-      <title>Top Scan Locations Report</title>
-      <style>
-        @media print {
-          @page { size: A4; margin: 1.5cm; }
-          body { print-color-adjust: exact; }
-        }
-        body {
-          font-family: 'Helvetica', 'Arial', sans-serif;
-          background: #fff;
-          color: #0F1A0F;
-          line-height: 1.5;
-          padding: 20px;
-        }
-        .header {
-          border-bottom: 2px solid #1E3020;
-          padding-bottom: 15px;
-          margin-bottom: 25px;
-        }
-        .header h1 {
-          color: #1E3020;
-          font-size: 28px;
-          margin: 0 0 5px 0;
-        }
-        .header p {
-          color: #6B7C6B;
-          margin: 0;
-        }
-        table {
-          width: 100%;
-          border-collapse: collapse;
-          margin-top: 20px;
-        }
-        th {
-          background: #1E3020;
-          color: #fff;
-          padding: 15px;
-          text-align: left;
-          font-size: 14px;
-        }
-        td {
-          padding: 15px;
-          border-bottom: 1px solid #C8D8C8;
-        }
-        tr:nth-child(even) {
-          background: #F7FAF7;
-        }
-        .location-icon {
-          color: #2BA8A0;
-          font-size: 18px;
-        }
-        .footer {
-          margin-top: 40px;
-          padding-top: 20px;
-          border-top: 1px solid #C8D8C8;
-          font-size: 12px;
-          color: #6B7C6B;
-        }
-      </style>
-    </head>
-    <body>
-      <div class="header">
-        <h1>Top Scan Locations Report</h1>
-        <p>Generated: ${now} | Prepared by: ${adminName}</p>
-        <p>Total Scans: ${analytics.mushrooms.total_scans.toLocaleString()}</p>
-      </div>
-
-      <table>
-        <tr>
-          <th>Rank</th>
-          <th>Location</th>
-          <th>Scan Count</th>
-          <th>Percentage</th>
-          <th>Category</th>
-        </tr>
-        ${analytics.mushrooms.top_locations.map((loc, i) => {
-          const percentage = (loc.count / analytics.mushrooms.total_scans) * 100;
-          const category = percentage > 20 ? 'High Traffic' : percentage > 10 ? 'Medium Traffic' : 'Low Traffic';
-          return `
-            <tr>
-              <td><strong>#${i + 1}</strong></td>
-              <td>📍 ${loc.location}</td>
-              <td>${loc.count.toLocaleString()}</td>
-              <td>${percentage.toFixed(1)}%</td>
-              <td>${category}</td>
-            </tr>
-          `;
-        }).join('')}
-      </table>
-
-      <div class="footer">
-        <p>Confidential - SnapShroom Internal Report</p>
-      </div>
-    </body>
-    </html>
-  `;
-};
-
-const generateUserSummaryHTML = (users: User[], adminName: string) => {
-  const now = new Date().toLocaleString('en-US', {
-    year: 'numeric', month: 'long', day: 'numeric',
-    hour: '2-digit', minute: '2-digit',
-  });
-
-  const activeUsers = users.filter(u => u.is_active).length;
-  const inactiveUsers = users.filter(u => !u.is_active).length;
-  const adminUsers = users.filter(u => u.role === 'admin').length;
-  const regularUsers = users.filter(u => u.role === 'user').length;
-
-  return `
-    <!DOCTYPE html>
-    <html>
-    <head>
-      <meta charset="UTF-8">
-      <title>User Summary Report</title>
-      <style>
-        @media print {
-          @page { size: A4; margin: 1.5cm; }
-          body { print-color-adjust: exact; }
-        }
-        body {
-          font-family: 'Helvetica', 'Arial', sans-serif;
-          background: #fff;
-          color: #0F1A0F;
-          line-height: 1.5;
-          padding: 20px;
-        }
-        .header {
-          border-bottom: 2px solid #1E3020;
-          padding-bottom: 15px;
-          margin-bottom: 25px;
-        }
-        .header h1 {
-          color: #1E3020;
-          font-size: 28px;
-          margin: 0 0 5px 0;
-        }
-        .header p {
-          color: #6B7C6B;
-          margin: 0;
-        }
-        .stats-grid {
-          display: grid;
-          grid-template-columns: repeat(3, 1fr);
-          gap: 20px;
-          margin-bottom: 30px;
-        }
-        .stat-card {
-          background: #F7FAF7;
-          border: 1px solid #C8D8C8;
-          border-radius: 8px;
-          padding: 20px;
-          text-align: center;
-        }
-        .stat-value {
-          font-size: 36px;
-          font-weight: bold;
-          color: #1E3020;
-          margin: 0 0 5px 0;
-        }
-        .stat-label {
-          color: #6B7C6B;
-          font-size: 14px;
-          text-transform: uppercase;
-          letter-spacing: 1px;
-        }
-        table {
-          width: 100%;
-          border-collapse: collapse;
-          margin-top: 20px;
-        }
-        th {
-          background: #1E3020;
-          color: #fff;
-          padding: 12px;
-          text-align: left;
-        }
-        td {
-          padding: 10px 12px;
-          border-bottom: 1px solid #C8D8C8;
-        }
-        .badge {
-          display: inline-block;
-          padding: 4px 8px;
-          border-radius: 4px;
-          font-size: 11px;
-          font-weight: bold;
-          text-transform: uppercase;
-        }
-        .badge-active {
-          background: #D5F5E3;
-          color: #1E8449;
-        }
-        .badge-inactive {
-          background: #FADBD8;
-          color: #C0392B;
-        }
-        .badge-admin {
-          background: #6B7C61;
-          color: #fff;
-        }
-        .footer {
-          margin-top: 40px;
-          padding-top: 20px;
-          border-top: 1px solid #C8D8C8;
-          font-size: 12px;
-          color: #6B7C6B;
-        }
-      </style>
-    </head>
-    <body>
-      <div class="header">
-        <h1>SnapShroom User Summary Report</h1>
-        <p>Generated: ${now} | Prepared by: ${adminName}</p>
-      </div>
-
-      <div class="stats-grid">
-        <div class="stat-card">
-          <div class="stat-value">${users.length}</div>
-          <div class="stat-label">Total Users</div>
-        </div>
-        <div class="stat-card">
-          <div class="stat-value">${activeUsers}</div>
-          <div class="stat-label">Active Users</div>
-        </div>
-        <div class="stat-card">
-          <div class="stat-value">${inactiveUsers}</div>
-          <div class="stat-label">Inactive Users</div>
-        </div>
-        <div class="stat-card">
-          <div class="stat-value">${adminUsers}</div>
-          <div class="stat-label">Administrators</div>
-        </div>
-        <div class="stat-card">
-          <div class="stat-value">${regularUsers}</div>
-          <div class="stat-label">Regular Users</div>
-        </div>
-        <div class="stat-card">
-          <div class="stat-value">${((activeUsers / users.length) * 100).toFixed(1)}%</div>
-          <div class="stat-label">Activity Rate</div>
-        </div>
-      </div>
-
-      <h2 style="color: #1E3020;">Recent Users (Last 5)</h2>
-      <table>
-        <tr>
-          <th>Name</th>
-          <th>Username</th>
-          <th>Role</th>
-          <th>Status</th>
-          <th>Joined</th>
-        </tr>
-        ${[...users]
-          .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
-          .slice(0, 5)
-          .map(u => `
-            <tr>
-              <td><strong>${u.name}</strong></td>
-              <td>@${u.username}</td>
-              <td><span class="badge ${u.role === 'admin' ? 'badge-admin' : ''}">${u.role}</span></td>
-              <td><span class="badge ${u.is_active ? 'badge-active' : 'badge-inactive'}">${u.is_active ? 'Active' : 'Inactive'}</span></td>
-              <td>${new Date(u.created_at).toLocaleDateString()}</td>
-            </tr>
-          `).join('')}
-      </table>
-
-      <div class="footer">
-        <p>Confidential - SnapShroom Internal Report</p>
-      </div>
-    </body>
-    </html>
-  `;
-};
 
 /* ════════════════════════════════════════════
    COMPONENT
@@ -1033,11 +325,6 @@ export default function AdminDashboard() {
           <View style={s.section}>
             <View style={s.sectionHeader}>
               <ThemedText style={s.sectionTitle}>📊 Overview Statistics</ThemedText>
-              <SectionExportButton
-                onPress={() => exportPDF(generateOverviewStatsHTML(analytics, user.name), 'Overview_Statistics.pdf')}
-                label="Export Stats"
-                icon="download-outline"
-              />
             </View>
             <View style={s.statsGrid}>
               <View style={[s.statCard, { backgroundColor: '#4ECDC4' }]}>
@@ -1068,11 +355,6 @@ export default function AdminDashboard() {
             <View style={s.section}>
               <View style={s.sectionHeader}>
                 <ThemedText style={s.sectionTitle}>📈 Scan Timeline</ThemedText>
-                <SectionExportButton
-                  onPress={() => exportPDF(generateScanTimelineHTML(analytics, user.name), 'Scan_Timeline.pdf')}
-                  label="Export Timeline"
-                  icon="download-outline"
-                />
               </View>
               <ThemedText style={s.chartSubtitle}>Daily scan activity</ThemedText>
               <ScrollView horizontal showsHorizontalScrollIndicator={false}>
@@ -1096,35 +378,6 @@ export default function AdminDashboard() {
           <View style={s.section}>
             <View style={s.sectionHeader}>
               <ThemedText style={s.sectionTitle}>👤 User Status Breakdown</ThemedText>
-              <SectionExportButton
-                onPress={() => {
-                  const userStatusHtml = `
-                    <html>
-                      <head>
-                        <style>
-                          @media print { @page { size: A4; margin: 1.5cm; } }
-                          body { font-family: Arial; padding: 20px; }
-                          h1 { color: #1E3020; }
-                          .stat-box { background: #F7FAF7; padding: 20px; margin: 10px 0; }
-                        </style>
-                      </head>
-                      <body>
-                        <h1>User Status Report</h1>
-                        <p>Generated: ${new Date().toLocaleString()}</p>
-                        <div class="stat-box">
-                          <h2>Active Users: ${analytics.users.active_users} (${((analytics.users.active_users / analytics.users.total_users) * 100).toFixed(1)}%)</h2>
-                          <h2>Inactive Users: ${analytics.users.inactive_users} (${((analytics.users.inactive_users / analytics.users.total_users) * 100).toFixed(1)}%)</h2>
-                          <h2>Admin Users: ${analytics.users.admin_count} (${((analytics.users.admin_count / analytics.users.total_users) * 100).toFixed(1)}%)</h2>
-                          <h2>Total Users: ${analytics.users.total_users}</h2>
-                        </div>
-                      </body>
-                    </html>
-                  `;
-                  exportPDF(userStatusHtml, 'User_Status.pdf');
-                }}
-                label="Export Status"
-                icon="download-outline"
-              />
             </View>
             <ThemedText style={s.chartSubtitle}>Active · Inactive · Admins (as % of total)</ThemedText>
             <ProgressChart
@@ -1160,31 +413,6 @@ export default function AdminDashboard() {
           <View style={s.section}>
             <View style={s.sectionHeader}>
               <ThemedText style={s.sectionTitle}>ℹ️ Quick Info</ThemedText>
-              <SectionExportButton
-                onPress={() => {
-                  const quickInfoHtml = `
-                    <html>
-                      <head>
-                        <style>
-                          @media print { @page { size: A4; margin: 1.5cm; } }
-                          body { font-family: Arial; padding: 20px; }
-                        </style>
-                      </head>
-                      <body>
-                        <h1>Quick Information Report</h1>
-                        <p>Admin Count: ${analytics.users.admin_count}</p>
-                        <p>Detection Success Rate: ${analytics.mushrooms.detection_success_rate}%</p>
-                        <p>Edible Scans: ${analytics.mushrooms.edible_vs_toxic.edible}</p>
-                        <p>Toxic Scans: ${analytics.mushrooms.edible_vs_toxic.toxic}</p>
-                        <p>Unknown Scans: ${analytics.mushrooms.edible_vs_toxic.unknown}</p>
-                      </body>
-                    </html>
-                  `;
-                  exportPDF(quickInfoHtml, 'Quick_Info.pdf');
-                }}
-                label="Export Info"
-                icon="download-outline"
-              />
             </View>
             <View style={s.infoGrid}>
               <View style={s.infoItem}>
@@ -1244,12 +472,6 @@ export default function AdminDashboard() {
               <ThemedText style={s.sectionTitle}>
                 👥 User Management ({users.length} users)
               </ThemedText>
-              <SectionExportButton
-                onPress={() => exportPDF(generateUserSummaryHTML(users, user.name), 'User_Summary.pdf')}
-                label="Export Summary"
-                icon="download-outline"
-                size="medium"
-              />
             </View>
           </View>
 
@@ -1339,32 +561,6 @@ export default function AdminDashboard() {
           <View style={s.section}>
             <View style={s.sectionHeader}>
               <ThemedText style={s.sectionTitle}>👥 User Analytics</ThemedText>
-              <SectionExportButton
-                onPress={() => {
-                  const userAnalyticsHtml = `
-                    <html>
-                      <head>
-                        <style>
-                          @media print { @page { size: A4; margin: 1.5cm; } }
-                          body { font-family: Arial; padding: 20px; }
-                        </style>
-                      </head>
-                      <body>
-                        <h1>User Analytics Report</h1>
-                        <p>Total Users: ${analytics.users.total_users}</p>
-                        <p>Active Users: ${analytics.users.active_users}</p>
-                        <p>Inactive Users: ${analytics.users.inactive_users}</p>
-                        <p>Admin Users: ${analytics.users.admin_count}</p>
-                        <p>Recent Registrations (30d): ${analytics.users.recent_registrations_30d}</p>
-                        <p>Recent Logins (7d): ${analytics.users.recent_logins_7d}</p>
-                      </body>
-                    </html>
-                  `;
-                  exportPDF(userAnalyticsHtml, 'User_Analytics.pdf');
-                }}
-                label="Export User Stats"
-                icon="download-outline"
-              />
             </View>
             <View style={s.statsGrid}>
               <View style={[s.statCard, { backgroundColor: '#4ECDC4' }]}>
@@ -1417,33 +613,6 @@ export default function AdminDashboard() {
           <View style={s.section}>
             <View style={s.sectionHeader}>
               <ThemedText style={s.sectionTitle}>🍄 Mushroom Analytics</ThemedText>
-              <SectionExportButton
-                onPress={() => {
-                  const mushroomAnalyticsHtml = `
-                    <html>
-                      <head>
-                        <style>
-                          @media print { @page { size: A4; margin: 1.5cm; } }
-                          body { font-family: Arial; padding: 20px; }
-                        </style>
-                      </head>
-                      <body>
-                        <h1>Mushroom Analytics Report</h1>
-                        <p>Total Scans: ${analytics.mushrooms.total_scans}</p>
-                        <p>Scans Last 30 Days: ${analytics.mushrooms.scans_last_30d}</p>
-                        <p>Detection Success Rate: ${analytics.mushrooms.detection_success_rate}%</p>
-                        <h2>Edibility Breakdown</h2>
-                        <p>Edible: ${analytics.mushrooms.edible_vs_toxic.edible}</p>
-                        <p>Toxic: ${analytics.mushrooms.edible_vs_toxic.toxic}</p>
-                        <p>Unknown: ${analytics.mushrooms.edible_vs_toxic.unknown}</p>
-                      </body>
-                    </html>
-                  `;
-                  exportPDF(mushroomAnalyticsHtml, 'Mushroom_Analytics.pdf');
-                }}
-                label="Export Mushroom Stats"
-                icon="download-outline"
-              />
             </View>
             <View style={s.statsGrid}>
               <View style={[s.statCard, { backgroundColor: '#FF6B6B' }]}>
@@ -1469,11 +638,6 @@ export default function AdminDashboard() {
             <View style={s.section}>
               <View style={s.sectionHeader}>
                 <ThemedText style={s.sectionTitle}>📈 Scan Timeline</ThemedText>
-                <SectionExportButton
-                  onPress={() => exportPDF(generateScanTimelineHTML(analytics, user.name), 'Analytics_Timeline.pdf')}
-                  label="Export Timeline"
-                  icon="download-outline"
-                />
               </View>
               <ThemedText style={s.chartSubtitle}>Daily scan activity over time</ThemedText>
               <ScrollView horizontal showsHorizontalScrollIndicator={false}>
@@ -1498,11 +662,6 @@ export default function AdminDashboard() {
             <View style={s.section}>
               <View style={s.sectionHeader}>
                 <ThemedText style={s.sectionTitle}>🏆 Most Scanned Mushrooms</ThemedText>
-                <SectionExportButton
-                  onPress={() => exportPDF(generateMostScannedHTML(analytics, user.name), 'Most_Scanned_Mushrooms.pdf')}
-                  label="Export List"
-                  icon="download-outline"
-                />
               </View>
               {analytics.mushrooms.most_scanned_mushrooms.slice(0, 5).map((item, index) => (
                 <View key={index} style={s.listItem}>
@@ -1531,11 +690,6 @@ export default function AdminDashboard() {
             <View style={s.section}>
               <View style={s.sectionHeader}>
                 <ThemedText style={s.sectionTitle}>📍 Top Scan Locations</ThemedText>
-                <SectionExportButton
-                  onPress={() => exportPDF(generateTopLocationsHTML(analytics, user.name), 'Top_Locations.pdf')}
-                  label="Export Locations"
-                  icon="download-outline"
-                />
               </View>
               {analytics.mushrooms.top_locations.slice(0, 5).map((item, index) => (
                 <View key={index} style={s.listItem}>
@@ -1581,43 +735,6 @@ export default function AdminDashboard() {
         <View style={s.aboutSection}>
           <View style={s.sectionHeader}>
             <ThemedText style={s.aboutSectionTitle}>About This System</ThemedText>
-            <SectionExportButton
-              onPress={() => {
-                const aboutHtml = `
-                  <html>
-                    <head>
-                      <style>
-                        @media print { @page { size: A4; margin: 1.5cm; } }
-                        body { font-family: Arial; padding: 20px; }
-                      </style>
-                    </head>
-                    <body>
-                      <h1>SnapShroom Admin System</h1>
-                      <p>Version: 1.0.0</p>
-                      <h2>About This System</h2>
-                      <p>SnapShroom is an advanced mushroom identification system that uses machine learning
-                      to help users identify mushroom species, assess edibility, and learn about different
-                      mushroom characteristics.</p>
-                      
-                      <h2>Admin Features</h2>
-                      <ul>
-                        <li>User management and role control</li>
-                        <li>Analytics and insights dashboard</li>
-                        <li>System monitoring and statistics</li>
-                        <li>Account activation controls</li>
-                        <li>Formal PDF report export (all sections)</li>
-                      </ul>
-                      
-                      <h2>Contact & Support</h2>
-                      <p>For technical support or questions about the admin panel, please contact the development team.</p>
-                    </body>
-                  </html>
-                `;
-                exportPDF(aboutHtml, 'System_About.pdf');
-              }}
-              label="Export Info"
-              icon="download-outline"
-            />
           </View>
           <ThemedText style={s.aboutText}>
             SnapShroom is an advanced mushroom identification system that uses machine learning
@@ -1692,7 +809,7 @@ export default function AdminDashboard() {
 }
 
 /* ════════════════════════════════════════════
-   STYLES
+   STYLES (Keep your existing styles)
 ════════════════════════════════════════════ */
 const s = StyleSheet.create({
   container:       { flex: 1, backgroundColor: '#FDFCFA' },
