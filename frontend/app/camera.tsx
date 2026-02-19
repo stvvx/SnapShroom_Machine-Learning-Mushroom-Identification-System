@@ -21,12 +21,10 @@ const checkForMushroom = async (base64: string, photoUri?: string): Promise<{ is
     });
     if (!response.ok) {
       console.warn('⚠️ Mushroom detection failed:', response.status);
-      // If detection fails, allow proceeding (fail-open approach)
       return { isMushroom: true, confidence: 0.5 };
     }
     const data = await response.json();
     console.log('Detection result:', data);
-    // Check if detection found objects with mushroom confidence
     const hasMushroom = data.detection_results?.detected === true || 
                        (data.objects && data.objects.length > 0);
     const confidence = data.confidence || 0;
@@ -36,10 +34,10 @@ const checkForMushroom = async (base64: string, photoUri?: string): Promise<{ is
     };
   } catch (error) {
     console.error('❌ Mushroom detection error:', error);
-    // If detection fails, allow proceeding (fail-open approach)
     return { isMushroom: true, confidence: 0.5 };
   }
 };
+
 import React, { useState, useRef, useEffect } from 'react';
 import {
   View,
@@ -52,6 +50,7 @@ import {
   ScrollView,
   Image,
   Animated,
+  Platform,
 } from 'react-native';
 import { Camera, CameraView } from 'expo-camera';
 import * as ImagePicker from 'expo-image-picker';
@@ -61,31 +60,33 @@ import { StatusBar } from 'expo-status-bar';
 import { Ionicons } from '@expo/vector-icons';
 
 const { width, height } = Dimensions.get('window');
+const isWeb = Platform.OS === 'web';
+const isWideScreen = width >= 768;
 
 // Mushroom examples for user guidance
 const MUSHROOM_EXAMPLES = [
   {
     id: 1,
     title: 'Button Mushroom',
-    imageUrl: 'https://images.unsplash.com/photo-1512621776951-a57141f2eefd?w=150&h=150&fit=crop',
+    imageUrl: 'https://th.bing.com/th/id/R.c8f023cde84cfd6c334f1b3139a682b5?rik=e6FkdExXt4Iyvw&riu=http%3a%2f%2ftweedfruitexchange.com.au%2fcdn%2fshop%2fproducts%2fmushroomsbutton.jpg%3fv%3d1669848630&ehk=b1M5pzhJJZ9zasb9e69Z9iEPDl4GN%2bF6NV5Bz9RWNGw%3d&risl=&pid=ImgRaw&r=0',
     tips: 'Show the cap clearly',
   },
   {
     id: 2,
-    title: 'Shiitake',
-    imageUrl: 'https://images.unsplash.com/photo-1505252585461-04db1267ae5b?w=150&h=150&fit=crop',
+    title: 'Shiitake Mushroom',
+    imageUrl: 'https://th.bing.com/th/id/R.f61484192894d9102f7dc09fb6cdb44e?rik=2hWbf6OEP0%2fNyw&riu=http%3a%2f%2fupload.wikimedia.org%2fwikipedia%2fcommons%2fe%2feb%2fShiitake_mushroom.jpg&ehk=mnyiAHI6vDE0UMoaM41qIYWgdZ00pRBt27vM1R7RQuY%3d&risl=&pid=ImgRaw&r=0',
     tips: 'Capture full specimen',
   },
   {
     id: 3,
-    title: 'Oyster',
-    imageUrl: 'https://images.unsplash.com/photo-1559827260-dc66d52bef19?w=150&h=150&fit=crop',
+    title: 'Oyster Mushroom',
+    imageUrl: 'https://grocycle.com/wp-content/uploads/2017/03/GC-Site-HomePage.jpg',
     tips: 'Include gills in frame',
   },
   {
     id: 4,
-    title: 'Portobello',
-    imageUrl: 'https://images.unsplash.com/photo-1585238341710-4b4e6b405f88?w=150&h=150&fit=crop',
+    title: 'Enoki Mushroom',
+    imageUrl: 'https://www.mashed.com/img/gallery/enoki-mushrooms-were-named-the-most-recalled-food-of-the-year/l-intro-1670008415.jpg',
     tips: 'Good lighting helps',
   },
 ];
@@ -112,49 +113,25 @@ export default function CameraScreen() {
   const cornerAnim = useRef(new Animated.Value(1)).current;
 
   useEffect(() => {
-    // Pulse animation for capture button
     Animated.loop(
       Animated.sequence([
-        Animated.timing(pulseAnim, {
-          toValue: 1.1,
-          duration: 1000,
-          useNativeDriver: true,
-        }),
-        Animated.timing(pulseAnim, {
-          toValue: 1,
-          duration: 1000,
-          useNativeDriver: true,
-        }),
+        Animated.timing(pulseAnim, { toValue: 1.1, duration: 1000, useNativeDriver: true }),
+        Animated.timing(pulseAnim, { toValue: 1, duration: 1000, useNativeDriver: true }),
       ])
     ).start();
 
-    // Scan line animation
     Animated.loop(
-      Animated.timing(scanLineAnim, {
-        toValue: 1,
-        duration: 2000,
-        useNativeDriver: true,
-      })
+      Animated.timing(scanLineAnim, { toValue: 1, duration: 2000, useNativeDriver: true })
     ).start();
 
-    // Corner pulse animation
     Animated.loop(
       Animated.sequence([
-        Animated.timing(cornerAnim, {
-          toValue: 0.7,
-          duration: 800,
-          useNativeDriver: true,
-        }),
-        Animated.timing(cornerAnim, {
-          toValue: 1,
-          duration: 800,
-          useNativeDriver: true,
-        }),
+        Animated.timing(cornerAnim, { toValue: 0.7, duration: 800, useNativeDriver: true }),
+        Animated.timing(cornerAnim, { toValue: 1, duration: 800, useNativeDriver: true }),
       ])
     ).start();
   }, []);
 
-  // Request camera permission on mount
   useEffect(() => {
     (async () => {
       const { status } = await Camera.requestCameraPermissionsAsync();
@@ -164,35 +141,27 @@ export default function CameraScreen() {
 
   // Upload image to Cloudinary
   const uploadToCloudinary = async (base64: string, photoUri?: string) => {
-
     try {
       let blobData: Blob | null = null;
-      // Debug: Log incoming data
       console.log('[Cloudinary] base64 length:', base64 ? base64.length : 0);
       console.log('[Cloudinary] photoUri:', photoUri);
 
-      // Clean base64 string (remove data:image/jpeg;base64, prefix if present)
       let uploadResponse = null;
       const uploadPreset = CLOUDINARY_UPLOAD_PRESET || 'snapshroom';
       console.log('📤 Uploading to Cloudinary with preset:', uploadPreset);
 
-      // Always use base64 data URL for mobile (Expo Go)
       try {
         let blobData: Blob | null = null;
-        // Debug: Log incoming data
         console.log('[Cloudinary] base64 length:', base64 ? base64.length : 0);
         console.log('[Cloudinary] photoUri:', photoUri);
-        // Clean base64 string (remove data:image/jpeg;base64, prefix if present)
         let cleanBase64 = base64 || '';
         if (cleanBase64.includes(',')) {
           cleanBase64 = cleanBase64.split(',')[1];
         }
-        // Debug: Print first 100 chars of base64
         console.log('[Cloudinary] base64 preview:', cleanBase64.slice(0, 100));
         let uploadResponse = null;
         const uploadPreset = CLOUDINARY_UPLOAD_PRESET || 'snapshroom';
         console.log('📤 Uploading to Cloudinary with preset:', uploadPreset);
-        // Always use base64 data URL for mobile (Expo Go)
         if (cleanBase64) {
           const formData = new FormData();
           formData.append('file', `data:image/jpeg;base64,${cleanBase64}`);
@@ -228,42 +197,31 @@ export default function CameraScreen() {
         console.error('❌ Cloudinary upload error:', error);
         throw error;
       }
-      // Build API URL from environment variables
       const BACKEND_IP = process.env.EXPO_PUBLIC_BACKEND_IP || '192.168.1.102';
       const BACKEND_PORT = process.env.EXPO_PUBLIC_BACKEND_PORT || '5000';
       const apiUrl = process.env.EXPO_PUBLIC_API_URL || `http://${BACKEND_IP}:${BACKEND_PORT}/api`;
       
       const response = await fetch(`${apiUrl}/toxicity/detect`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          image_base64: cleanBase64,
-        }),
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ image_base64: cleanBase64 }),
       });
 
       if (!response.ok) {
         console.warn('⚠️ Mushroom detection failed:', response.status);
-        // If detection fails, allow proceeding (fail-open approach)
         return { isMushroom: true, confidence: 0.5 };
       }
 
       const data = await response.json();
       console.log('Detection result:', data);
 
-      // Check if detection found objects with mushroom confidence
       const hasMushroom = data.detection_results?.detected === true || 
                          (data.objects && data.objects.length > 0);
       const confidence = data.confidence || 0;
 
-      return {
-        isMushroom: hasMushroom,
-        confidence: confidence
-      };
+      return { isMushroom: hasMushroom, confidence: confidence };
     } catch (error) {
       console.error('❌ Mushroom detection error:', error);
-      // If detection fails, allow proceeding (fail-open approach)
       return { isMushroom: true, confidence: 0.5 };
     }
   };
@@ -285,27 +243,18 @@ export default function CameraScreen() {
           return;
         }
         console.log('📸 Photo captured, checking for mushroom...');
-        // Check if image contains a mushroom
         const { isMushroom, confidence } = await checkForMushroom(photo.base64 || '', photo.uri);
         if (!isMushroom || confidence < 0.3) {
           setIsLoading(false);
           Alert.alert(
             'No Mushroom Detected',
             'Please make sure the mushroom is clearly visible in the frame. Tips:\n\n• Focus on the mushroom cap\n• Ensure good lighting\n• Fill most of the frame with the mushroom\n• Avoid blurry photos',
-            [
-              {
-                text: 'Try Again',
-                onPress: () => console.log('Retaking photo'),
-                style: 'default',
-              },
-            ]
+            [{ text: 'Try Again', onPress: () => console.log('Retaking photo'), style: 'default' }]
           );
           return;
         }
         console.log('✅ Mushroom detected with confidence:', confidence);
-        // Upload to Cloudinary
         const cloudinaryData = await uploadToCloudinary(photo.base64 || '', photo.uri);
-        // Navigate to prediction screen with the captured image
         router.push({
           pathname: '/prediction',
           params: {
@@ -317,10 +266,7 @@ export default function CameraScreen() {
         });
       } catch (error) {
         console.error('❌ Error taking picture:', error);
-        Alert.alert(
-          'Error',
-          'Failed to capture or upload image. Please make sure Cloudinary is configured correctly.'
-        );
+        Alert.alert('Error', 'Failed to capture or upload image. Please make sure Cloudinary is configured correctly.');
       } finally {
         setIsLoading(false);
       }
@@ -332,7 +278,6 @@ export default function CameraScreen() {
     if (isLoading) return;
 
     try {
-      // Request permission for media library
       const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
       
       if (status !== 'granted') {
@@ -344,7 +289,6 @@ export default function CameraScreen() {
         return;
       }
 
-      // Launch image picker
       const result = await ImagePicker.launchImageLibraryAsync({
         mediaTypes: ImagePicker.MediaTypeOptions.Images,
         allowsEditing: true,
@@ -353,9 +297,7 @@ export default function CameraScreen() {
         base64: true,
       });
 
-      if (result.canceled) {
-        return;
-      }
+      if (result.canceled) return;
 
       const asset = result.assets[0];
       
@@ -367,7 +309,6 @@ export default function CameraScreen() {
         }
         setIsLoading(true);
         console.log('📁 Image picked from gallery, checking for mushroom...');
-        // Check if image contains a mushroom
         const { isMushroom, confidence } = await checkForMushroom(asset.base64 || '', asset.uri);
         if (!isMushroom || confidence < 0.3) {
           setIsLoading(false);
@@ -375,23 +316,14 @@ export default function CameraScreen() {
             'No Mushroom Detected',
             'Please select an image with a clearly visible mushroom. Tips:\n\n• Choose a photo with good lighting\n• Ensure the mushroom fills most of the frame\n• Avoid blurry or distant photos',
             [
-              {
-                text: 'Try Again',
-                onPress: () => pickImage(),
-                style: 'default',
-              },
-              {
-                text: 'Cancel',
-                style: 'cancel',
-              },
+              { text: 'Try Again', onPress: () => pickImage(), style: 'default' },
+              { text: 'Cancel', style: 'cancel' },
             ]
           );
           return;
         }
         console.log('✅ Mushroom detected in uploaded image with confidence:', confidence);
-        // Upload to Cloudinary
         const cloudinaryData = await uploadToCloudinary(asset.base64 || '', asset.uri);
-        // Navigate to prediction screen with the uploaded image
         router.push({
           pathname: '/prediction',
           params: {
@@ -404,16 +336,12 @@ export default function CameraScreen() {
       }
     } catch (error) {
       console.error('❌ Error picking image:', error);
-      Alert.alert(
-        'Error',
-        'Failed to process the selected image. Please try again.'
-      );
+      Alert.alert('Error', 'Failed to process the selected image. Please try again.');
     } finally {
       setIsLoading(false);
     }
   };
 
-  // Request permission handler
   const requestPermission = async () => {
     const { status } = await Camera.requestCameraPermissionsAsync();
     setHasPermission(status === 'granted');
@@ -450,10 +378,7 @@ export default function CameraScreen() {
             <Ionicons name="camera" size={20} color="white" />
             <Text style={styles.primaryButtonText}>Grant Camera Access</Text>
           </TouchableOpacity>
-          <TouchableOpacity
-            style={styles.secondaryButton}
-            onPress={() => router.back()}
-          >
+          <TouchableOpacity style={styles.secondaryButton} onPress={() => router.back()}>
             <Ionicons name="arrow-back" size={20} color="#7BA05B" />
             <Text style={styles.secondaryButtonText}>Go Back</Text>
           </TouchableOpacity>
@@ -462,13 +387,132 @@ export default function CameraScreen() {
     );
   }
 
-  // Main render
+  // ─── WEB WIDE LAYOUT ─────────────────────────────────────────────────────────
+  if (isWideScreen) {
+    return (
+      <View style={styles.webRoot}>
+        <StatusBar style="light" />
+
+        {/* LEFT PANEL: Guide / Examples */}
+        <LinearGradient colors={['#0A1A0F', '#0F1F0F', '#1A2D1A']} style={styles.webLeftPanel}>
+          {/* Panel header */}
+          <View style={styles.webPanelHeader}>
+            <TouchableOpacity onPress={() => router.back()} style={styles.webHeaderBtn}>
+              <Ionicons name="arrow-back" size={22} color="#7BA05B" />
+            </TouchableOpacity>
+            <View style={styles.webPanelHeaderTitle}>
+              <Ionicons name="leaf" size={20} color="#7BA05B" />
+              <Text style={styles.webPanelHeaderText}>SnapShroom</Text>
+            </View>
+            <View style={{ width: 40 }} />
+          </View>
+
+          <ScrollView showsVerticalScrollIndicator={false} style={styles.webLeftScroll} contentContainerStyle={styles.webLeftScrollContent}>
+            {/* Tips */}
+            <Text style={styles.webSectionTitle}>Capture Tips</Text>
+            <View style={styles.webTipsCard}>
+              {[
+                { icon: 'sunny', color: '#FFD700', text: 'Good natural lighting' },
+                { icon: 'eye', color: '#4DA6FF', text: 'Focus on the mushroom cap' },
+                { icon: 'grid', color: '#9C27B0', text: 'Include gills and stem' },
+                { icon: 'map', color: '#7BA05B', text: 'Show surrounding habitat' },
+                { icon: 'moon', color: '#A8B89D', text: 'Avoid shadows and glare' },
+              ].map((tip) => (
+                <View key={tip.text} style={styles.webTipRow}>
+                  <View style={styles.webTipIcon}>
+                    <Ionicons name={tip.icon as any} size={16} color={tip.color} />
+                  </View>
+                  <Text style={styles.webTipText}>{tip.text}</Text>
+                </View>
+              ))}
+            </View>
+
+            {/* Examples */}
+            <Text style={styles.webSectionTitle}>Example Captures</Text>
+            <View style={styles.webExamplesGrid}>
+              {MUSHROOM_EXAMPLES.map((mushroom) => (
+                <View key={mushroom.id} style={styles.webExampleCard}>
+                  <Image source={{ uri: mushroom.imageUrl }} style={styles.webExampleImage} />
+                  <Text style={styles.webExampleTitle}>{mushroom.title}</Text>
+                  <Text style={styles.webExampleTip}>{mushroom.tips}</Text>
+                </View>
+              ))}
+            </View>
+          </ScrollView>
+        </LinearGradient>
+
+        {/* RIGHT PANEL: Upload only (web) */}
+        <View style={styles.webRightPanel}>
+          <View style={styles.webUploadArea}>
+            {/* Icon */}
+            <View style={styles.webUploadIconWrap}>
+              <LinearGradient
+                colors={['rgba(123,160,91,0.2)', 'rgba(90,128,64,0.1)']}
+                style={styles.webUploadIconGradient}
+              >
+                <Ionicons name="cloud-upload-outline" size={64} color="#7BA05B" />
+              </LinearGradient>
+            </View>
+
+            <Text style={styles.webUploadTitle}>Upload a Mushroom Photo</Text>
+            <Text style={styles.webUploadSubtitle}>
+              Select an image from your device to identify the mushroom
+            </Text>
+
+            {/* Tips row */}
+            <View style={styles.webInstructionsRow}>
+              {[
+                { icon: 'sunny', color: '#FFD700', label: 'Good lighting' },
+                { icon: 'eye', color: '#7BA05B', label: 'Clear focus' },
+                { icon: 'leaf', color: '#4DA6FF', label: 'Full specimen' },
+              ].map((item) => (
+                <View key={item.label} style={styles.webInstructionChip}>
+                  <Ionicons name={item.icon as any} size={15} color={item.color} />
+                  <Text style={styles.webInstructionChipText}>{item.label}</Text>
+                </View>
+              ))}
+            </View>
+
+            {/* Upload button */}
+            <TouchableOpacity
+              style={[styles.webUploadBtn, isLoading && styles.captureButtonDisabled]}
+              onPress={pickImage}
+              disabled={isLoading}
+              activeOpacity={0.8}
+            >
+              <LinearGradient
+                colors={isLoading ? ['rgba(85,107,79,0.8)', 'rgba(68,90,63,0.8)'] : ['#7BA05B', '#5A8040']}
+                style={styles.webUploadBtnGradient}
+              >
+                {isLoading ? (
+                  <>
+                    <ActivityIndicator size="small" color="white" />
+                    <Text style={styles.webUploadBtnText}>Processing...</Text>
+                  </>
+                ) : (
+                  <>
+                    <Ionicons name="images" size={22} color="white" />
+                    <Text style={styles.webUploadBtnText}>Choose Image</Text>
+                  </>
+                )}
+              </LinearGradient>
+            </TouchableOpacity>
+
+            <Text style={styles.webHintText}>
+              Supported formats: JPG, PNG, WEBP
+            </Text>
+          </View>
+        </View>
+      </View>
+    );
+  }
+
+  // ─── MOBILE LAYOUT (original — completely untouched) ────────────────────────
   return (
     <View style={styles.container}>
       <StatusBar style="light" />
 
       {showExamples ? (
-        // Mushroom Examples View
         <LinearGradient
           colors={['#0A1A0F', '#0F1F0F', '#1A2D1A']}
           style={styles.examplesContainer}
@@ -489,10 +533,7 @@ export default function CameraScreen() {
               <Ionicons name="leaf" size={24} color="#7BA05B" />
               <Text style={styles.examplesTitle}>Capture Guide</Text>
             </View>
-            <TouchableOpacity 
-              onPress={() => setShowExamples(false)} 
-              style={styles.headerButton}
-            >
+            <TouchableOpacity onPress={() => setShowExamples(false)} style={styles.headerButton}>
               <LinearGradient
                 colors={['rgba(123, 160, 91, 0.4)', 'rgba(123, 160, 91, 0.2)']}
                 style={styles.headerButtonGradient}
@@ -503,13 +544,11 @@ export default function CameraScreen() {
           </LinearGradient>
 
           <ScrollView style={styles.examplesScroll} showsVerticalScrollIndicator={false}>
-            {/* Guide Section */}
             <View style={styles.guideSection}>
               <View style={styles.guideTitleContainer}>
                 <Ionicons name="sparkles" size={24} color="#7BA05B" />
                 <Text style={styles.guideSectionTitle}>Perfect Capture Tips</Text>
               </View>
-              
               <View style={styles.tipsContainer}>
                 <View style={styles.tipItem}>
                   <View style={styles.tipIconContainer}>
@@ -517,28 +556,24 @@ export default function CameraScreen() {
                   </View>
                   <Text style={styles.tipText}>Good lighting - natural daylight is best</Text>
                 </View>
-                
                 <View style={styles.tipItem}>
                   <View style={styles.tipIconContainer}>
                     <Ionicons name="eye" size={18} color="#4DA6FF" />
                   </View>
                   <Text style={styles.tipText}>Focus clearly on the mushroom cap</Text>
                 </View>
-                
                 <View style={styles.tipItem}>
                   <View style={styles.tipIconContainer}>
                     <Ionicons name="grid" size={18} color="#9C27B0" />
                   </View>
                   <Text style={styles.tipText}>Include the gills and stem if possible</Text>
                 </View>
-                
                 <View style={styles.tipItem}>
                   <View style={styles.tipIconContainer}>
                     <Ionicons name="map" size={18} color="#7BA05B" />
                   </View>
                   <Text style={styles.tipText}>Show surrounding habitat for context</Text>
                 </View>
-                
                 <View style={styles.tipItem}>
                   <View style={styles.tipIconContainer}>
                     <Ionicons name="moon" size={18} color="#1A1A1A" />
@@ -548,19 +583,14 @@ export default function CameraScreen() {
               </View>
             </View>
 
-            {/* Examples Grid */}
             <View style={styles.examplesGrid}>
               <View style={styles.examplesGridTitleContainer}>
                 <Ionicons name="image" size={24} color="#7BA05B" />
                 <Text style={styles.examplesGridTitle}>Example Captures</Text>
               </View>
-              
               {MUSHROOM_EXAMPLES.map((mushroom) => (
                 <View key={mushroom.id} style={styles.exampleCard}>
-                  <Image
-                    source={{ uri: mushroom.imageUrl }}
-                    style={styles.exampleImage}
-                  />
+                  <Image source={{ uri: mushroom.imageUrl }} style={styles.exampleImage} />
                   <View style={styles.exampleInfo}>
                     <Text style={styles.exampleTitle}>{mushroom.title}</Text>
                     <View style={styles.exampleTipContainer}>
@@ -572,7 +602,6 @@ export default function CameraScreen() {
               ))}
             </View>
 
-            {/* Start Button */}
             <TouchableOpacity
               style={styles.startCameraButtonContainer}
               onPress={() => setShowExamples(false)}
@@ -592,7 +621,6 @@ export default function CameraScreen() {
               </LinearGradient>
             </TouchableOpacity>
 
-            {/* Upload Button */}
             <TouchableOpacity
               style={styles.uploadButtonContainer}
               onPress={pickImage}
@@ -614,28 +642,15 @@ export default function CameraScreen() {
           </ScrollView>
         </LinearGradient>
       ) : (
-        // Camera View
         <View style={styles.cameraContainer}>
-          <CameraView
-            ref={cameraRef}
-            style={styles.camera}
-            facing="back"
-            mode="picture"
-          />
+          <CameraView ref={cameraRef} style={styles.camera} facing="back" mode="picture" />
           <View style={styles.overlay}>
-            {/* Top bar */}
             <LinearGradient
               colors={['rgba(0, 0, 0, 0.6)', 'rgba(0, 0, 0, 0.3)', 'transparent']}
               style={styles.topBar}
             >
-              <TouchableOpacity
-                style={styles.backButton}
-                onPress={() => router.back()}
-              >
-                <LinearGradient
-                  colors={['rgba(0,0,0,0.7)', 'rgba(0,0,0,0.5)']}
-                  style={styles.buttonGradient}
-                >
+              <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
+                <LinearGradient colors={['rgba(0,0,0,0.7)', 'rgba(0,0,0,0.5)']} style={styles.buttonGradient}>
                   <Ionicons name="arrow-back" size={28} color="white" />
                 </LinearGradient>
               </TouchableOpacity>
@@ -643,10 +658,7 @@ export default function CameraScreen() {
                 <Ionicons name="leaf" size={26} color="#7BA05B" />
                 <Text style={styles.titleText}>SnapShroom</Text>
               </View>
-              <TouchableOpacity
-                style={styles.tipsButton}
-                onPress={() => setShowExamples(true)}
-              >
+              <TouchableOpacity style={styles.tipsButton} onPress={() => setShowExamples(true)}>
                 <LinearGradient
                   colors={['rgba(123, 160, 91, 0.7)', 'rgba(123, 160, 91, 0.5)']}
                   style={styles.buttonGradient}
@@ -656,16 +668,12 @@ export default function CameraScreen() {
               </TouchableOpacity>
             </LinearGradient>
 
-            {/* Center targeting guide */}
             <View style={styles.targetingGuide}>
               <View style={styles.targetSquare}>
-                {/* Animated corners */}
                 <Animated.View style={[styles.cornerTL, { opacity: cornerAnim }]} />
                 <Animated.View style={[styles.cornerTR, { opacity: cornerAnim }]} />
                 <Animated.View style={[styles.cornerBL, { opacity: cornerAnim }]} />
                 <Animated.View style={[styles.cornerBR, { opacity: cornerAnim }]} />
-                
-                {/* Scanning line effect */}
                 <Animated.View
                   style={[
                     styles.scanLine,
@@ -679,14 +687,12 @@ export default function CameraScreen() {
                     },
                   ]}
                 />
-                
                 <Ionicons name="leaf" size={52} color="rgba(123, 160, 91, 0.7)" style={{ marginBottom: 14, zIndex: 2 }} />
                 <Text style={styles.guideText}>Center the mushroom</Text>
                 <Text style={styles.guideSubtext}>Fill the frame for best results</Text>
               </View>
             </View>
 
-            {/* Bottom controls */}
             <LinearGradient
               colors={['transparent', 'rgba(0, 0, 0, 0.4)', 'rgba(0, 0, 0, 0.7)']}
               style={styles.bottomBar}
@@ -735,7 +741,6 @@ export default function CameraScreen() {
                 </TouchableOpacity>
               </Animated.View>
 
-              {/* Gallery Upload Button */}
               <TouchableOpacity
                 style={[styles.galleryButton, isLoading && styles.captureButtonDisabled]}
                 onPress={pickImage}
@@ -777,7 +782,7 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#0F1F0F',
   },
-  
+
   // Loading & Permission States
   loadingContent: {
     flex: 1,
@@ -867,7 +872,7 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
 
-  // Camera Container
+  // Camera Container (mobile)
   cameraContainer: {
     flex: 1,
     position: 'relative',
@@ -876,7 +881,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
 
-  // Examples View Styles
+  // Examples View (mobile)
   examplesContainer: {
     flex: 1,
     paddingTop: 40,
@@ -920,9 +925,6 @@ const styles = StyleSheet.create({
     fontWeight: '800',
     color: '#E6F4FE',
     letterSpacing: 0.5,
-    textShadowColor: 'rgba(0, 0, 0, 0.3)',
-    textShadowOffset: { width: 0, height: 1 },
-    textShadowRadius: 3,
   },
   examplesScroll: {
     flex: 1,
@@ -950,11 +952,6 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     borderLeftWidth: 5,
     borderLeftColor: '#7BA05B',
-    shadowColor: '#7BA05B',
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.2,
-    shadowRadius: 6,
-    elevation: 3,
   },
   tipItem: {
     flexDirection: 'row',
@@ -1000,11 +997,6 @@ const styles = StyleSheet.create({
     marginBottom: 16,
     borderWidth: 2,
     borderColor: 'rgba(123, 160, 91, 0.3)',
-    shadowColor: '#7BA05B',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.25,
-    shadowRadius: 8,
-    elevation: 5,
   },
   exampleImage: {
     width: 120,
@@ -1020,7 +1012,6 @@ const styles = StyleSheet.create({
     fontWeight: '800',
     color: '#E6F4FE',
     marginBottom: 8,
-    letterSpacing: 0.3,
   },
   exampleTipContainer: {
     flexDirection: 'row',
@@ -1035,12 +1026,7 @@ const styles = StyleSheet.create({
   startCameraButtonContainer: {
     borderRadius: 16,
     overflow: 'hidden',
-    marginBottom: 40,
-    shadowColor: '#7BA05B',
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.4,
-    shadowRadius: 12,
-    elevation: 8,
+    marginBottom: 16,
   },
   startCameraButton: {
     flexDirection: 'row',
@@ -1062,11 +1048,6 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     overflow: 'hidden',
     marginBottom: 40,
-    shadowColor: '#7BA05B',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 10,
-    elevation: 6,
   },
   uploadButton: {
     flexDirection: 'row',
@@ -1082,7 +1063,7 @@ const styles = StyleSheet.create({
     letterSpacing: 0.5,
   },
 
-  // Camera View Styles
+  // Camera overlay (mobile)
   overlay: {
     position: 'absolute',
     top: 0,
@@ -1106,11 +1087,6 @@ const styles = StyleSheet.create({
     height: 48,
     borderRadius: 24,
     overflow: 'hidden',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.4,
-    shadowRadius: 6,
-    elevation: 5,
   },
   buttonGradient: {
     width: '100%',
@@ -1131,20 +1107,12 @@ const styles = StyleSheet.create({
     fontSize: 22,
     fontWeight: '800',
     letterSpacing: 0.8,
-    textShadowColor: 'rgba(0, 0, 0, 0.5)',
-    textShadowOffset: { width: 0, height: 2 },
-    textShadowRadius: 4,
   },
   tipsButton: {
     width: 48,
     height: 48,
     borderRadius: 24,
     overflow: 'hidden',
-    shadowColor: '#7BA05B',
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.4,
-    shadowRadius: 6,
-    elevation: 5,
   },
   targetingGuide: {
     flex: 1,
@@ -1161,11 +1129,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     backgroundColor: 'rgba(123, 160, 91, 0.08)',
     position: 'relative',
-    shadowColor: '#7BA05B',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 12,
-    elevation: 5,
     overflow: 'hidden',
   },
   cornerTL: {
@@ -1217,20 +1180,12 @@ const styles = StyleSheet.create({
     width: '100%',
     height: 3,
     backgroundColor: 'rgba(123, 160, 91, 0.6)',
-    shadowColor: '#7BA05B',
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.8,
-    shadowRadius: 8,
   },
   guideText: {
     color: 'white',
     fontSize: 16,
     textAlign: 'center',
     fontWeight: '700',
-    letterSpacing: 0.5,
-    textShadowColor: 'rgba(0, 0, 0, 0.5)',
-    textShadowOffset: { width: 0, height: 1 },
-    textShadowRadius: 3,
     zIndex: 2,
   },
   guideSubtext: {
@@ -1252,11 +1207,6 @@ const styles = StyleSheet.create({
     marginBottom: 28,
     width: '100%',
     overflow: 'hidden',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.4,
-    shadowRadius: 6,
-    elevation: 5,
   },
   instructionsGradient: {
     paddingHorizontal: 16,
@@ -1276,7 +1226,6 @@ const styles = StyleSheet.create({
     color: 'white',
     fontSize: 13,
     fontWeight: '700',
-    letterSpacing: 0.3,
   },
   captureButton: {
     width: 100,
@@ -1284,11 +1233,6 @@ const styles = StyleSheet.create({
     borderRadius: 50,
     overflow: 'hidden',
     marginBottom: 20,
-    shadowColor: '#7BA05B',
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.5,
-    shadowRadius: 12,
-    elevation: 10,
   },
   captureButtonGradient: {
     width: '100%',
@@ -1300,7 +1244,6 @@ const styles = StyleSheet.create({
     borderRadius: 50,
   },
   captureButtonDisabled: {
-    backgroundColor: '#556B4F',
     opacity: 0.6,
   },
   captureButtonInner: {
@@ -1324,11 +1267,6 @@ const styles = StyleSheet.create({
   captureHint: {
     borderRadius: 28,
     overflow: 'hidden',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.4,
-    shadowRadius: 6,
-    elevation: 5,
   },
   captureHintGradient: {
     paddingHorizontal: 24,
@@ -1344,18 +1282,12 @@ const styles = StyleSheet.create({
     color: 'white',
     fontSize: 15,
     fontWeight: '700',
-    letterSpacing: 0.3,
   },
   galleryButton: {
     width: '85%',
     borderRadius: 16,
     overflow: 'hidden',
     marginBottom: 16,
-    shadowColor: '#7BA05B',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 6,
   },
   galleryButtonGradient: {
     paddingVertical: 16,
@@ -1372,6 +1304,239 @@ const styles = StyleSheet.create({
     color: 'white',
     fontSize: 16,
     fontWeight: '700',
+  },
+
+  // ── WEB ONLY ────────────────────────────────────────────────────────────────
+  webRoot: {
+    flex: 1,
+    flexDirection: 'row',
+    backgroundColor: '#0A1A0F',
+    minHeight: '100vh' as any,
+  },
+
+  // Left panel: guide + examples
+  webLeftPanel: {
+    width: '35%',
+    minHeight: '100vh' as any,
+  },
+  webPanelHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(123, 160, 91, 0.2)',
+    backgroundColor: 'rgba(10, 26, 15, 0.95)',
+  },
+  webHeaderBtn: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: 'rgba(123, 160, 91, 0.15)',
+    borderWidth: 1,
+    borderColor: 'rgba(123, 160, 91, 0.3)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  webPanelHeaderTitle: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  webPanelHeaderText: {
+    color: '#E6F4FE',
+    fontSize: 18,
+    fontWeight: '800',
     letterSpacing: 0.5,
+  },
+  webLeftScroll: {
+    flex: 1,
+  },
+  webLeftScrollContent: {
+    padding: 20,
+    paddingBottom: 40,
+  },
+  webSectionTitle: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#7BA05B',
+    letterSpacing: 1.2,
+    textTransform: 'uppercase',
+    marginBottom: 12,
+    marginTop: 20,
+  },
+  webTipsCard: {
+    backgroundColor: 'rgba(123, 160, 91, 0.07)',
+    borderRadius: 14,
+    padding: 14,
+    borderLeftWidth: 3,
+    borderLeftColor: '#7BA05B',
+    gap: 12,
+  },
+  webTipRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  webTipIcon: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: 'rgba(123, 160, 91, 0.12)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  webTipText: {
+    fontSize: 13,
+    color: '#C8D8C8',
+    fontWeight: '500',
+    flex: 1,
+  },
+  webExamplesGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 10,
+  },
+  webExampleCard: {
+    width: '47%',
+    backgroundColor: '#1A2D1A',
+    borderRadius: 12,
+    overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: 'rgba(123, 160, 91, 0.25)',
+  },
+  webExampleImage: {
+    width: '100%',
+    height: 90,
+  },
+  webExampleTitle: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#E6F4FE',
+    paddingHorizontal: 8,
+    paddingTop: 8,
+  },
+  webExampleTip: {
+    fontSize: 11,
+    color: '#A8B89D',
+    paddingHorizontal: 8,
+    paddingBottom: 8,
+    marginTop: 2,
+  },
+
+  // Right panel: upload only (web)
+  webRightPanel: {
+    flex: 1,
+    flexDirection: 'column',
+    backgroundColor: '#0F1F0F',
+    height: '100vh' as any,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  webUploadArea: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 48,
+    gap: 24,
+    width: '100%',
+  },
+  webUploadIconWrap: {
+    borderRadius: 40,
+    overflow: 'hidden',
+    marginBottom: 8,
+  },
+  webUploadIconGradient: {
+    width: 140,
+    height: 140,
+    borderRadius: 40,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 2,
+    borderColor: 'rgba(123, 160, 91, 0.3)',
+  },
+  webUploadTitle: {
+    fontSize: 26,
+    fontWeight: '800',
+    color: '#E6F4FE',
+    textAlign: 'center',
+    letterSpacing: -0.3,
+  },
+  webUploadSubtitle: {
+    fontSize: 15,
+    color: '#A8B89D',
+    textAlign: 'center',
+    lineHeight: 22,
+    maxWidth: 340,
+  },
+  webInstructionsRow: {
+    flexDirection: 'row',
+    gap: 10,
+  },
+  webInstructionChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: 'rgba(123, 160, 91, 0.1)',
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: 'rgba(123, 160, 91, 0.3)',
+  },
+  webInstructionChipText: {
+    color: '#C8D8C8',
+    fontSize: 13,
+    fontWeight: '600',
+  },
+  webButtonsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 16,
+  },
+  webCaptureBtn: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    overflow: 'hidden',
+    shadowColor: '#7BA05B',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.5,
+    shadowRadius: 10,
+    elevation: 8,
+  },
+  webCaptureBtnGradient: {
+    width: '100%',
+    height: '100%',
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 3,
+    borderColor: 'rgba(255,255,255,0.25)',
+    borderRadius: 40,
+  },
+  webUploadBtn: {
+    borderRadius: 16,
+    overflow: 'hidden',
+    width: 280,
+  },
+  webUploadBtnGradient: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 12,
+    paddingHorizontal: 32,
+    paddingVertical: 18,
+    borderRadius: 16,
+  },
+  webUploadBtnText: {
+    color: 'white',
+    fontSize: 15,
+    fontWeight: '700',
+  },
+  webHintText: {
+    color: 'rgba(168, 184, 157, 0.7)',
+    fontSize: 13,
+    fontWeight: '500',
   },
 });

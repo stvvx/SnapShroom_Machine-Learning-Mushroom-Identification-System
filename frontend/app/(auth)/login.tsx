@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef } from 'react';
 import {
   View,
@@ -29,6 +28,7 @@ WebBrowser.maybeCompleteAuthSession();
 
 const { width } = Dimensions.get('window');
 const isSmallScreen = width < 375;
+const isWideScreen = width >= 768;
 
 export default function LoginScreen() {
   const [email, setEmail] = useState('');
@@ -112,6 +112,148 @@ export default function LoginScreen() {
     router.push('/signup');
   };
 
+  // ─── WEB LAYOUT ─────────────────────────────────────────────────────────────
+  if (isWideScreen) {
+    return (
+      <View style={styles.webRoot}>
+        {/* Left hero panel */}
+        <LinearGradient colors={['#3A5A28', '#5A8040', '#7BA05B']} style={styles.webHero}>
+          <View style={styles.webHeroInner}>
+            <LinearGradient colors={['#7BA05B', '#5A8040']} style={styles.webHeroIconGradient}>
+              <Ionicons name="leaf" size={48} color="#FFFFFF" />
+            </LinearGradient>
+            <ThemedText style={styles.webHeroTitle}>SnapShroom</ThemedText>
+            <ThemedText style={styles.webHeroSubtitle}>
+              Sign in to continue your mushroom journey
+            </ThemedText>
+          </View>
+        </LinearGradient>
+
+        {/* Right form panel */}
+        <ScrollView
+          contentContainerStyle={styles.webFormScroll}
+          showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
+        >
+          <View style={styles.webCard}>
+            {/* Email Input */}
+            <View style={styles.inputContainer}>
+              <ThemedText style={styles.label}>Email</ThemedText>
+              <View style={styles.inputWrapper}>
+                <Ionicons name="mail-outline" size={20} color="#7BA05B" style={styles.inputIcon} />
+                <TextInput
+                  style={styles.input}
+                  placeholder="Enter your email"
+                  placeholderTextColor="#9CA897"
+                  value={email}
+                  onChangeText={setEmail}
+                  keyboardType="email-address"
+                  autoCapitalize="none"
+                  autoComplete="email"
+                  returnKeyType="next"
+                  onSubmitEditing={() => passwordInputRef.current?.focus()}
+                  blurOnSubmit={false}
+                />
+              </View>
+            </View>
+
+            {/* Password Input */}
+            <View style={styles.inputContainer}>
+              <ThemedText style={styles.label}>Password</ThemedText>
+              <View style={styles.inputWrapper}>
+                <Ionicons name="lock-closed-outline" size={20} color="#7BA05B" style={styles.inputIcon} />
+                <TextInput
+                  ref={passwordInputRef}
+                  style={styles.input}
+                  placeholder="Enter your password"
+                  placeholderTextColor="#9CA897"
+                  value={password}
+                  onChangeText={setPassword}
+                  secureTextEntry={!showPassword}
+                  returnKeyType="done"
+                  onSubmitEditing={handleLogin}
+                />
+                <TouchableOpacity onPress={() => setShowPassword(!showPassword)} style={styles.eyeIcon}>
+                  <Ionicons
+                    name={showPassword ? 'eye-off-outline' : 'eye-outline'}
+                    size={20}
+                    color="#7BA05B"
+                  />
+                </TouchableOpacity>
+              </View>
+            </View>
+
+            {/* Forgot Password */}
+            <TouchableOpacity style={styles.forgotPassword}>
+              <ThemedText style={styles.forgotPasswordText}>Forgot Password?</ThemedText>
+            </TouchableOpacity>
+
+            {/* Sign In Button */}
+            <TouchableOpacity
+              style={[styles.submitButton, isLoading && styles.submitButtonDisabled]}
+              onPress={handleLogin}
+              disabled={isLoading}
+              activeOpacity={0.8}
+            >
+              <LinearGradient
+                colors={isLoading ? ['#B5C9A7', '#A3B895'] : ['#7BA05B', '#5A8040']}
+                style={styles.submitGradient}
+              >
+                {isLoading ? (
+                  <ActivityIndicator color="#FFFFFF" size="small" />
+                ) : (
+                  <>
+                    <ThemedText style={styles.submitButtonText}>Sign In</ThemedText>
+                    <Ionicons name="arrow-forward" size={20} color="#FFFFFF" />
+                  </>
+                )}
+              </LinearGradient>
+            </TouchableOpacity>
+
+            {/* Divider */}
+            <View style={styles.divider}>
+              <View style={styles.dividerLine} />
+              <ThemedText style={styles.dividerText}>OR</ThemedText>
+              <View style={styles.dividerLine} />
+            </View>
+
+            {/* Google Button */}
+            <TouchableOpacity
+              style={styles.googleButton}
+              onPress={() => promptAsync()}
+              disabled={!request || googleLoading}
+              activeOpacity={0.8}
+            >
+              {googleLoading ? (
+                <ActivityIndicator color="#7BA05B" />
+              ) : (
+                <>
+                  <Ionicons name="logo-google" size={20} color="#DB4437" />
+                  <ThemedText style={styles.googleText}>Continue with Google</ThemedText>
+                </>
+              )}
+            </TouchableOpacity>
+
+            {/* Guest Login */}
+            <TouchableOpacity style={styles.guestButton} onPress={handleGuestLogin}>
+              <Ionicons name="person-outline" size={20} color="#7BA05B" />
+              <ThemedText style={styles.guestText}>Continue as Guest</ThemedText>
+            </TouchableOpacity>
+
+            {/* Sign Up Link */}
+            <View style={styles.signupContainer}>
+              <ThemedText style={styles.signupText}>Don't have an account? </ThemedText>
+              <TouchableOpacity onPress={navigateToSignUp}>
+                <ThemedText style={styles.signupLink}>Sign Up</ThemedText>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </ScrollView>
+      </View>
+    );
+  }
+
+  // ─── MOBILE LAYOUT (original — completely untouched) ────────────────────────
   return (
     <KeyboardAvoidingView
       style={styles.container}
@@ -264,12 +406,13 @@ export default function LoginScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { 
-    flex: 1, 
-    backgroundColor: '#F8FAF6' 
+  // ── MOBILE (original, not changed at all) ─────────────────────────────────
+  container: {
+    flex: 1,
+    backgroundColor: '#F8FAF6',
   },
-  scrollContent: { 
-    flexGrow: 1, 
+  scrollContent: {
+    flexGrow: 1,
     padding: 24,
     paddingTop: Platform.OS === 'ios' ? 60 : 40,
   },
@@ -347,8 +490,8 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
     marginBottom: 24,
   },
-  submitButtonDisabled: { 
-    opacity: 0.7 
+  submitButtonDisabled: {
+    opacity: 0.7,
   },
   submitGradient: {
     flexDirection: 'row',
@@ -367,10 +510,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginVertical: 24,
   },
-  dividerLine: { 
-    flex: 1, 
-    height: 1, 
-    backgroundColor: '#E5EDE0' 
+  dividerLine: {
+    flex: 1,
+    height: 1,
+    backgroundColor: '#E5EDE0',
   },
   dividerText: {
     marginHorizontal: 16,
@@ -422,5 +565,65 @@ const styles = StyleSheet.create({
     fontSize: 15,
     color: '#7BA05B',
     fontWeight: '600',
+  },
+
+  // ── WEB ONLY ──────────────────────────────────────────────────────────────
+  webRoot: {
+    flex: 1,
+    flexDirection: 'row',
+    minHeight: '100vh' as any,
+    backgroundColor: '#F0F4ED',
+  },
+  webHero: {
+    width: '45%',
+    minHeight: '100vh' as any,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 48,
+  },
+  webHeroInner: {
+    alignItems: 'center',
+  },
+  webHeroIconGradient: {
+    width: 96,
+    height: 96,
+    borderRadius: 48,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 24,
+  },
+  webHeroTitle: {
+    fontSize: 40,
+    fontWeight: '800',
+    color: '#FFFFFF',
+    marginBottom: 16,
+    letterSpacing: -0.5,
+    textAlign: 'center',
+  },
+  webHeroSubtitle: {
+    fontSize: 17,
+    color: 'rgba(255,255,255,0.82)',
+    lineHeight: 26,
+    textAlign: 'center',
+  },
+  webFormScroll: {
+    flexGrow: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 40,
+  },
+  webCard: {
+    width: '100%',
+    maxWidth: 440,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 24,
+    padding: 40,
+    shadowColor: '#3A5A28',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.1,
+    shadowRadius: 32,
+    elevation: 12,
+    borderWidth: 1,
+    borderColor: '#E8F0E3',
   },
 });
