@@ -13,6 +13,7 @@ import { ThemedView } from '@/components/themed-view';
 import { ThemedText } from '@/components/themed-text';
 import { useAuth } from '@/contexts/AuthContext';
 import api from '@/utils/api';
+import HamburgerMenu from '@/components/HamburgerMenu';
 
 interface Notification {
   id: string;

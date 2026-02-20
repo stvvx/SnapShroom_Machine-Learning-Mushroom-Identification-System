@@ -211,7 +211,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const login = async ({ email, password }: LoginCredentials) => {
     setIsLoading(true);
     setError(null);
-
     try {
       delete api.defaults.headers.common.Authorization;
 
@@ -241,7 +240,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const signup = async (data: SignupData) => {
     setIsLoading(true);
     setError(null);
-
     try {
       const res = await api.post('/auth/register', {
         email: data.email.trim().toLowerCase(),

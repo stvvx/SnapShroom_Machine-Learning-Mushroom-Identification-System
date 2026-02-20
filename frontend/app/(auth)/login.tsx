@@ -108,7 +108,7 @@ export default function LoginScreen() {
   };
 
   const navigateToSignUp = () => {
-    router.push('/signup');
+    router.push('/(auth)/register');
   };
 
   return (
