@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { View, TouchableOpacity, Text, Modal, StyleSheet, ScrollView, Animated } from 'react-native';
+import { View, TouchableOpacity, Text, Modal, StyleSheet, ScrollView, Animated, Platform, Dimensions } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { useAuth } from '@/contexts/AuthContext';
@@ -75,6 +75,12 @@ export default function HamburgerMenu({ onAdminNavigate, currentSection }: Hambu
 
   const menuItems = isAdmin ? adminMenuItems : userMenuItems;
 
+  // Responsive sizing
+  const isMobile = Platform.OS === 'ios' || Platform.OS === 'android';
+  const menuWidth = isMobile ? '80%' : '35%';
+  const iconSize = isMobile ? 32 : 28;
+  const menuItemIconSize = isMobile ? 28 : 24;
+
   return (
     <View style={styles.container}>
       {/* Hamburger Icon */}
@@ -82,7 +88,7 @@ export default function HamburgerMenu({ onAdminNavigate, currentSection }: Hambu
         style={styles.hamburgerButton}
         onPress={() => setMenuOpen(true)}
       >
-        <Ionicons name="menu" size={28} color="#2D3E2D" />
+        <Ionicons name="menu" size={iconSize} color="#2D3E2D" />
       </TouchableOpacity>
 
       {/* Modal Menu */}
@@ -96,6 +102,7 @@ export default function HamburgerMenu({ onAdminNavigate, currentSection }: Hambu
           <Animated.View 
             style={[
               styles.menuContainer,
+              { width: menuWidth },
               {
                 transform: [{ translateX: slideAnim }],
               },
@@ -106,7 +113,7 @@ export default function HamburgerMenu({ onAdminNavigate, currentSection }: Hambu
               style={styles.closeButton}
               onPress={() => setMenuOpen(false)}
             >
-              <Ionicons name="close" size={28} color="#E6F4FE" />
+              <Ionicons name="close" size={iconSize} color="#E6F4FE" />
             </TouchableOpacity>
 
             {/* Menu Title */}
@@ -116,7 +123,6 @@ export default function HamburgerMenu({ onAdminNavigate, currentSection }: Hambu
             <ScrollView style={styles.menuItems}>
               {menuItems.map((item, index) => {
                 const isActive = currentSection === (item as any).section;
-                
                 return (
                   <TouchableOpacity
                     key={(item as any).section || (item as any).route || index}
@@ -128,7 +134,7 @@ export default function HamburgerMenu({ onAdminNavigate, currentSection }: Hambu
                   >
                     <Ionicons 
                       name={item.icon as any} 
-                      size={24} 
+                      size={menuItemIconSize} 
                       color={'#E6F4FE'} 
                     />
                     <View style={styles.menuItemContent}>
@@ -160,7 +166,7 @@ export default function HamburgerMenu({ onAdminNavigate, currentSection }: Hambu
                   logout();
                 }}
               >
-                <Ionicons name="log-out" size={24} color="#FF6B6B" />
+                <Ionicons name="log-out" size={menuItemIconSize} color="#FF6B6B" />
                 <Text style={[styles.menuItemText, { color: '#FF6B6B' }]}>Logout</Text>
               </TouchableOpacity>
             </ScrollView>
@@ -201,7 +207,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
   },
   menuContainer: {
-    width: '35%',
+    // width is set dynamically
     height: '100%',
     backgroundColor: '#2D3E2D',
     paddingTop: 50,
