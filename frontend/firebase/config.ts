@@ -1,16 +1,17 @@
-
 import { initializeApp } from "firebase/app";
 import { getAuth } from "firebase/auth";
 
 const firebaseConfig = {
-  apiKey: "AIzaSyC-83opsnCjYJbsOwJE3v_dtFbMIfu0QXE",
-  authDomain: "snapshroom-1e01e.firebaseapp.com",
-  projectId: "snapshroom-1e01e",
-  storageBucket: "snapshroom-1e01e.appspot.com",
-  messagingSenderId: "1098545643387",
-  appId: "1:1098545643387:web:f5fac5bdbcc33805ab47de"
+  apiKey: "AIzaSyCIDvWHJCv7k3c0RLg14aBFj1AnmDWrvBc",
+  authDomain: "snapshroom-39671.firebaseapp.com",
+  projectId: "snapshroom-39671",
+  storageBucket: "snapshroom-39671.firebasestorage.app",
+  messagingSenderId: "439538035488",
+  appId: "1:439538035488:web:6c69faac08c13c637fc545",
+  measurementId: "G-EHFW3QK0MQ"
 };
 
+// Initialize Firebase
 const app = initializeApp(firebaseConfig);
 
 export const auth = getAuth(app);
