@@ -311,21 +311,23 @@ export default function AboutPage() {
               <Text style={styles.sectionTitle}>Development Team</Text>
             </View>
             
-            {/* Team Grid - 2x2 layout */}
+            {/* Team Grid - 2x2 on web, 1 col on mobile */}
             <View style={[styles.teamGrid, { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center' }]}> 
-              {TEAM_MEMBERS.slice(0, 2).map((member) => (
-                <View style={{ width: isWeb ? '40%' : '48%', margin: '1%' }} key={member.id}>
-                  <CompactTeamCard member={member} isWeb={isWeb} />
-                </View>
-              ))}
-              {TEAM_MEMBERS.slice(2, 4).map((member) => (
-                <View style={{ width: isWeb ? '40%' : '48%', margin: '1%' }} key={member.id}>
+              {TEAM_MEMBERS.map((member) => (
+                <View
+                  style={{
+                    width: isWeb ? '40%' : '48%',
+                    margin: isWeb ? '1%' : '1%',
+                    marginBottom: 16,
+                  }}
+                  key={member.id}
+                >
                   <CompactTeamCard member={member} isWeb={isWeb} />
                 </View>
               ))}
             </View>
 
-            {/* Project Advisers Section - Side by Side on Web */}
+            {/* Project Advisers Section */}
             <View style={styles.advisersSection}>
               <View style={styles.sectionHeader}>
                 <Ionicons name="school" size={24} color="#6B7C61" />
@@ -481,26 +483,34 @@ function CompactTeamCard({
 }) {
   return (
     <View style={[
-      styles.teamCompactCard, 
+      styles.teamCompactCard,
+      !isWeb && styles.teamCompactCardMobile,
       isAdviser && styles.adviserCardCompact,
       isTechnicalAdviser && styles.technicalAdviserCardCompact,
-      isWeb && styles.teamCompactCardWeb
+      isWeb && styles.teamCompactCardWeb,
     ]}>
-      <View style={styles.teamImageContainer}>
+      {/* Image */}
+      <View style={isWeb ? styles.teamImageContainer : styles.teamImageContainerMobile}>
         {member.image ? (
-          <Image source={member.image} style={styles.teamImage} />
+          <Image
+            source={member.image}
+            style={isWeb ? styles.teamImage : styles.teamImageMobile}
+          />
         ) : (
-          <View style={styles.teamImagePlaceholder}>
-            <Ionicons name="person-circle" size={100} color="#7A8F7A" />
+          <View style={isWeb ? styles.teamImagePlaceholder : styles.teamImagePlaceholderMobile}>
+            <Ionicons name="person-circle" size={isWeb ? 100 : 70} color="#7A8F7A" />
           </View>
         )}
       </View>
-      <View style={styles.teamInfo}>
-        <Text style={styles.teamName}>{member.name}</Text>
-        <Text style={styles.teamEmail}>{member.bio}</Text>
+
+      {/* Info */}
+      <View style={[styles.teamInfo, !isWeb && styles.teamInfoMobile]}>
+        <Text style={[styles.teamName, !isWeb && styles.teamNameMobile]}>{member.name}</Text>
+        <Text style={[styles.teamEmail, !isWeb && styles.teamEmailMobile]}>{member.bio}</Text>
         <View style={[
           styles.teamBadge,
-          isTechnicalAdviser && styles.technicalAdviserBadge
+          isTechnicalAdviser && styles.technicalAdviserBadge,
+          !isWeb && styles.teamBadgeMobile,
         ]}>
           <Text style={styles.teamRole}>{member.role}</Text>
         </View>
@@ -938,7 +948,7 @@ const styles = StyleSheet.create({
     letterSpacing: 0.5,
   },
   teamGrid: {
-    gap: 24,
+    gap: 0,
     marginBottom: 24,
   },
   teamGridWeb: {
@@ -946,6 +956,8 @@ const styles = StyleSheet.create({
     flexWrap: 'wrap',
     gap: 20,
   },
+
+  // ─── Team Card: Web (horizontal row, large image) ───────────────────────────
   teamCompactCard: {
     backgroundColor: 'rgba(255, 255, 255, 0.95)',
     borderRadius: 28,
@@ -964,6 +976,16 @@ const styles = StyleSheet.create({
     flex: 1,
     minWidth: 360,
   },
+
+  // ─── Team Card: Mobile (vertical column, centered) ──────────────────────────
+  teamCompactCardMobile: {
+    flexDirection: 'column',
+    alignItems: 'center',
+    padding: 16,
+    gap: 10,
+    borderRadius: 20,
+  },
+
   adviserCardCompact: {
     backgroundColor: 'rgba(255, 248, 240, 0.98)',
     borderColor: '#FFB74D',
@@ -978,6 +1000,8 @@ const styles = StyleSheet.create({
     shadowColor: '#4DA6FF',
     shadowOpacity: 0.2,
   },
+
+  // Web image
   teamImageContainer: {
     width: 150,
     height: 150,
@@ -999,6 +1023,31 @@ const styles = StyleSheet.create({
     borderWidth: 5,
     borderColor: '#6B7C61',
   },
+
+  // Mobile image (smaller, centered)
+  teamImageContainerMobile: {
+    width: 80,
+    height: 80,
+  },
+  teamImageMobile: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    borderWidth: 3,
+    borderColor: '#7BA05B',
+  },
+  teamImagePlaceholderMobile: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: '#E8E4DE',
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 3,
+    borderColor: '#6B7C61',
+  },
+
+  // Web info
   teamInfo: {
     flex: 1,
     justifyContent: 'center',
@@ -1017,12 +1066,34 @@ const styles = StyleSheet.create({
     fontStyle: 'italic',
     fontWeight: '500',
   },
+
+  // Mobile info overrides
+  teamInfoMobile: {
+    flex: undefined,
+    alignItems: 'center',
+  },
+  teamNameMobile: {
+    fontSize: 13,
+    textAlign: 'center',
+    marginBottom: 4,
+  },
+  teamEmailMobile: {
+    fontSize: 10,
+    textAlign: 'center',
+    marginBottom: 8,
+  },
+
   teamBadge: {
     backgroundColor: '#7BA05B',
     paddingHorizontal: 16,
     paddingVertical: 10,
     borderRadius: 16,
     alignSelf: 'flex-start',
+  },
+  teamBadgeMobile: {
+    alignSelf: 'center',
+    paddingHorizontal: 10,
+    paddingVertical: 6,
   },
   technicalAdviserBadge: {
     backgroundColor: '#4DA6FF',
@@ -1034,6 +1105,7 @@ const styles = StyleSheet.create({
     textTransform: 'uppercase',
     letterSpacing: 1,
   },
+
   advisersSection: {
     marginTop: 32,
   },
