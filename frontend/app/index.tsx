@@ -1,5 +1,5 @@
 import { Image } from 'expo-image';
-import { TouchableOpacity, StyleSheet, Alert, ScrollView, View, Dimensions, Animated } from 'react-native';
+import { TouchableOpacity, StyleSheet, Alert, ScrollView, View, Dimensions, Animated, Linking, Platform } from 'react-native';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { useRouter } from 'expo-router';
@@ -52,6 +52,64 @@ const SPACING = {
   xxl: 28,
   xxxl: 40,
 };
+
+// Mushroom resource links
+const MUSHROOM_LINKS = [
+  {
+    id: '1',
+    title: 'Wikipedia: Mushroom',
+    description: 'Comprehensive overview of mushroom biology, types, and uses.',
+    url: 'https://en.wikipedia.org/wiki/Mushroom',
+    icon: 'book-outline' as const,
+    color: '#6366F1',
+    bgColor: '#EEF2FF',
+  },
+  {
+    id: '2',
+    title: 'Mushroom Expert',
+    description: 'One of the most detailed mushroom identification resources online.',
+    url: 'https://www.mushroomexpert.com/',
+    icon: 'search-outline' as const,
+    color: '#059669',
+    bgColor: '#ECFDF5',
+  },
+  {
+    id: '3',
+    title: 'iNaturalist Fungi',
+    description: 'Community-powered platform for identifying fungi with photos.',
+    url: 'https://www.inaturalist.org/taxa/47170-Fungi',
+    icon: 'people-outline' as const,
+    color: '#D97706',
+    bgColor: '#FFFBEB',
+  },
+  {
+    id: '4',
+    title: 'North American Mycological',
+    description: 'Hub for mycological clubs, forays, and educational resources.',
+    url: 'https://namyco.org/',
+    icon: 'globe-outline' as const,
+    color: '#DC2626',
+    bgColor: '#FEF2F2',
+  },
+  {
+    id: '5',
+    title: 'First Nature: Fungi',
+    description: 'Photo-rich guide to fungi identification across the UK & Europe.',
+    url: 'https://www.first-nature.com/fungi/',
+    icon: 'leaf-outline' as const,
+    color: '#7C3AED',
+    bgColor: '#F5F3FF',
+  },
+  {
+    id: '6',
+    title: 'MycoBank Database',
+    description: 'Scientific database of fungal nomenclature and taxonomy.',
+    url: 'https://www.mycobank.org/',
+    icon: 'flask-outline' as const,
+    color: '#0891B2',
+    bgColor: '#ECFEFF',
+  },
+];
 
 // Hero carousel images
 const HERO_SLIDES = [
@@ -1254,11 +1312,7 @@ export default function LandingPage() {
   };
 
   const handleInfoPress = () => {
-    Alert.alert(
-      'About SnapShroom',
-      'SnapShroom is a Machine Learning-powered mushroom identification app that helps you safely identify mushrooms using your phone camera.\n\n⚠️ WARNING: This app is for educational purposes only. Never consume mushrooms based solely on app identification.',
-      [{ text: 'OK' }]
-    );
+    router.push('/(tabs)/about');
   };
 
   const handleTestConnection = async () => {
@@ -1389,8 +1443,8 @@ export default function LandingPage() {
               )}
 
               <TouchableOpacity style={styles.secondaryButton} onPress={handleInfoPress}>
-                <ThemedText style={styles.secondaryButtonText}>Learn More</ThemedText>
-                <Ionicons name="arrow-forward" size={16} color={COLORS.white} />
+                <ThemedText style={styles.secondaryButtonText}>About Us</ThemedText>
+                <Ionicons name="information-circle-outline" size={16} color={COLORS.white} />
               </TouchableOpacity>
             </View>
 
@@ -1429,6 +1483,46 @@ export default function LandingPage() {
             <Ionicons name="shield-checkmark-outline" size={28} color={COLORS.forest} />
             <ThemedText style={styles.statNumber}>Safety</ThemedText>
             <ThemedText style={styles.statLabel}>First Approach</ThemedText>
+          </View>
+        </View>
+
+        {/* Mushroom Resources Section */}
+        <View style={styles.resourcesSection}>
+          <View style={styles.sectionHeader}>
+            <View style={styles.sectionBadge}>
+              <Ionicons name="link-outline" size={14} color={COLORS.forest} style={{ marginRight: 6 }} />
+              <ThemedText style={styles.sectionLabel}>RESOURCES</ThemedText>
+            </View>
+            <ThemedText style={styles.sectionTitle}>Learn About Mushrooms</ThemedText>
+            <ThemedText style={styles.sectionDescription}>
+              Curated links from trusted sources around the web
+            </ThemedText>
+          </View>
+
+          <View style={styles.resourcesGrid}>
+            {MUSHROOM_LINKS.map((link) => (
+              <TouchableOpacity
+                key={link.id}
+                style={styles.resourceCard}
+                activeOpacity={0.8}
+                onPress={() => {
+                  if (Platform.OS === 'web') {
+                    window.open(link.url, '_blank');
+                  } else {
+                    Linking.openURL(link.url);
+                  }
+                }}
+              >
+                <View style={[styles.resourceIconWrap, { backgroundColor: link.bgColor }]}>
+                  <Ionicons name={link.icon} size={22} color={link.color} />
+                </View>
+                <View style={styles.resourceTextWrap}>
+                  <ThemedText style={styles.resourceTitle} numberOfLines={1}>{link.title}</ThemedText>
+                  <ThemedText style={styles.resourceDesc} numberOfLines={2}>{link.description}</ThemedText>
+                </View>
+                <Ionicons name="open-outline" size={16} color={COLORS.stone} style={{ marginLeft: 4 }} />
+              </TouchableOpacity>
+            ))}
           </View>
         </View>
 
@@ -1536,19 +1630,7 @@ export default function LandingPage() {
           </View>
         )}
 
-        {/* Safety Notice */}
-        <View style={styles.safetySection}>
-          <View style={styles.safetyCard}>
-            <Ionicons name="warning-outline" size={40} color="#92400E" />
-            <View style={styles.safetyContent}>
-              <ThemedText style={styles.safetyTitle}>Safety First</ThemedText>
-              <ThemedText style={styles.safetyText}>
-                Never consume any mushroom based solely on app identification. Always consult multiple sources and
-                experts before consuming wild mushrooms. This app is for educational purposes only.
-              </ThemedText>
-            </View>
-          </View>
-        </View>
+      
 
         {/* System Status */}
         {isLoggedIn && (

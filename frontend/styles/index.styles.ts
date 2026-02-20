@@ -235,6 +235,64 @@ export const styles = StyleSheet.create({
     backgroundColor: COLORS.cloud,
   },
 
+  // Mushroom Resources Section
+  resourcesSection: {
+    paddingVertical: SPACING.xxl,
+    paddingHorizontal: SPACING.md,
+    backgroundColor: COLORS.cream,
+  },
+  resourcesGrid: {
+    gap: 12,
+    ...(isSmallScreen
+      ? {}
+      : {
+          flexDirection: 'row' as const,
+          flexWrap: 'wrap' as const,
+          justifyContent: 'center' as const,
+        }),
+  },
+  resourceCard: {
+    flexDirection: 'row' as const,
+    alignItems: 'center',
+    backgroundColor: COLORS.white,
+    borderRadius: 16,
+    padding: 14,
+    borderWidth: 1,
+    borderColor: COLORS.cloud,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    elevation: 2,
+    ...(isSmallScreen
+      ? {}
+      : {
+          width: '48%' as any,
+        }),
+  },
+  resourceIconWrap: {
+    width: 44,
+    height: 44,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 12,
+  },
+  resourceTextWrap: {
+    flex: 1,
+    gap: 2,
+  },
+  resourceTitle: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: COLORS.charcoal,
+  },
+  resourceDesc: {
+    fontSize: 12,
+    color: COLORS.stone,
+    lineHeight: 16,
+  },
+
   // Infographics Section
   infographicsSection: {
     paddingVertical: SPACING.xxl,

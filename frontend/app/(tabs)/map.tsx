@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Dimensions, Platform, ActivityIndicator, Image } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Dimensions, Platform, ActivityIndicator, Image, Modal } from 'react-native';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Ionicons } from '@expo/vector-icons';
@@ -10,16 +10,16 @@ import GoogleMap from '@/components/GoogleMap';
 
 // Mushroom image mapping (placeholder for now - replace with actual images)
 const MUSHROOM_IMAGES: Record<string, any> = {
-  'Oyster Mushroom': require('@/assets/images/react-logo.png'), // Replace with actual image
-  'Enoki Mushroom': require('@/assets/images/react-logo.png'),
-  'Button Mushroom': require('@/assets/images/react-logo.png'),
-  'Shiitake': require('@/assets/images/react-logo.png'),
-  'Wood Ear': require('@/assets/images/react-logo.png'),
-  'Death Cap': require('@/assets/images/react-logo.png'),
-  'False Morel': require('@/assets/images/react-logo.png'),
-  'Jack O Lantern': require('@/assets/images/react-logo.png'),
-  'Funeral Bell': require('@/assets/images/react-logo.png'),
-  'Red Cage': require('@/assets/images/react-logo.png'),
+  'Oyster Mushroom': require('@/assets/images/mushrooms/oyster-mushroom.jpg'), // Replace with actual image
+  'Enoki Mushroom': require('@/assets/images/mushrooms/enoki-mushroom.jpg'),
+  'Button Mushroom': require('@/assets/images/mushrooms/button-mushroom.jpg'),
+  'Shiitake': require('@/assets/images/mushrooms/shiitake-mushroom.jpg'),
+  'Wood Ear': require('@/assets/images/mushrooms/wood-ear.jpg'),
+  'Death Cap': require('@/assets/images/mushrooms/death-cap.jpg'),
+  'False Morel': require('@/assets/images/mushrooms/false-morel.jpg'),
+  'Jack O Lantern': require('@/assets/images/mushrooms/jack-o-lantern.jpg'),
+  'Funeral Bell': require('@/assets/images/mushrooms/funeral-bell.jpg'),
+  'Red Cage': require('@/assets/images/mushrooms/red-cage.jpg'),
 };
 
 // Coordinate mapping for Philippine regions/provinces from database location field
@@ -87,6 +87,9 @@ export default function MapScreen() {
   const [error, setError] = useState<string | null>(null);
   const [selectedMushroom, setSelectedMushroom] = useState<MushroomLocation | null>(null);
   const [viewMode, setViewMode] = useState<'map' | 'chart'>('map');
+  const [modalVisible, setModalVisible] = useState(false);
+  const [edibleIndex, setEdibleIndex] = useState(0);
+  const [poisonousIndex, setPoisonousIndex] = useState(0);
 
   // Fetch mushroom species from database
   useEffect(() => {
@@ -142,6 +145,34 @@ export default function MapScreen() {
     } finally {
       setLoading(false);
     }
+  };
+
+  // Get mushrooms by category
+  const edibleMushrooms = mushroomLocations.filter(m => m.edible);
+  const poisonousMushrooms = mushroomLocations.filter(m => !m.edible);
+  const edibleMushroom = edibleMushrooms[edibleIndex];
+  const poisonousMushroom = poisonousMushrooms[poisonousIndex];
+
+  // Navigation functions
+  const navigateEdible = (direction: 'prev' | 'next') => {
+    if (direction === 'next' && edibleIndex < edibleMushrooms.length - 1) {
+      setEdibleIndex(edibleIndex + 1);
+    } else if (direction === 'prev' && edibleIndex > 0) {
+      setEdibleIndex(edibleIndex - 1);
+    }
+  };
+
+  const navigatePoisonous = (direction: 'prev' | 'next') => {
+    if (direction === 'next' && poisonousIndex < poisonousMushrooms.length - 1) {
+      setPoisonousIndex(poisonousIndex + 1);
+    } else if (direction === 'prev' && poisonousIndex > 0) {
+      setPoisonousIndex(poisonousIndex - 1);
+    }
+  };
+
+  const openModal = (mushroom: MushroomLocation) => {
+    setSelectedMushroom(mushroom);
+    setModalVisible(true);
   };
 
   // Prepare statistics data
@@ -236,80 +267,137 @@ export default function MapScreen() {
               </View>
             </View>
 
-            {/* Mushroom Details */}
-            {selectedMushroom && (
-              <View style={styles.detailsSection}>
-                <View style={styles.detailsHeader}>
-                  <ThemedText style={styles.detailsTitle}>{selectedMushroom.name}</ThemedText>
-                  <TouchableOpacity onPress={() => setSelectedMushroom(null)}>
-                    <Ionicons name="close" size={24} color="#2D3E2D" />
-                  </TouchableOpacity>
-                </View>
+            {/* Mushroom Examples */}
+            <View style={styles.examplesSection}>
+              <ThemedText style={[styles.sectionTitle, { paddingHorizontal: 20 }]}>Philippine Mushroom Species ({mushroomLocations.length})</ThemedText>
+              <ThemedText style={styles.sectionSubtitle}>
+                Examples of edible and poisonous mushrooms found across the Philippines
+              </ThemedText>
 
-                <View style={styles.detailCard}>
-                  <View style={styles.detailRow}>
-                    <Ionicons name="language" size={18} color="#6B7C61" />
-                    <View style={styles.detailContent}>
-                      <ThemedText style={styles.detailLabel}>Local Name</ThemedText>
-                      <ThemedText style={styles.detailValue}>{selectedMushroom.localName}</ThemedText>
-                    </View>
-                  </View>
-
-                  <View style={styles.detailRow}>
-                    <Ionicons name="map" size={18} color="#6B7C61" />
-                    <View style={styles.detailContent}>
-                      <ThemedText style={styles.detailLabel}>Location</ThemedText>
-                      <ThemedText style={styles.detailValue}>
-                        {selectedMushroom.province}, {selectedMushroom.region}
-                      </ThemedText>
-                    </View>
-                  </View>
-
-                  {selectedMushroom.scientificName && (
-                    <View style={styles.detailRow}>
-                      <Ionicons name="flask" size={18} color="#6B7C61" />
-                      <View style={styles.detailContent}>
-                        <ThemedText style={styles.detailLabel}>Scientific Name</ThemedText>
-                        <ThemedText style={[styles.detailValue, { fontStyle: 'italic' }]}>{selectedMushroom.scientificName}</ThemedText>
+              <View style={styles.examplesGrid}>
+                {/* Edible Example */}
+                {edibleMushroom && (
+                  <View style={styles.exampleCard}>
+                    <View style={styles.exampleHeader}>
+                      <View style={[styles.exampleBadge, { backgroundColor: '#E8F5E9' }]}>  
+                        <Ionicons name="checkmark-circle" size={16} color="#4CAF50" />
+                        <ThemedText style={[styles.exampleBadgeText, { color: '#2E7D32' }]}>
+                          Edible ({edibleMushrooms.length})
+                        </ThemedText>
+                      </View>
+                      <View style={styles.arrowControls}>
+                        <TouchableOpacity 
+                          style={[styles.arrowBtn, edibleIndex === 0 && styles.arrowBtnDisabled]} 
+                          onPress={() => navigateEdible('prev')}
+                          disabled={edibleIndex === 0}
+                        >
+                          <Ionicons name="chevron-back" size={20} color={edibleIndex === 0 ? '#CCC' : '#7BA05B'} />
+                        </TouchableOpacity>
+                        <ThemedText style={styles.counterText}>{edibleIndex + 1}/{edibleMushrooms.length}</ThemedText>
+                        <TouchableOpacity 
+                          style={[styles.arrowBtn, edibleIndex === edibleMushrooms.length - 1 && styles.arrowBtnDisabled]} 
+                          onPress={() => navigateEdible('next')}
+                          disabled={edibleIndex === edibleMushrooms.length - 1}
+                        >
+                          <Ionicons name="chevron-forward" size={20} color={edibleIndex === edibleMushrooms.length - 1 ? '#CCC' : '#7BA05B'} />
+                        </TouchableOpacity>
                       </View>
                     </View>
-                  )}
-
-                  <View style={styles.detailRow}>
-                    <Ionicons name="color-palette" size={18} color="#6B7C61" />
-                    <View style={styles.detailContent}>
-                      <ThemedText style={styles.detailLabel}>Cap Description</ThemedText>
-                      <ThemedText style={styles.detailValue}>{selectedMushroom.capColor}</ThemedText>
-                    </View>
+                    <TouchableOpacity
+                      style={styles.mushroomCard}
+                      onPress={() => openModal(edibleMushroom)}
+                      activeOpacity={0.85}
+                    >
+                      <View style={styles.mushroomImageWrap}>
+                        <Image
+                          source={MUSHROOM_IMAGES[edibleMushroom.name] || require('@/assets/images/react-logo.png')}
+                          style={styles.mushroomImage}
+                          resizeMode="cover"
+                        />
+                        <View style={[styles.edibilityBadge, { backgroundColor: '#4CAF50' }]}>
+                          <Ionicons name="checkmark-circle" size={12} color="#FFF" />
+                          <Text style={styles.badgeText}>Edible</Text>
+                        </View>
+                      </View>
+                      <View style={styles.mushroomCardBody}>
+                        <ThemedText style={styles.cardTitle} numberOfLines={1}>{edibleMushroom.name}</ThemedText>
+                        <ThemedText style={styles.cardLocalName} numberOfLines={1}>({edibleMushroom.localName})</ThemedText>
+                        {edibleMushroom.scientificName && (
+                          <ThemedText style={styles.cardScientific} numberOfLines={1}>
+                            <Text style={{ fontStyle: 'italic' }}>{edibleMushroom.scientificName}</Text>
+                          </ThemedText>
+                        )}
+                        <View style={styles.cardInfoRow}>
+                          <Ionicons name="location" size={12} color="#7BA05B" />
+                          <ThemedText style={styles.cardInfoText} numberOfLines={1}>{edibleMushroom.province}</ThemedText>
+                        </View>
+                      </View>
+                    </TouchableOpacity>
                   </View>
+                )}
 
-                  {selectedMushroom.habitat && (
-                    <View style={styles.detailRow}>
-                      <Ionicons name="leaf" size={18} color="#6B7C61" />
-                      <View style={styles.detailContent}>
-                        <ThemedText style={styles.detailLabel}>Habitat</ThemedText>
-                        <ThemedText style={styles.detailValue}>{selectedMushroom.habitat}</ThemedText>
+                {/* Poisonous Example */}
+                {poisonousMushroom && (
+                  <View style={styles.exampleCard}>
+                    <View style={styles.exampleHeader}>
+                      <View style={[styles.exampleBadge, { backgroundColor: '#FFEBEE' }]}>
+                        <Ionicons name="alert-circle" size={16} color="#D32F2F" />
+                        <ThemedText style={[styles.exampleBadgeText, { color: '#C62828' }]}>
+                          Poisonous ({poisonousMushrooms.length})
+                        </ThemedText>
+                      </View>
+                      <View style={styles.arrowControls}>
+                        <TouchableOpacity 
+                          style={[styles.arrowBtn, poisonousIndex === 0 && styles.arrowBtnDisabled]} 
+                          onPress={() => navigatePoisonous('prev')}
+                          disabled={poisonousIndex === 0}
+                        >
+                          <Ionicons name="chevron-back" size={20} color={poisonousIndex === 0 ? '#CCC' : '#D32F2F'} />
+                        </TouchableOpacity>
+                        <ThemedText style={styles.counterText}>{poisonousIndex + 1}/{poisonousMushrooms.length}</ThemedText>
+                        <TouchableOpacity 
+                          style={[styles.arrowBtn, poisonousIndex === poisonousMushrooms.length - 1 && styles.arrowBtnDisabled]} 
+                          onPress={() => navigatePoisonous('next')}
+                          disabled={poisonousIndex === poisonousMushrooms.length - 1}
+                        >
+                          <Ionicons name="chevron-forward" size={20} color={poisonousIndex === poisonousMushrooms.length - 1 ? '#CCC' : '#D32F2F'} />
+                        </TouchableOpacity>
                       </View>
                     </View>
-                  )}
-
-                  <View style={styles.detailRow}>
-                    <Ionicons name={selectedMushroom.edible ? 'checkmark-circle' : 'alert-circle'} size={18} color={selectedMushroom.edible ? '#4CAF50' : '#D32F2F'} />
-                    <View style={styles.detailContent}>
-                      <ThemedText style={styles.detailLabel}>Status</ThemedText>
-                      <ThemedText style={[styles.detailValue, { color: selectedMushroom.edible ? '#4CAF50' : '#D32F2F' }]}>
-                        {selectedMushroom.edible ? '✅ Edible' : '⚠️ Poisonous/Not Edible'}
-                      </ThemedText>
-                    </View>
+                    <TouchableOpacity
+                      style={styles.mushroomCard}
+                      onPress={() => openModal(poisonousMushroom)}
+                      activeOpacity={0.85}
+                    >
+                      <View style={styles.mushroomImageWrap}>
+                        <Image
+                          source={MUSHROOM_IMAGES[poisonousMushroom.name] || require('@/assets/images/react-logo.png')}
+                          style={styles.mushroomImage}
+                          resizeMode="cover"
+                        />
+                        <View style={[styles.edibilityBadge, { backgroundColor: '#D32F2F' }]}>
+                          <Ionicons name="alert-circle" size={12} color="#FFF" />
+                          <Text style={styles.badgeText}>Toxic</Text>
+                        </View>
+                      </View>
+                      <View style={styles.mushroomCardBody}>
+                        <ThemedText style={styles.cardTitle} numberOfLines={1}>{poisonousMushroom.name}</ThemedText>
+                        <ThemedText style={styles.cardLocalName} numberOfLines={1}>({poisonousMushroom.localName})</ThemedText>
+                        {poisonousMushroom.scientificName && (
+                          <ThemedText style={styles.cardScientific} numberOfLines={1}>
+                            <Text style={{ fontStyle: 'italic' }}>{poisonousMushroom.scientificName}</Text>
+                          </ThemedText>
+                        )}
+                        <View style={styles.cardInfoRow}>
+                          <Ionicons name="location" size={12} color="#D32F2F" />
+                          <ThemedText style={styles.cardInfoText} numberOfLines={1}>{poisonousMushroom.province}</ThemedText>
+                        </View>
+                      </View>
+                    </TouchableOpacity>
                   </View>
-
-                  <View style={styles.notesSection}>
-                    <ThemedText style={styles.notesTitle}>📝 Notes</ThemedText>
-                    <ThemedText style={styles.notesText}>{selectedMushroom.notes}</ThemedText>
-                  </View>
-                </View>
+                )}
               </View>
-            )}
+            </View>
           </>
         ) : (
           // STATS VIEW
@@ -349,78 +437,92 @@ export default function MapScreen() {
             ))}
           </View>
         )}
+      </ScrollView>
 
-        {/* Mushroom Gallery/About Section */}
-        <View style={styles.gallerySection}>
-          <ThemedText style={styles.sectionTitle}>Philippine Mushroom Species ({mushroomLocations.length})</ThemedText>
-          <ThemedText style={styles.sectionSubtitle}>
-            Comprehensive guide to edible and poisonous mushrooms found across the Philippines
-          </ThemedText>
+      {/* Modal for Mushroom Details */}
+      <Modal
+        animationType="slide"
+        transparent={true}
+        visible={modalVisible}
+        onRequestClose={() => setModalVisible(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <ScrollView showsVerticalScrollIndicator={false}>
+              {selectedMushroom && (
+                <>
+                  <View style={styles.modalHeader}>
+                    <View style={{ flex: 1 }}>
+                      <ThemedText style={styles.modalTitle}>{selectedMushroom.name}</ThemedText>
+                      <ThemedText style={styles.modalSubtitle}>({selectedMushroom.localName})</ThemedText>
+                    </View>
+                    <TouchableOpacity onPress={() => setModalVisible(false)} style={styles.closeButton}>
+                      <Ionicons name="close" size={28} color="#666" />
+                    </TouchableOpacity>
+                  </View>
 
-          <View style={styles.galleryGrid}>
-            {mushroomLocations.map((mushroom) => (
-              <TouchableOpacity
-                key={mushroom.id}
-                style={[
-                  styles.galleryCard,
-                  selectedMushroom?.id === mushroom.id && styles.galleryCardSelected,
-                ]}
-                onPress={() => setSelectedMushroom(mushroom)}
-                activeOpacity={0.7}
-              >
-                {/* Mushroom Image */}
-                <View style={styles.imageContainer}>
-                  <Image
-                    source={MUSHROOM_IMAGES[mushroom.name] || require('@/assets/images/react-logo.png')}
-                    style={styles.mushroomImage}
-                    resizeMode="cover"
-                  />
-                  <View style={[
-                    styles.edibilityBadge,
-                    { backgroundColor: mushroom.edible ? '#4CAF50' : '#D32F2F' }
-                  ]}>
-                    <Ionicons
-                      name={mushroom.edible ? 'checkmark-circle' : 'alert-circle'}
-                      size={12}
-                      color="#FFF"
+                  <View style={styles.modalImageWrap}>
+                    <Image
+                      source={MUSHROOM_IMAGES[selectedMushroom.name] || require('@/assets/images/react-logo.png')}
+                      style={styles.modalImage}
+                      resizeMode="cover"
                     />
-                    <Text style={styles.badgeText}>
-                      {mushroom.edible ? 'Edible' : 'Toxic'}
-                    </Text>
-                  </View>
-                </View>
-
-                {/* Mushroom Info */}
-                <View style={styles.cardContent}>
-                  <ThemedText style={styles.cardTitle} numberOfLines={1}>{mushroom.name}</ThemedText>
-                  <ThemedText style={styles.cardLocalName} numberOfLines={1}>({mushroom.localName})</ThemedText>
-                  
-                  {mushroom.scientificName && (
-                    <ThemedText style={styles.cardScientific} numberOfLines={1}>
-                      <Text style={{ fontStyle: 'italic' }}>{mushroom.scientificName}</Text>
-                    </ThemedText>
-                  )}
-
-                  <View style={styles.cardInfoRow}>
-                    <Ionicons name="location" size={12} color="#7BA05B" />
-                    <ThemedText style={styles.cardInfoText} numberOfLines={1}>
-                      {mushroom.province}
-                    </ThemedText>
+                    <View style={[styles.modalBadge, { backgroundColor: selectedMushroom.edible ? '#4CAF50' : '#D32F2F' }]}>
+                      <Ionicons name={selectedMushroom.edible ? 'checkmark-circle' : 'alert-circle'} size={16} color="#FFF" />
+                      <Text style={styles.modalBadgeText}>{selectedMushroom.edible ? 'Edible' : 'Toxic'}</Text>
+                    </View>
                   </View>
 
-                  <TouchableOpacity
-                    style={styles.viewMoreButton}
-                    onPress={() => setSelectedMushroom(mushroom)}
-                  >
-                    <ThemedText style={styles.viewMoreText}>View Details</ThemedText>
-                    <Ionicons name="arrow-forward" size={12} color="#7BA05B" />
-                  </TouchableOpacity>
-                </View>
-              </TouchableOpacity>
-            ))}
+                  <View style={styles.modalBody}>
+                    <View style={styles.detailRow}>
+                      <Ionicons name="map" size={20} color="#6B7C61" />
+                      <View style={styles.detailContent}>
+                        <ThemedText style={styles.detailLabel}>Location</ThemedText>
+                        <ThemedText style={styles.detailValue}>
+                          {selectedMushroom.province}, {selectedMushroom.region}
+                        </ThemedText>
+                      </View>
+                    </View>
+
+                    {selectedMushroom.scientificName && (
+                      <View style={styles.detailRow}>
+                        <Ionicons name="flask" size={20} color="#6B7C61" />
+                        <View style={styles.detailContent}>
+                          <ThemedText style={styles.detailLabel}>Scientific Name</ThemedText>
+                          <ThemedText style={[styles.detailValue, { fontStyle: 'italic' }]}>{selectedMushroom.scientificName}</ThemedText>
+                        </View>
+                      </View>
+                    )}
+
+                    <View style={styles.detailRow}>
+                      <Ionicons name="color-palette" size={20} color="#6B7C61" />
+                      <View style={styles.detailContent}>
+                        <ThemedText style={styles.detailLabel}>Cap Description</ThemedText>
+                        <ThemedText style={styles.detailValue}>{selectedMushroom.capColor}</ThemedText>
+                      </View>
+                    </View>
+
+                    {selectedMushroom.habitat && (
+                      <View style={styles.detailRow}>
+                        <Ionicons name="leaf" size={20} color="#6B7C61" />
+                        <View style={styles.detailContent}>
+                          <ThemedText style={styles.detailLabel}>Habitat</ThemedText>
+                          <ThemedText style={styles.detailValue}>{selectedMushroom.habitat}</ThemedText>
+                        </View>
+                      </View>
+                    )}
+
+                    <View style={styles.notesSection}>
+                      <ThemedText style={styles.notesTitle}>📝 Notes</ThemedText>
+                      <ThemedText style={styles.notesText}>{selectedMushroom.notes}</ThemedText>
+                    </View>
+                  </View>
+                </>
+              )}
+            </ScrollView>
           </View>
         </View>
-      </ScrollView>
+      </Modal>
     </ThemedView>
   );
 }
@@ -622,7 +724,6 @@ const styles = StyleSheet.create({
     color: '#666',
   },
   gallerySection: {
-    paddingHorizontal: 20,
     paddingVertical: 16,
   },
   sectionSubtitle: {
@@ -631,41 +732,63 @@ const styles = StyleSheet.create({
     marginTop: 4,
     marginBottom: 20,
     lineHeight: 18,
+    paddingHorizontal: 20,
   },
-  galleryGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
+  // ── Examples Section ──────────────────────────────────────────
+  examplesSection: {
+    paddingVertical: 16,
+  },
+  examplesGrid: {
+    flexDirection: Platform.OS === 'web' ? 'row' : 'column',
     gap: 16,
-    justifyContent: 'space-between',
+    paddingHorizontal: 20,
   },
-  galleryCard: {
+  exampleCard: {
+    flex: 1,
+  },
+  exampleBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    alignSelf: 'flex-start',
+    gap: 6,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 24,
+    marginBottom: 12,
+  },
+  exampleBadgeText: {
+    fontSize: 14,
+    fontWeight: '700',
+  },
+  mushroomCard: {
     backgroundColor: '#FFF',
-    borderRadius: 12,
+    borderRadius: 16,
     overflow: 'hidden',
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
+    shadowOffset: { width: 0, height: 3 },
     shadowOpacity: 0.08,
-    shadowRadius: 6,
+    shadowRadius: 8,
     elevation: 3,
     borderWidth: 2,
     borderColor: 'transparent',
-    width: Platform.OS === 'web' ? 'calc(50% - 8px)' : '48%',
-    marginBottom: 4,
   },
-  galleryCardSelected: {
+  mushroomCardSelected: {
     borderColor: '#7BA05B',
-    shadowOpacity: 0.15,
+    shadowOpacity: 0.18,
     transform: [{ scale: 1.02 }],
   },
-  imageContainer: {
+  mushroomImageWrap: {
     width: '100%',
-    height: 160,
+    height: Platform.OS === 'web' ? 200 : 180,
     backgroundColor: '#F5F3EF',
     position: 'relative',
   },
   mushroomImage: {
     width: '100%',
     height: '100%',
+  },
+  mushroomCardBody: {
+    padding: 16,
   },
   edibilityBadge: {
     position: 'absolute',
@@ -687,9 +810,6 @@ const styles = StyleSheet.create({
     color: '#FFF',
     fontSize: 10,
     fontWeight: '600',
-  },
-  cardContent: {
-    padding: 12,
   },
   cardTitle: {
     fontSize: 14,
@@ -720,29 +840,6 @@ const styles = StyleSheet.create({
     color: '#666',
     flex: 1,
   },
-  cardNotes: {
-    fontSize: 11,
-    color: '#555',
-    lineHeight: 16,
-    marginTop: 6,
-    marginBottom: 8,
-  },
-  viewMoreButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 4,
-    paddingVertical: 8,
-    paddingHorizontal: 12,
-    backgroundColor: '#F5F3EF',
-    borderRadius: 6,
-    marginTop: 4,
-  },
-  viewMoreText: {
-    fontSize: 11,
-    fontWeight: '600',
-    color: '#7BA05B',
-  },
   centerContent: {
     justifyContent: 'center',
     alignItems: 'center',
@@ -770,5 +867,111 @@ const styles = StyleSheet.create({
     color: '#FFF',
     fontSize: 14,
     fontWeight: '600',
+  },
+  // Arrow controls and navigation
+  exampleHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  arrowControls: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  arrowBtn: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: '#F5F3EF',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  arrowBtnDisabled: {
+    opacity: 0.4,
+  },
+  counterText: {
+    fontSize: 12,
+    color: '#666',
+    fontWeight: '600',
+    minWidth: 40,
+    textAlign: 'center',
+  },
+  // Modal styles
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  modalContent: {
+    width: Platform.OS === 'web' ? '50%' : '90%',
+    maxHeight: '80%',
+    backgroundColor: '#FFF',
+    borderRadius: 20,
+    overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 10,
+    elevation: 10,
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    padding: 20,
+    paddingBottom: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#E8E4DE',
+  },
+  modalTitle: {
+    fontSize: 22,
+    fontWeight: '700',
+    color: '#2D3E2D',
+  },
+  modalSubtitle: {
+    fontSize: 14,
+    color: '#7BA05B',
+    fontWeight: '500',
+    marginTop: 4,
+  },
+  closeButton: {
+    padding: 4,
+  },
+  modalImageWrap: {
+    width: '100%',
+    height: Platform.OS === 'web' ? 300 : 250,
+    backgroundColor: '#F5F3EF',
+    position: 'relative',
+  },
+  modalImage: {
+    width: '100%',
+    height: '100%',
+  },
+  modalBadge: {
+    position: 'absolute',
+    top: 12,
+    right: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
+    elevation: 5,
+  },
+  modalBadgeText: {
+    color: '#FFF',
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  modalBody: {
+    padding: 20,
   },
 });
