@@ -9,6 +9,7 @@ import {
   RefreshControl,
   FlatList,
   Dimensions,
+  Text,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
@@ -35,15 +36,72 @@ import {
 const { width } = Dimensions.get('window');
 const CHART_WIDTH = width - 48;
 
+/* ─── Design Tokens ─── */
+const COLORS = {
+  forest:      '#1A2E1A',
+  forestMid:   '#2D4A2D',
+  moss:        '#4A6741',
+  sage:        '#7A9E74',
+  mint:        '#A8C5A0',
+  cream:       '#F8F5EE',
+  parchment:   '#EDE8DD',
+  spore:       '#D4C9B0',
+  mushCap:     '#C17B3F',
+  mushGill:    '#E8A96A',
+  mushStem:    '#F0D4A8',
+  toxicRed:    '#C94040',
+  safeGreen:   '#3A8C5C',
+  unknownGray: '#8A8A8A',
+  white:       '#FFFFFF',
+  textDark:    '#1A2E1A',
+  textMid:     '#4A6741',
+  textLight:   '#7A9E74',
+  shadow:      'rgba(26,46,26,0.12)',
+};
+
+/* ─── Mushroom SVG Stickers (inline as Unicode + styled) ─── */
+const MushroomSticker = ({
+  variant = 'red',
+  size = 40,
+  style,
+}: {
+  variant?: 'red' | 'brown' | 'white' | 'tiny';
+  size?: number;
+  style?: any;
+}) => {
+  const configs = {
+    red:   { cap: '🍄', bg: 'rgba(201,64,64,0.12)',   border: 'rgba(201,64,64,0.25)' },
+    brown: { cap: '🍄‍🟫', bg: 'rgba(193,123,63,0.12)', border: 'rgba(193,123,63,0.25)' },
+    white: { cap: '🍄', bg: 'rgba(168,197,160,0.15)', border: 'rgba(122,158,116,0.3)' },
+    tiny:  { cap: '🍄', bg: 'rgba(74,103,65,0.1)',    border: 'rgba(74,103,65,0.2)'  },
+  };
+  const cfg = configs[variant];
+  return (
+    <View style={[{
+      width: size, height: size, borderRadius: size / 2,
+      backgroundColor: cfg.bg, borderWidth: 1.5,
+      borderColor: cfg.border, alignItems: 'center',
+      justifyContent: 'center',
+    }, style]}>
+      <Text style={{ fontSize: size * 0.5 }}>{cfg.cap}</Text>
+    </View>
+  );
+};
+
+/* ─── Decorative spore dots ─── */
+const SporeDot = ({ size = 6, color = COLORS.mint, style }: any) => (
+  <View style={[{ width: size, height: size, borderRadius: size / 2, backgroundColor: color, opacity: 0.5 }, style]} />
+);
+
 const chartConfig = {
-  backgroundGradientFrom: '#fff',
-  backgroundGradientTo: '#F5F3EF',
+  backgroundGradientFrom: '#F8F5EE',
+  backgroundGradientTo:   '#EDE8DD',
   decimalPlaces: 0,
-  color: (opacity = 1) => `rgba(74, 94, 58, ${opacity})`,
-  labelColor: () => '#4A5E3A',
-  propsForDots: { r: '4', strokeWidth: '2', stroke: '#6B7C61', fill: '#fff' },
+  color: (opacity = 1) => `rgba(74,103,65,${opacity})`,
+  labelColor:   () => COLORS.textMid,
+  propsForDots: { r: '4', strokeWidth: '2', stroke: COLORS.moss, fill: COLORS.cream },
   propsForBackgroundLines: {
-    strokeDasharray: '4 4', stroke: '#C5D4BC', strokeWidth: 1,
+    strokeDasharray: '3 5', stroke: COLORS.spore, strokeWidth: 1,
   },
 };
 
@@ -51,7 +109,7 @@ const safeBarData = (items: { label: string; value: number }[], max = 5) => {
   const filtered = items.filter(i => typeof i.value === 'number').slice(0, max);
   if (filtered.length === 0) return { labels: ['No data'], datasets: [{ data: [0] }] };
   return {
-    labels: filtered.map(i => (i.label.length > 8 ? i.label.slice(0, 8) + '…' : i.label)),
+    labels: filtered.map(i => (i.label.length > 8 ? i.label.slice(0, 7) + '…' : i.label)),
     datasets: [{ data: filtered.map(i => i.value) }],
   };
 };
@@ -88,27 +146,67 @@ interface User {
   is_active: boolean;
   last_login?: string;
 }
-type Section = 'home' | 'users' | 'analytics' | 'about';
+type Section = 'home' | 'users' | 'analytics';
 
-/* ─── PDF export helper with proper formatting ─── */
+/* ─── Reusable Card ─── */
+const Card = ({ children, style }: { children: React.ReactNode; style?: any }) => (
+  <View style={[s.card, style]}>{children}</View>
+);
+
+/* ─── Section Badge ─── */
+const SectionBadge = ({ label, icon }: { label: string; icon: string }) => (
+  <View style={s.sectionBadge}>
+    <Text style={s.sectionBadgeIcon}>{icon}</Text>
+    <Text style={s.sectionBadgeText}>{label}</Text>
+  </View>
+);
+
+/* ─── Stat Card ─── */
+const StatCard = ({
+  icon,
+  value,
+  label,
+  accent,
+  emoji,
+}: {
+  icon: string;
+  value: string | number;
+  label: string;
+  accent: string;
+  emoji?: string;
+}) => (
+  <View style={[s.statCard, { borderTopColor: accent }]}>
+    {emoji && <Text style={s.statEmoji}>{emoji}</Text>}
+    <Text style={[s.statValue, { color: accent }]}>{value}</Text>
+    <Text style={s.statLabel}>{label}</Text>
+  </View>
+);
+
+/* ─── Export Button ─── */
+const ExportButton = ({ onPress, label, icon = 'document-text' }: {
+  onPress: () => void; label: string; icon?: string;
+}) => (
+  <TouchableOpacity style={s.exportBtn} onPress={onPress} activeOpacity={0.85}>
+    <View style={s.exportBtnInner}>
+      <Ionicons name={icon as any} size={18} color={COLORS.cream} />
+      <Text style={s.exportBtnText}>{label}</Text>
+    </View>
+    <View style={s.exportBtnAccent}>
+      <Ionicons name="arrow-forward" size={14} color={COLORS.mint} />
+    </View>
+  </TouchableOpacity>
+);
+
+/* ─── PDF export ─── */
 const exportPDF = async (html: string, filename: string) => {
   try {
-    Alert.alert('Generating PDF', 'Please wait...');
-    
-    // Generate PDF with A4 dimensions and proper formatting
-    const { uri } = await Print.printToFileAsync({ 
-      html, 
-      base64: false,
-      width: 595, // A4 width in points (210mm)
-      height: 842, // A4 height in points (297mm)
-      orientation: 'portrait',
+    Alert.alert('Generating PDF', 'Please wait…');
+    const { uri } = await Print.printToFileAsync({
+      html, base64: false,
+      width: 595, height: 842, orientation: 'portrait',
     });
-    
     const fileInfo = await FileSystem.getInfoAsync(uri);
-    if (!fileInfo.exists) {
-      throw new Error('PDF file was not created');
-    }
-    
+    if (!fileInfo.exists) throw new Error('PDF file was not created');
     const canShare = await Sharing.isAvailableAsync();
     if (canShare) {
       await Sharing.shareAsync(uri, {
@@ -123,30 +221,6 @@ const exportPDF = async (html: string, filename: string) => {
     Alert.alert('Export Failed', err?.message || 'Could not generate PDF.');
   }
 };
-
-/* ─── Individual Export Button for each section ─── */
-const SectionExportButton = ({
-  onPress,
-  label,
-  icon = 'document-text-outline',
-  size = 'small',
-}: {
-  onPress: () => void;
-  label: string;
-  icon?: string;
-  size?: 'small' | 'medium';
-}) => (
-  <TouchableOpacity 
-    style={[s.sectionExportBtn, size === 'small' ? s.sectionExportBtnSmall : s.sectionExportBtnMedium]} 
-    onPress={onPress} 
-    activeOpacity={0.8}
-  >
-    <Ionicons name={icon as any} size={size === 'small' ? 14 : 16} color="#fff" />
-    <ThemedText style={[s.sectionExportBtnText, size === 'small' ? s.sectionExportBtnTextSmall : s.sectionExportBtnTextMedium]}>
-      {label}
-    </ThemedText>
-  </TouchableOpacity>
-);
 
 /* ════════════════════════════════════════════
    COMPONENT
@@ -169,9 +243,8 @@ export default function AdminDashboard() {
   }, [user]);
 
   const setAuthHeader = () => {
-    if (accessToken && !api.defaults.headers.common.Authorization) {
+    if (accessToken && !api.defaults.headers.common.Authorization)
       api.defaults.headers.common.Authorization = `Bearer ${accessToken}`;
-    }
   };
 
   const loadAnalytics = async () => {
@@ -180,11 +253,10 @@ export default function AdminDashboard() {
       const res = await api.get('/admin/analytics');
       if (res.data.success) setAnalytics(res.data.analytics);
     } catch (error: any) {
-      if (error.response?.status === 401) {
+      if (error.response?.status === 401)
         Alert.alert('Session Expired', 'Please log in again.', [
           { text: 'Login', onPress: () => router.replace('/') },
         ]);
-      }
     }
   };
 
@@ -194,11 +266,10 @@ export default function AdminDashboard() {
       const res = await api.get('/admin/users');
       if (res.data.success) setUsers(res.data.users);
     } catch (error: any) {
-      if (error.response?.status === 401) {
+      if (error.response?.status === 401)
         Alert.alert('Session Expired', 'Please log in again.', [
           { text: 'Login', onPress: () => router.replace('/') },
         ]);
-      }
     }
   };
 
@@ -263,123 +334,104 @@ export default function AdminDashboard() {
     );
   }
 
-  /* ════════════════════════════════════════════
+  /* ────────────────────────────────────────
      HOME SECTION
-  ════════════════════════════════════════════ */
+  ──────────────────────────────────────── */
   const renderHome = () => (
     <View style={s.contentContainer}>
       {loading ? (
         <View style={s.loadingContainer}>
-          <ActivityIndicator size="large" color="#6B7C61" />
-          <ThemedText style={s.loadingText}>Loading dashboard...</ThemedText>
+          <Text style={s.loadingMushroom}>🍄</Text>
+          <ActivityIndicator size="large" color={COLORS.moss} style={{ marginTop: 16 }} />
+          <Text style={s.loadingText}>Gathering spores…</Text>
         </View>
       ) : analytics ? (
         <>
-          {/* Main Overview Export */}
-          <View style={s.mainExportContainer}>
-            <TouchableOpacity
-              style={s.mainExportBtn}
-              onPress={() =>
-                exportPDF(
-                  buildOverviewReport(analytics, user.name),
-                  'SnapShroom_Overview_Report.pdf',
-                )
-              }
-            >
-              <Ionicons name="document-text" size={20} color="#fff" />
-              <ThemedText style={s.mainExportBtnText}>Export Complete Overview Report (PDF)</ThemedText>
-            </TouchableOpacity>
+          {/* Hero banner */}
+          <View style={s.heroBanner}>
+            <View style={s.heroBannerDecor}>
+              <MushroomSticker variant="red"   size={52} style={{ position: 'absolute', top: -10, right: 20, transform: [{ rotate: '12deg' }] }} />
+              <MushroomSticker variant="brown" size={38} style={{ position: 'absolute', bottom: 8,  right: 72, transform: [{ rotate: '-8deg' }] }} />
+              <SporeDot size={8}  color={COLORS.mint}  style={{ position: 'absolute', top: 18, right: 140 }} />
+              <SporeDot size={5}  color={COLORS.mushGill} style={{ position: 'absolute', top: 38, right: 110 }} />
+              <SporeDot size={10} color={COLORS.sage}  style={{ position: 'absolute', bottom: 18, right: 155 }} />
+            </View>
+            <Text style={s.heroBannerLabel}>ADMIN CONTROL CENTER</Text>
+            <Text style={s.heroBannerTitle}>Overview</Text>
+            <Text style={s.heroBannerSub}>All systems nominal · Forest index healthy</Text>
+            <ExportButton
+              onPress={() => exportPDF(buildOverviewReport(analytics, user.name), 'SnapShroom_Overview_Report.pdf')}
+              label="Export Overview Report"
+              icon="document-text"
+            />
           </View>
 
           {/* Quick Actions */}
-          <View style={s.section}>
-            <View style={s.sectionHeader}>
-              <ThemedText style={s.sectionTitle}>⚡ Quick Actions</ThemedText>
-            </View>
-            <View style={s.quickActionsGrid}>
-              <TouchableOpacity
-                style={[s.quickActionCard, { backgroundColor: '#4ECDC4' }]}
-                onPress={() => setCurrentSection('users')}
-              >
-                <Ionicons name="people" size={32} color="#fff" />
-                <ThemedText style={s.quickActionText}>Manage Users</ThemedText>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[s.quickActionCard, { backgroundColor: '#FF6B6B' }]}
-                onPress={() => setCurrentSection('analytics')}
-              >
-                <Ionicons name="bar-chart" size={32} color="#fff" />
-                <ThemedText style={s.quickActionText}>View Analytics</ThemedText>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[s.quickActionCard, { backgroundColor: '#6B7C61' }]}
-                onPress={() => loadAnalytics()}
-              >
-                <Ionicons name="refresh" size={32} color="#fff" />
-                <ThemedText style={s.quickActionText}>Refresh Data</ThemedText>
-              </TouchableOpacity>
-            </View>
+          <SectionBadge label="Quick Actions" icon="⚡" />
+          <View style={s.quickActionsRow}>
+            <TouchableOpacity
+              style={[s.quickCard, { backgroundColor: COLORS.forestMid }]}
+              onPress={() => setCurrentSection('users')}
+              activeOpacity={0.85}
+            >
+              <Text style={s.quickCardEmoji}>👥</Text>
+              <Text style={s.quickCardLabel}>Users</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[s.quickCard, { backgroundColor: COLORS.moss }]}
+              onPress={() => setCurrentSection('analytics')}
+              activeOpacity={0.85}
+            >
+              <Text style={s.quickCardEmoji}>📊</Text>
+              <Text style={s.quickCardLabel}>Analytics</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[s.quickCard, { backgroundColor: COLORS.mushCap }]}
+              onPress={() => loadAnalytics()}
+              activeOpacity={0.85}
+            >
+              <Text style={s.quickCardEmoji}>🔄</Text>
+              <Text style={s.quickCardLabel}>Refresh</Text>
+            </TouchableOpacity>
           </View>
 
-          {/* Summary Stats */}
-          <View style={s.section}>
-            <View style={s.sectionHeader}>
-              <ThemedText style={s.sectionTitle}>📊 Overview Statistics</ThemedText>
-            </View>
-            <View style={s.statsGrid}>
-              <View style={[s.statCard, { backgroundColor: '#4ECDC4' }]}>
-                <Ionicons name="people" size={28} color="#fff" />
-                <ThemedText style={s.statNumber}>{analytics.users.total_users}</ThemedText>
-                <ThemedText style={s.statLabel}>Total Users</ThemedText>
-              </View>
-              <View style={[s.statCard, { backgroundColor: '#44A08D' }]}>
-                <Ionicons name="checkmark-circle" size={28} color="#fff" />
-                <ThemedText style={s.statNumber}>{analytics.users.active_users}</ThemedText>
-                <ThemedText style={s.statLabel}>Active Users</ThemedText>
-              </View>
-              <View style={[s.statCard, { backgroundColor: '#FF6B6B' }]}>
-                <Ionicons name="scan" size={28} color="#fff" />
-                <ThemedText style={s.statNumber}>{analytics.mushrooms.total_scans}</ThemedText>
-                <ThemedText style={s.statLabel}>Total Scans</ThemedText>
-              </View>
-              <View style={[s.statCard, { backgroundColor: '#95E1D3' }]}>
-                <Ionicons name="calendar" size={28} color="#fff" />
-                <ThemedText style={s.statNumber}>{analytics.mushrooms.scans_last_30d}</ThemedText>
-                <ThemedText style={s.statLabel}>Scans (30d)</ThemedText>
-              </View>
-            </View>
+          {/* Overview Stats */}
+          <SectionBadge label="Overview Statistics" icon="📊" />
+          <View style={s.statsRow}>
+            <StatCard icon="people" value={analytics.users.total_users}   label="Total Users"   accent={COLORS.moss}     emoji="👥" />
+            <StatCard icon="check"  value={analytics.users.active_users}  label="Active"        accent={COLORS.safeGreen} emoji="✅" />
+            <StatCard icon="scan"   value={analytics.mushrooms.total_scans} label="Total Scans" accent={COLORS.mushCap}   emoji="🔍" />
+            <StatCard icon="cal"    value={analytics.mushrooms.scans_last_30d} label="30d Scans" accent={COLORS.sage}     emoji="📅" />
           </View>
 
-          {/* Scan Timeline */}
+          {/* Timeline Chart */}
           {analytics.timeline && analytics.timeline.length > 0 && (
-            <View style={s.section}>
-              <View style={s.sectionHeader}>
-                <ThemedText style={s.sectionTitle}>📈 Scan Timeline</ThemedText>
-              </View>
-              <ThemedText style={s.chartSubtitle}>Daily scan activity</ThemedText>
-              <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-                <LineChart
-                  data={{
-                    labels:   analytics.timeline.map(t => t.date),
-                    datasets: [{ data: analytics.timeline.map(t => t.scans), color: () => '#4ECDC4' }],
-                  }}
-                  width={Math.max(CHART_WIDTH, analytics.timeline.length * 52)}
-                  height={200}
-                  chartConfig={{ ...chartConfig, color: (o = 1) => `rgba(78,205,196,${o})` }}
-                  bezier
-                  withShadow={false}
-                  style={s.chart}
-                />
-              </ScrollView>
-            </View>
+            <>
+              <SectionBadge label="Scan Timeline" icon="📈" />
+              <Card>
+                <Text style={s.cardSubLabel}>Daily scan activity</Text>
+                <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+                  <LineChart
+                    data={{
+                      labels:   analytics.timeline.map(t => t.date),
+                      datasets: [{ data: analytics.timeline.map(t => t.scans), color: () => COLORS.mushCap }],
+                    }}
+                    width={Math.max(CHART_WIDTH - 32, analytics.timeline.length * 52)}
+                    height={200}
+                    chartConfig={{ ...chartConfig, color: (o = 1) => `rgba(193,123,63,${o})` }}
+                    bezier
+                    withShadow={false}
+                    style={s.chart}
+                  />
+                </ScrollView>
+              </Card>
+            </>
           )}
 
           {/* User Status Rings */}
-          <View style={s.section}>
-            <View style={s.sectionHeader}>
-              <ThemedText style={s.sectionTitle}>👤 User Status Breakdown</ThemedText>
-            </View>
-            <ThemedText style={s.chartSubtitle}>Active · Inactive · Admins (as % of total)</ThemedText>
+          <SectionBadge label="User Status Breakdown" icon="👤" />
+          <Card>
+            <Text style={s.cardSubLabel}>Active · Inactive · Admins (as % of total)</Text>
             <ProgressChart
               data={{
                 labels: ['Active', 'Inactive', 'Admins'],
@@ -389,7 +441,7 @@ export default function AdminDashboard() {
                   analytics.users.total_users > 0 ? analytics.users.admin_count    / analytics.users.total_users : 0,
                 ],
               }}
-              width={CHART_WIDTH}
+              width={CHART_WIDTH - 32}
               height={180}
               strokeWidth={14}
               radius={36}
@@ -397,9 +449,9 @@ export default function AdminDashboard() {
                 ...chartConfig,
                 color: (opacity = 1, index?: number) => {
                   const colors = [
-                    `rgba(78,205,196,${opacity})`,
-                    `rgba(232,74,95,${opacity})`,
-                    `rgba(107,124,97,${opacity})`,
+                    `rgba(58,140,92,${opacity})`,
+                    `rgba(201,64,64,${opacity})`,
+                    `rgba(74,103,65,${opacity})`,
                   ];
                   return colors[index ?? 0] ?? colors[0];
                 },
@@ -407,198 +459,209 @@ export default function AdminDashboard() {
               style={s.chart}
               hideLegend={false}
             />
-          </View>
+          </Card>
 
           {/* Quick Info */}
-          <View style={s.section}>
-            <View style={s.sectionHeader}>
-              <ThemedText style={s.sectionTitle}>ℹ️ Quick Info</ThemedText>
+          <SectionBadge label="Quick Info" icon="ℹ️" />
+          <View style={s.infoRow}>
+            <View style={s.infoTile}>
+              <Text style={s.infoTileEmoji}>🛡️</Text>
+              <Text style={s.infoTileValue}>{analytics.users.admin_count}</Text>
+              <Text style={s.infoTileLabel}>Admins</Text>
             </View>
-            <View style={s.infoGrid}>
-              <View style={s.infoItem}>
-                <Ionicons name="shield-checkmark" size={24} color="#6B7C61" />
-                <ThemedText style={s.infoLabel}>Admin Count</ThemedText>
-                <ThemedText style={s.infoValue}>{analytics.users.admin_count}</ThemedText>
-              </View>
-              <View style={s.infoItem}>
-                <Ionicons name="checkmark-done" size={24} color="#95E1D3" />
-                <ThemedText style={s.infoLabel}>Success Rate</ThemedText>
-                <ThemedText style={s.infoValue}>{analytics.mushrooms.detection_success_rate}%</ThemedText>
-              </View>
+            <View style={s.infoTile}>
+              <Text style={s.infoTileEmoji}>🎯</Text>
+              <Text style={s.infoTileValue}>{analytics.mushrooms.detection_success_rate}%</Text>
+              <Text style={s.infoTileLabel}>Success Rate</Text>
             </View>
+            <View style={s.infoTile}>
+              <Text style={s.infoTileEmoji}>📝</Text>
+              <Text style={s.infoTileValue}>{analytics.users.recent_registrations_30d ?? '—'}</Text>
+              <Text style={s.infoTileLabel}>New 30d</Text>
+            </View>
+          </View>
+
+          {/* Decorative footer mushrooms */}
+          <View style={s.decFooter}>
+            <MushroomSticker variant="white" size={36} />
+            <MushroomSticker variant="tiny"  size={24} style={{ marginHorizontal: 8 }} />
+            <MushroomSticker variant="brown" size={36} />
+            <MushroomSticker variant="tiny"  size={20} style={{ marginHorizontal: 8 }} />
+            <MushroomSticker variant="red"   size={28} />
           </View>
         </>
       ) : (
         <View style={s.emptyContainer}>
-          <Ionicons name="analytics" size={64} color="#ccc" />
-          <ThemedText style={s.emptyText}>No analytics data available</ThemedText>
+          <Text style={{ fontSize: 64 }}>🍄</Text>
+          <Text style={s.emptyText}>No spores found yet</Text>
+          <Text style={s.emptySubText}>Pull down to refresh</Text>
         </View>
       )}
     </View>
   );
 
-  /* ════════════════════════════════════════════
+  /* ────────────────────────────────────────
      USERS SECTION
-  ════════════════════════════════════════════ */
+  ──────────────────────────────────────── */
   const renderUsers = () => (
     <View style={s.contentContainer}>
       {loading ? (
         <View style={s.loadingContainer}>
-          <ActivityIndicator size="large" color="#6B7C61" />
-          <ThemedText style={s.loadingText}>Loading users...</ThemedText>
+          <Text style={s.loadingMushroom}>🍄</Text>
+          <ActivityIndicator size="large" color={COLORS.moss} style={{ marginTop: 16 }} />
+          <Text style={s.loadingText}>Loading user mycelium…</Text>
         </View>
       ) : (
-        <View style={s.usersContainer}>
-          {/* Main User Directory Export */}
-          {users.length > 0 && (
-            <View style={s.mainExportContainer}>
-              <TouchableOpacity
-                style={s.mainExportBtn}
-                onPress={() =>
-                  exportPDF(
-                    buildUsersReport(users, user.name),
-                    'SnapShroom_User_Directory.pdf',
-                  )
-                }
-              >
-                <Ionicons name="people" size={20} color="#fff" />
-                <ThemedText style={s.mainExportBtnText}>Export Complete User Directory (PDF)</ThemedText>
-              </TouchableOpacity>
+        <>
+          {/* Hero */}
+          <View style={[s.heroBanner, { backgroundColor: COLORS.forestMid }]}>
+            <View style={s.heroBannerDecor}>
+              <MushroomSticker variant="white" size={48} style={{ position: 'absolute', top: -8, right: 16, transform: [{ rotate: '10deg' }] }} />
+              <MushroomSticker variant="tiny"  size={30} style={{ position: 'absolute', bottom: 8, right: 68, transform: [{ rotate: '-6deg' }] }} />
             </View>
-          )}
-
-          <View style={s.section}>
-            <View style={s.sectionHeader}>
-              <ThemedText style={s.sectionTitle}>
-                👥 User Management ({users.length} users)
-              </ThemedText>
-            </View>
+            <Text style={s.heroBannerLabel}>USER DIRECTORY</Text>
+            <Text style={s.heroBannerTitle}>{users.length} Members</Text>
+            <Text style={s.heroBannerSub}>Manage roles and access control</Text>
+            {users.length > 0 && (
+              <ExportButton
+                onPress={() => exportPDF(buildUsersReport(users, user.name), 'SnapShroom_User_Directory.pdf')}
+                label="Export User Directory"
+                icon="people"
+              />
+            )}
           </View>
+
+          <SectionBadge label="All Users" icon="👥" />
 
           <FlatList
             data={users}
             keyExtractor={item => item.id}
             scrollEnabled={false}
-            renderItem={({ item }) => (
-              <View style={s.userCard}>
-                <View style={s.userInfo}>
-                  <View style={s.userHeader}>
-                    <ThemedText style={s.userName}>{item.name}</ThemedText>
-                    <View style={[s.roleBadge, { backgroundColor: item.role === 'admin' ? '#6B7C61' : '#4ECDC4' }]}>
-                      <ThemedText style={s.roleBadgeText}>{item.role.toUpperCase()}</ThemedText>
+            renderItem={({ item, index }) => (
+              <View style={[s.userCard, index === 0 && { marginTop: 0 }]}>
+                {/* Avatar circle */}
+                <View style={[s.userAvatar, { backgroundColor: item.role === 'admin' ? COLORS.moss : COLORS.sage }]}>
+                  <Text style={s.userAvatarText}>{item.name.charAt(0).toUpperCase()}</Text>
+                  {item.role === 'admin' && (
+                    <View style={s.adminBadgeDot}>
+                      <Text style={{ fontSize: 8 }}>⭐</Text>
                     </View>
-                  </View>
-                  <ThemedText style={s.userEmail}>{item.email}</ThemedText>
-                  <ThemedText style={s.userUsername}>@{item.username}</ThemedText>
-                  <ThemedText style={s.userDate}>
-                    Joined: {new Date(item.created_at).toLocaleDateString()}
-                  </ThemedText>
-                  {item.last_login && (
-                    <ThemedText style={s.userDate}>
-                      Last login: {new Date(item.last_login).toLocaleDateString()}
-                    </ThemedText>
                   )}
                 </View>
-                <View style={s.userActions}>
-                  <TouchableOpacity
-                    style={[s.actionButton, { backgroundColor: item.is_active ? '#E84A5F' : '#44A08D' }]}
-                    onPress={() => handleToggleUserStatus(item.id, item.is_active)}
-                  >
-                    <Ionicons name={item.is_active ? 'close-circle' : 'checkmark-circle'} size={18} color="#fff" />
-                    <ThemedText style={s.actionButtonText}>
-                      {item.is_active ? 'Deactivate' : 'Activate'}
-                    </ThemedText>
-                  </TouchableOpacity>
-                  {item.id !== user.id && (
-                    <TouchableOpacity
-                      style={[s.actionButton, { backgroundColor: '#6B7C61' }]}
-                      onPress={() => handleChangeRole(item.id, item.role)}
-                    >
-                      <Ionicons name="shield" size={18} color="#fff" />
-                      <ThemedText style={s.actionButtonText}>
-                        Make {item.role === 'admin' ? 'User' : 'Admin'}
-                      </ThemedText>
-                    </TouchableOpacity>
+
+                {/* Info */}
+                <View style={s.userInfo}>
+                  <View style={s.userRow}>
+                    <Text style={s.userName}>{item.name}</Text>
+                    <View style={[s.rolePill, { backgroundColor: item.role === 'admin' ? COLORS.forest : COLORS.spore }]}>
+                      <Text style={[s.rolePillText, { color: item.role === 'admin' ? COLORS.cream : COLORS.textMid }]}>
+                        {item.role === 'admin' ? '⭐ Admin' : 'User'}
+                      </Text>
+                    </View>
+                  </View>
+                  <Text style={s.userEmail}>{item.email}</Text>
+                  <Text style={s.userMeta}>@{item.username}  ·  Joined {new Date(item.created_at).toLocaleDateString()}</Text>
+                  {item.last_login && (
+                    <Text style={s.userMeta}>Last login {new Date(item.last_login).toLocaleDateString()}</Text>
                   )}
+
+                  {/* Status indicator */}
+                  <View style={s.statusRow}>
+                    <View style={[s.statusDot, { backgroundColor: item.is_active ? COLORS.safeGreen : COLORS.toxicRed }]} />
+                    <Text style={[s.statusText, { color: item.is_active ? COLORS.safeGreen : COLORS.toxicRed }]}>
+                      {item.is_active ? 'Active' : 'Inactive'}
+                    </Text>
+                  </View>
+
+                  {/* Actions */}
+                  <View style={s.actionRow}>
+                    <TouchableOpacity
+                      style={[s.actionPill, { backgroundColor: item.is_active ? 'rgba(201,64,64,0.1)' : 'rgba(58,140,92,0.1)' }]}
+                      onPress={() => handleToggleUserStatus(item.id, item.is_active)}
+                    >
+                      <Text style={[s.actionPillText, { color: item.is_active ? COLORS.toxicRed : COLORS.safeGreen }]}>
+                        {item.is_active ? '⊗ Deactivate' : '✓ Activate'}
+                      </Text>
+                    </TouchableOpacity>
+                    {item.id !== user.id && (
+                      <TouchableOpacity
+                        style={[s.actionPill, { backgroundColor: 'rgba(74,103,65,0.1)' }]}
+                        onPress={() => handleChangeRole(item.id, item.role)}
+                      >
+                        <Text style={[s.actionPillText, { color: COLORS.moss }]}>
+                          {item.role === 'admin' ? '↓ Remove Admin' : '↑ Make Admin'}
+                        </Text>
+                      </TouchableOpacity>
+                    )}
+                  </View>
                 </View>
               </View>
             )}
           />
-        </View>
+
+          {/* Footer mushrooms */}
+          <View style={s.decFooter}>
+            <MushroomSticker variant="brown" size={32} />
+            <MushroomSticker variant="tiny" size={20} style={{ marginHorizontal: 6 }} />
+            <MushroomSticker variant="red" size={28} />
+          </View>
+        </>
       )}
     </View>
   );
 
-  /* ════════════════════════════════════════════
+  /* ────────────────────────────────────────
      ANALYTICS SECTION
-  ════════════════════════════════════════════ */
+  ──────────────────────────────────────── */
   const renderAnalytics = () => (
     <View style={s.contentContainer}>
       {loading ? (
         <View style={s.loadingContainer}>
-          <ActivityIndicator size="large" color="#6B7C61" />
-          <ThemedText style={s.loadingText}>Loading analytics...</ThemedText>
+          <Text style={s.loadingMushroom}>🍄</Text>
+          <ActivityIndicator size="large" color={COLORS.moss} style={{ marginTop: 16 }} />
+          <Text style={s.loadingText}>Analyzing mycelium network…</Text>
         </View>
       ) : analytics ? (
         <>
-          {/* Main Analytics Export */}
-          <View style={s.mainExportContainer}>
-            <TouchableOpacity
-              style={s.mainExportBtn}
-              onPress={() =>
-                exportPDF(
-                  buildAnalyticsReport(analytics, user.name),
-                  'SnapShroom_Full_Analytics.pdf',
-                )
-              }
-            >
-              <Ionicons name="bar-chart" size={20} color="#fff" />
-              <ThemedText style={s.mainExportBtnText}>Export Full Analytics Report (PDF)</ThemedText>
-            </TouchableOpacity>
+          {/* Hero */}
+          <View style={[s.heroBanner, { backgroundColor: '#3B3020' }]}>
+            <View style={s.heroBannerDecor}>
+              <MushroomSticker variant="red"   size={50} style={{ position: 'absolute', top: -10, right: 14, transform: [{ rotate: '15deg' }] }} />
+              <MushroomSticker variant="brown" size={34} style={{ position: 'absolute', bottom: 6,  right: 68, transform: [{ rotate: '-5deg' }] }} />
+              <SporeDot size={7} color={COLORS.mushGill} style={{ position: 'absolute', top: 20, right: 130 }} />
+              <SporeDot size={4} color={COLORS.mint}     style={{ position: 'absolute', top: 40, right: 105 }} />
+            </View>
+            <Text style={s.heroBannerLabel}>FULL ANALYTICS</Text>
+            <Text style={s.heroBannerTitle}>Insights</Text>
+            <Text style={s.heroBannerSub}>Scan trends, species data & locations</Text>
+            <ExportButton
+              onPress={() => exportPDF(buildAnalyticsReport(analytics, user.name), 'SnapShroom_Full_Analytics.pdf')}
+              label="Export Full Analytics"
+              icon="bar-chart"
+            />
           </View>
 
-          {/* User Stats */}
-          <View style={s.section}>
-            <View style={s.sectionHeader}>
-              <ThemedText style={s.sectionTitle}>👥 User Analytics</ThemedText>
-            </View>
-            <View style={s.statsGrid}>
-              <View style={[s.statCard, { backgroundColor: '#4ECDC4' }]}>
-                <Ionicons name="people" size={28} color="#fff" />
-                <ThemedText style={s.statNumber}>{analytics.users.total_users}</ThemedText>
-                <ThemedText style={s.statLabel}>Total Users</ThemedText>
-              </View>
-              <View style={[s.statCard, { backgroundColor: '#44A08D' }]}>
-                <Ionicons name="checkmark-circle" size={28} color="#fff" />
-                <ThemedText style={s.statNumber}>{analytics.users.active_users}</ThemedText>
-                <ThemedText style={s.statLabel}>Active</ThemedText>
-              </View>
-              <View style={[s.statCard, { backgroundColor: '#E84A5F' }]}>
-                <Ionicons name="close-circle" size={28} color="#fff" />
-                <ThemedText style={s.statNumber}>{analytics.users.inactive_users}</ThemedText>
-                <ThemedText style={s.statLabel}>Inactive</ThemedText>
-              </View>
-              <View style={[s.statCard, { backgroundColor: '#6B7C61' }]}>
-                <Ionicons name="shield-checkmark" size={28} color="#fff" />
-                <ThemedText style={s.statNumber}>{analytics.users.admin_count}</ThemedText>
-                <ThemedText style={s.statLabel}>Admins</ThemedText>
-              </View>
-            </View>
-            <ThemedText style={[s.subSectionTitle, { marginTop: 16 }]}>User Composition</ThemedText>
-            <ThemedText style={s.chartSubtitle}>Active vs Inactive vs Admins</ThemedText>
+          {/* User Analytics */}
+          <SectionBadge label="User Analytics" icon="👥" />
+          <View style={s.statsRow}>
+            <StatCard value={analytics.users.total_users}    label="Total"    accent={COLORS.moss}       emoji="👥" />
+            <StatCard value={analytics.users.active_users}   label="Active"   accent={COLORS.safeGreen}  emoji="✅" />
+            <StatCard value={analytics.users.inactive_users} label="Inactive" accent={COLORS.toxicRed}   emoji="⭕" />
+            <StatCard value={analytics.users.admin_count}    label="Admins"   accent={COLORS.mushCap}    emoji="⭐" />
+          </View>
+
+          <Card>
+            <Text style={s.cardTitle}>User Composition</Text>
+            <Text style={s.cardSubLabel}>Active vs Inactive vs Admins</Text>
             <BarChart
               data={{
                 labels: ['Active', 'Inactive', 'Admins'],
                 datasets: [{
-                  data: [
-                    analytics.users.active_users,
-                    analytics.users.inactive_users,
-                    analytics.users.admin_count,
-                  ],
-                  colors: [() => '#4ECDC4', () => '#E84A5F', () => '#6B7C61'],
+                  data: [analytics.users.active_users, analytics.users.inactive_users, analytics.users.admin_count],
+                  colors: [() => COLORS.safeGreen, () => COLORS.toxicRed, () => COLORS.moss],
                 }],
               }}
-              width={CHART_WIDTH}
+              width={CHART_WIDTH - 32}
               height={200}
               fromZero
               showValuesOnTopOfBars
@@ -607,351 +670,374 @@ export default function AdminDashboard() {
               chartConfig={{ ...chartConfig, barPercentage: 0.6 }}
               style={s.chart}
             />
-          </View>
+          </Card>
 
           {/* Mushroom Stats */}
-          <View style={s.section}>
-            <View style={s.sectionHeader}>
-              <ThemedText style={s.sectionTitle}>🍄 Mushroom Analytics</ThemedText>
-            </View>
-            <View style={s.statsGrid}>
-              <View style={[s.statCard, { backgroundColor: '#FF6B6B' }]}>
-                <Ionicons name="scan" size={28} color="#fff" />
-                <ThemedText style={s.statNumber}>{analytics.mushrooms.total_scans}</ThemedText>
-                <ThemedText style={s.statLabel}>Total Scans</ThemedText>
-              </View>
-              <View style={[s.statCard, { backgroundColor: '#4ECDC4' }]}>
-                <Ionicons name="calendar" size={28} color="#fff" />
-                <ThemedText style={s.statNumber}>{analytics.mushrooms.scans_last_30d}</ThemedText>
-                <ThemedText style={s.statLabel}>Last 30 Days</ThemedText>
-              </View>
-              <View style={[s.statCard, { backgroundColor: '#95E1D3' }]}>
-                <Ionicons name="checkmark-done" size={28} color="#fff" />
-                <ThemedText style={s.statNumber}>{analytics.mushrooms.detection_success_rate}%</ThemedText>
-                <ThemedText style={s.statLabel}>Success Rate</ThemedText>
-              </View>
-            </View>
+          <SectionBadge label="Mushroom Analytics" icon="🍄" />
+          <View style={s.statsRow}>
+            <StatCard value={analytics.mushrooms.total_scans}         label="Total Scans"  accent={COLORS.mushCap}    emoji="🔍" />
+            <StatCard value={analytics.mushrooms.scans_last_30d}      label="Last 30d"     accent={COLORS.sage}       emoji="📅" />
+            <StatCard value={`${analytics.mushrooms.detection_success_rate}%`} label="Success" accent={COLORS.safeGreen} emoji="🎯" />
           </View>
 
           {/* Scan Timeline */}
           {analytics.timeline && analytics.timeline.length > 0 && (
-            <View style={s.section}>
-              <View style={s.sectionHeader}>
-                <ThemedText style={s.sectionTitle}>📈 Scan Timeline</ThemedText>
-              </View>
-              <ThemedText style={s.chartSubtitle}>Daily scan activity over time</ThemedText>
-              <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-                <LineChart
-                  data={{
-                    labels:   analytics.timeline.map(t => t.date),
-                    datasets: [{ data: analytics.timeline.map(t => t.scans) }],
-                  }}
-                  width={Math.max(CHART_WIDTH, analytics.timeline.length * 52)}
-                  height={220}
-                  chartConfig={chartConfig}
-                  bezier
-                  withShadow={false}
-                  style={s.chart}
-                />
-              </ScrollView>
-            </View>
+            <>
+              <SectionBadge label="Scan Timeline" icon="📈" />
+              <Card>
+                <Text style={s.cardSubLabel}>Daily scan activity over time</Text>
+                <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+                  <LineChart
+                    data={{
+                      labels:   analytics.timeline.map(t => t.date),
+                      datasets: [{ data: analytics.timeline.map(t => t.scans) }],
+                    }}
+                    width={Math.max(CHART_WIDTH - 32, analytics.timeline.length * 52)}
+                    height={220}
+                    chartConfig={chartConfig}
+                    bezier
+                    withShadow={false}
+                    style={s.chart}
+                  />
+                </ScrollView>
+              </Card>
+            </>
           )}
 
           {/* Most Scanned */}
           {analytics.mushrooms.most_scanned_mushrooms.length > 0 && (
-            <View style={s.section}>
-              <View style={s.sectionHeader}>
-                <ThemedText style={s.sectionTitle}>🏆 Most Scanned Mushrooms</ThemedText>
-              </View>
-              {analytics.mushrooms.most_scanned_mushrooms.slice(0, 5).map((item, index) => (
-                <View key={index} style={s.listItem}>
-                  <View style={s.rankBadge}>
-                    <ThemedText style={s.rankText}>#{index + 1}</ThemedText>
+            <>
+              <SectionBadge label="Most Scanned Mushrooms" icon="🏆" />
+              <Card>
+                {analytics.mushrooms.most_scanned_mushrooms.slice(0, 5).map((item, index) => (
+                  <View key={index} style={s.rankRow}>
+                    <View style={[s.rankCircle, { backgroundColor: index === 0 ? COLORS.mushCap : index === 1 ? COLORS.sage : COLORS.spore }]}>
+                      <Text style={[s.rankNum, { color: index < 2 ? COLORS.white : COLORS.textMid }]}>#{index + 1}</Text>
+                    </View>
+                    <Text style={s.rankName}>{item.name}</Text>
+                    <Text style={s.rankCount}>{item.count}</Text>
                   </View>
-                  <ThemedText style={s.listItemText}>{item.name}</ThemedText>
-                  <ThemedText style={s.listItemCount}>{item.count} scans</ThemedText>
-                </View>
-              ))}
-              <ThemedText style={[s.subSectionTitle, { marginTop: 16 }]}>Scan Count Chart</ThemedText>
-              <BarChart
-                data={safeBarData(analytics.mushrooms.most_scanned_mushrooms.map(m => ({ label: m.name, value: m.count })))}
-                width={CHART_WIDTH}
-                height={240}
-                fromZero
-                showValuesOnTopOfBars
-                chartConfig={{ ...chartConfig, barPercentage: 0.55, color: (o = 1) => `rgba(107,124,97,${o})` }}
-                style={s.chart}
-              />
-            </View>
+                ))}
+                <Text style={[s.cardSubLabel, { marginTop: 16, marginBottom: 4 }]}>Scan Count Chart</Text>
+                <BarChart
+                  data={safeBarData(analytics.mushrooms.most_scanned_mushrooms.map(m => ({ label: m.name, value: m.count })))}
+                  width={CHART_WIDTH - 32}
+                  height={240}
+                  fromZero
+                  showValuesOnTopOfBars
+                  chartConfig={{ ...chartConfig, barPercentage: 0.55, color: (o = 1) => `rgba(193,123,63,${o})` }}
+                  style={s.chart}
+                />
+              </Card>
+            </>
           )}
 
           {/* Top Locations */}
           {analytics.mushrooms.top_locations.length > 0 && (
-            <View style={s.section}>
-              <View style={s.sectionHeader}>
-                <ThemedText style={s.sectionTitle}>📍 Top Scan Locations</ThemedText>
-              </View>
-              {analytics.mushrooms.top_locations.slice(0, 5).map((item, index) => (
-                <View key={index} style={s.listItem}>
-                  <Ionicons name="location" size={20} color="#6B7C61" />
-                  <ThemedText style={s.listItemText}>{item.location}</ThemedText>
-                  <ThemedText style={s.listItemCount}>{item.count} scans</ThemedText>
-                </View>
-              ))}
-              <ThemedText style={[s.subSectionTitle, { marginTop: 16 }]}>Location Chart</ThemedText>
-              <BarChart
-                data={safeBarData(analytics.mushrooms.top_locations.map(l => ({ label: l.location, value: l.count })))}
-                width={CHART_WIDTH}
-                height={240}
-                fromZero
-                showValuesOnTopOfBars
-                chartConfig={{ ...chartConfig, barPercentage: 0.55, color: (o = 1) => `rgba(78,205,196,${o})` }}
-                style={s.chart}
-              />
-            </View>
+            <>
+              <SectionBadge label="Top Scan Locations" icon="📍" />
+              <Card>
+                {analytics.mushrooms.top_locations.slice(0, 5).map((item, index) => (
+                  <View key={index} style={s.rankRow}>
+                    <Text style={{ fontSize: 20 }}>📍</Text>
+                    <Text style={s.rankName}>{item.location}</Text>
+                    <Text style={s.rankCount}>{item.count} scans</Text>
+                  </View>
+                ))}
+                <Text style={[s.cardSubLabel, { marginTop: 16, marginBottom: 4 }]}>Location Chart</Text>
+                <BarChart
+                  data={safeBarData(analytics.mushrooms.top_locations.map(l => ({ label: l.location, value: l.count })))}
+                  width={CHART_WIDTH - 32}
+                  height={240}
+                  fromZero
+                  showValuesOnTopOfBars
+                  chartConfig={{ ...chartConfig, barPercentage: 0.55, color: (o = 1) => `rgba(122,158,116,${o})` }}
+                  style={s.chart}
+                />
+              </Card>
+            </>
           )}
+
+          {/* Footer mushrooms */}
+          <View style={s.decFooter}>
+            <MushroomSticker variant="red"   size={36} />
+            <MushroomSticker variant="tiny"  size={22} style={{ marginHorizontal: 8 }} />
+            <MushroomSticker variant="brown" size={30} />
+            <MushroomSticker variant="tiny"  size={18} style={{ marginHorizontal: 8 }} />
+            <MushroomSticker variant="white" size={34} />
+          </View>
         </>
       ) : (
         <View style={s.emptyContainer}>
-          <Ionicons name="bar-chart" size={64} color="#ccc" />
-          <ThemedText style={s.emptyText}>No analytics data available</ThemedText>
+          <Text style={{ fontSize: 64 }}>🍄</Text>
+          <Text style={s.emptyText}>No analytics data yet</Text>
+          <Text style={s.emptySubText}>Pull down to refresh</Text>
         </View>
       )}
     </View>
   );
 
-  /* ════════════════════════════════════════════
-     ABOUT SECTION
-  ════════════════════════════════════════════ */
-  const renderAbout = () => (
-    <View style={s.contentContainer}>
-      <View style={s.section}>
-        <View style={s.aboutHeader}>
-          <Ionicons name="leaf" size={64} color="#6B7C61" />
-          <ThemedText style={s.aboutTitle}>SnapShroom Admin</ThemedText>
-          <ThemedText style={s.aboutVersion}>Version 1.0.0</ThemedText>
-        </View>
-        
-        <View style={s.aboutSection}>
-          <View style={s.sectionHeader}>
-            <ThemedText style={s.aboutSectionTitle}>About This System</ThemedText>
-          </View>
-          <ThemedText style={s.aboutText}>
-            SnapShroom is an advanced mushroom identification system that uses machine learning
-            to help users identify mushroom species, assess edibility, and learn about different
-            mushroom characteristics.
-          </ThemedText>
-        </View>
-        
-        <View style={s.aboutSection}>
-          <ThemedText style={s.aboutSectionTitle}>Admin Features</ThemedText>
-          <View style={s.featureList}>
-            {[
-              'User management and role control',
-              'Analytics and insights dashboard',
-              'System monitoring and statistics',
-              'Account activation controls',
-              'Formal PDF report export (all sections)',
-            ].map((f, i) => (
-              <View key={i} style={s.featureItem}>
-                <Ionicons name="checkmark-circle" size={20} color="#44A08D" />
-                <ThemedText style={s.featureText}>{f}</ThemedText>
-              </View>
-            ))}
-          </View>
-        </View>
-        
-        <View style={s.aboutSection}>
-          <ThemedText style={s.aboutSectionTitle}>Contact & Support</ThemedText>
-          <ThemedText style={s.aboutText}>
-            For technical support or questions about the admin panel, please contact the development team.
-          </ThemedText>
-        </View>
-      </View>
-    </View>
-  );
 
-  /* ════════════════════════════════════════════
+
+  /* ────────────────────────────────────────
+     NAV TAB BAR
+  ──────────────────────────────────────── */
+
+
+  /* ────────────────────────────────────────
      ROOT RENDER
-  ════════════════════════════════════════════ */
+  ──────────────────────────────────────── */
   return (
     <ThemedView style={s.container}>
+      {/* ── Header ── */}
       <View style={s.header}>
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+        {/* Left cluster */}
+        <View style={s.headerLeft}>
           <HamburgerMenu
             onAdminNavigate={(section) => setCurrentSection(section as Section)}
             currentSection={currentSection}
           />
-          <NotificationDropdown iconColor="#A8B89D" />
+          <NotificationDropdown iconColor={COLORS.mint} />
         </View>
-        <View style={s.headerContent}>
-          <ThemedText style={s.headerTitle}>
-            {currentSection === 'home'      && '🏠 Admin Dashboard'}
-            {currentSection === 'users'     && '👥 User Management'}
-            {currentSection === 'analytics' && '📊 Analytics'}
-            {currentSection === 'about'     && 'ℹ️ About'}
-          </ThemedText>
-          <ThemedText style={s.headerSubtitle}>Welcome, {user.name}</ThemedText>
+
+        {/* Center */}
+        <View style={s.headerCenter}>
+          <Text style={s.headerLogo}>🍄</Text>
+          <Text style={s.headerTitle}>SnapShroom</Text>
         </View>
-        <View style={{ width: 40 }} />
+
+        {/* Right: admin pill */}
+        <View style={s.headerRight}>
+          <View style={s.adminPill}>
+            <Text style={s.adminPillText}>Admin</Text>
+          </View>
+        </View>
       </View>
 
+      {/* ── Section subtitle bar ── */}
+      <View style={s.subBar}>
+        <Text style={s.subBarText}>
+          {currentSection === 'home'      && 'Dashboard Overview'}
+          {currentSection === 'users'     && 'User Management'}
+          {currentSection === 'analytics' && 'Analytics & Insights'}
+        </Text>
+        <Text style={s.subBarUser}>⊕ {user.name}</Text>
+      </View>
+
+      {/* ── Content ── */}
       <ScrollView
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
+        style={{ flex: 1 }}
+        contentContainerStyle={{ paddingBottom: 32 }}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={COLORS.moss} />}
+        showsVerticalScrollIndicator={false}
       >
         {currentSection === 'home'      && renderHome()}
         {currentSection === 'users'     && renderUsers()}
         {currentSection === 'analytics' && renderAnalytics()}
-        {currentSection === 'about'     && renderAbout()}
       </ScrollView>
+
+
     </ThemedView>
   );
 }
 
 /* ════════════════════════════════════════════
-   STYLES (Keep your existing styles)
+   STYLES
 ════════════════════════════════════════════ */
 const s = StyleSheet.create({
-  container:       { flex: 1, backgroundColor: '#FDFCFA' },
+  container:  { flex: 1, backgroundColor: COLORS.cream },
+
+  /* ── Header ── */
   header: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: 20,
-    backgroundColor: '#2D3E2D',
-    paddingTop: 50,
-    gap: 12,
+    paddingHorizontal: 16,
+    paddingTop: 52,
+    paddingBottom: 14,
+    backgroundColor: COLORS.forest,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(168,197,160,0.15)',
   },
-  headerContent:   { flex: 1 },
-  headerTitle:     { fontSize: 22, color: '#fff', fontWeight: '700', marginBottom: 4 },
-  headerSubtitle:  { color: '#A8B89D', fontSize: 13 },
-  contentContainer:{ padding: 16 },
-  loadingContainer:{ padding: 40, alignItems: 'center' },
-  loadingText:     { marginTop: 12, color: '#6B7C61' },
-  emptyContainer:  { padding: 40, alignItems: 'center' },
-  emptyText:       { marginTop: 12, color: '#999', fontSize: 16 },
-  
-  mainExportContainer: { marginBottom: 16 },
-  mainExportBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-    backgroundColor: '#1E3020',
-    paddingHorizontal: 20,
-    paddingVertical: 14,
-    borderRadius: 12,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.15,
-    shadowRadius: 4,
-    elevation: 3,
-  },
-  mainExportBtnText: { color: '#fff', fontWeight: '700', fontSize: 15 },
-  
-  sectionHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 12,
-  },
-  sectionExportBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#4A5E3A',
+  headerLeft:   { flexDirection: 'row', alignItems: 'center', gap: 8, flex: 1 },
+  headerCenter: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  headerRight:  { flex: 1, alignItems: 'flex-end' },
+  headerLogo:   { fontSize: 22 },
+  headerTitle:  { fontSize: 20, fontWeight: '800', color: COLORS.cream, letterSpacing: 0.5 },
+  adminPill: {
+    backgroundColor: COLORS.moss,
+    paddingHorizontal: 10, paddingVertical: 4,
     borderRadius: 20,
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    gap: 4,
   },
-  sectionExportBtnSmall: {
-    paddingHorizontal: 8,
-    paddingVertical: 4,
+  adminPillText: { color: COLORS.cream, fontSize: 11, fontWeight: '700', letterSpacing: 0.5 },
+
+  /* ── Sub-bar ── */
+  subBar: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+    paddingHorizontal: 16, paddingVertical: 10,
+    backgroundColor: COLORS.forestMid,
+    borderBottomWidth: 1, borderBottomColor: 'rgba(168,197,160,0.1)',
   },
-  sectionExportBtnMedium: {
-    paddingHorizontal: 12,
-    paddingVertical: 6,
+  subBarText: { color: COLORS.mint, fontSize: 13, fontWeight: '600' },
+  subBarUser: { color: COLORS.sage,  fontSize: 12 },
+
+  /* ── Content ── */
+  contentContainer: { paddingHorizontal: 16, paddingTop: 16 },
+
+  /* ── Loading / Empty ── */
+  loadingContainer: { padding: 60, alignItems: 'center' },
+  loadingMushroom:  { fontSize: 56 },
+  loadingText:      { marginTop: 12, color: COLORS.textLight, fontSize: 15 },
+  emptyContainer:   { padding: 60, alignItems: 'center' },
+  emptyText:        { marginTop: 16, color: COLORS.textMid,   fontSize: 18, fontWeight: '700' },
+  emptySubText:     { marginTop: 6,  color: COLORS.textLight, fontSize: 14 },
+
+  /* ── Hero Banner ── */
+  heroBanner: {
+    backgroundColor: COLORS.forest,
+    borderRadius: 20,
+    padding: 20,
+    marginBottom: 20,
+    overflow: 'hidden',
   },
-  sectionExportBtnText: { color: '#fff', fontWeight: '600' },
-  sectionExportBtnTextSmall: { fontSize: 11 },
-  sectionExportBtnTextMedium: { fontSize: 12 },
-  
-  quickActionsGrid:{ flexDirection: 'row', gap: 12 },
-  quickActionCard: {
-    flex: 1, padding: 20, borderRadius: 12,
-    alignItems: 'center', justifyContent: 'center', gap: 8,
+  heroBannerDecor: { position: 'absolute', top: 0, right: 0, bottom: 0, width: 180 },
+  heroBannerLabel: {
+    color: COLORS.mint, fontSize: 10, fontWeight: '800',
+    letterSpacing: 2, marginBottom: 6,
   },
-  quickActionText: { color: '#fff', fontSize: 14, fontWeight: '600', textAlign: 'center' },
-  section: {
-    marginBottom: 24,
-    backgroundColor: '#fff',
-    borderRadius: 12,
-    padding: 16,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 2,
+  heroBannerTitle: {
+    color: COLORS.cream, fontSize: 32, fontWeight: '900',
+    letterSpacing: -0.5, marginBottom: 4,
   },
-  sectionTitle:    { fontSize: 20, fontWeight: '700', color: '#2D3E2D' },
-  subSectionTitle: { fontSize: 16, fontWeight: '600', marginBottom: 8, color: '#2D3E2D' },
-  chartSubtitle:   { fontSize: 12, color: '#888', marginBottom: 12 },
-  chart:           { borderRadius: 10, alignSelf: 'center' },
-  statsGrid:       { flexDirection: 'row', flexWrap: 'wrap', gap: 12, marginBottom: 12 },
+  heroBannerSub: { color: COLORS.sage, fontSize: 13, marginBottom: 16 },
+
+  /* ── Export Button ── */
+  exportBtn: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+    backgroundColor: 'rgba(255,255,255,0.1)',
+    borderRadius: 12, paddingHorizontal: 14, paddingVertical: 11,
+    borderWidth: 1, borderColor: 'rgba(168,197,160,0.25)',
+    marginRight: 170,
+  },
+  exportBtnInner: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  exportBtnText:  { color: COLORS.cream, fontSize: 13, fontWeight: '700' },
+  exportBtnAccent:{ width: 26, height: 26, borderRadius: 13, backgroundColor: 'rgba(168,197,160,0.2)', alignItems: 'center', justifyContent: 'center' },
+
+  /* ── Section Badge ── */
+  sectionBadge: {
+    flexDirection: 'row', alignItems: 'center', gap: 6,
+    marginBottom: 10, marginTop: 4,
+  },
+  sectionBadgeIcon: { fontSize: 16 },
+  sectionBadgeText: {
+    fontSize: 13, fontWeight: '800', color: COLORS.textMid,
+    letterSpacing: 0.5, textTransform: 'uppercase',
+  },
+
+  /* ── Quick Actions ── */
+  quickActionsRow: { flexDirection: 'row', gap: 10, marginBottom: 20 },
+  quickCard: {
+    flex: 1, borderRadius: 16, padding: 16,
+    alignItems: 'center', justifyContent: 'center', gap: 6,
+    shadowColor: COLORS.forest, shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2, shadowRadius: 8, elevation: 4,
+  },
+  quickCardEmoji: { fontSize: 28 },
+  quickCardLabel: { color: COLORS.cream, fontSize: 12, fontWeight: '700' },
+
+  /* ── Stat Cards ── */
+  statsRow: {
+    flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginBottom: 20,
+  },
   statCard: {
-    flex: 1,
-    minWidth: (width - 64) / 2,
-    padding: 16, borderRadius: 12,
-    alignItems: 'center', justifyContent: 'center', gap: 8,
+    flex: 1, minWidth: (width - 52) / 2 - 10,
+    backgroundColor: COLORS.white, borderRadius: 16,
+    padding: 14, alignItems: 'center',
+    borderTopWidth: 3,
+    shadowColor: COLORS.forest, shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08, shadowRadius: 6, elevation: 2,
   },
-  statNumber:      { fontSize: 28, fontWeight: '700', color: '#fff' },
-  statLabel:       { fontSize: 12, color: '#fff', textAlign: 'center', opacity: 0.9 },
-  listItem: {
+  statEmoji: { fontSize: 22, marginBottom: 4 },
+  statValue: { fontSize: 26, fontWeight: '900', letterSpacing: -0.5 },
+  statLabel: { fontSize: 11, color: COLORS.textLight, fontWeight: '600', marginTop: 2 },
+
+  /* ── Card ── */
+  card: {
+    backgroundColor: COLORS.white,
+    borderRadius: 16, padding: 16, marginBottom: 16,
+    shadowColor: COLORS.forest, shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08, shadowRadius: 8, elevation: 2,
+  },
+  cardTitle:    { fontSize: 15, fontWeight: '700', color: COLORS.textDark, marginBottom: 4 },
+  cardSubLabel: { fontSize: 12, color: COLORS.textLight, marginBottom: 12 },
+  chart: { borderRadius: 12, alignSelf: 'center' },
+
+  /* ── Rank rows ── */
+  rankRow: {
     flexDirection: 'row', alignItems: 'center',
-    padding: 12, backgroundColor: '#F5F3EF',
-    borderRadius: 8, marginBottom: 8, gap: 12,
+    gap: 12, paddingVertical: 10,
+    borderBottomWidth: 1, borderBottomColor: COLORS.parchment,
   },
-  rankBadge: {
-    width: 32, height: 32, borderRadius: 16,
-    backgroundColor: '#6B7C61',
+  rankCircle: {
+    width: 34, height: 34, borderRadius: 17,
     alignItems: 'center', justifyContent: 'center',
   },
-  rankText:        { color: '#fff', fontWeight: '700', fontSize: 12 },
-  listItemText:    { flex: 1, fontSize: 14, fontWeight: '600', color: '#2D3E2D' },
-  listItemCount:   { fontSize: 13, color: '#666', fontWeight: '600' },
-  usersContainer:  { flex: 1 },
+  rankNum:   { fontSize: 11, fontWeight: '800', color: COLORS.white },
+  rankName:  { flex: 1, fontSize: 14, fontWeight: '600', color: COLORS.textDark },
+  rankCount: { fontSize: 13, color: COLORS.textLight, fontWeight: '700' },
+
+  /* ── Info Tiles ── */
+  infoRow: { flexDirection: 'row', gap: 10, marginBottom: 20 },
+  infoTile: {
+    flex: 1, backgroundColor: COLORS.white,
+    borderRadius: 16, padding: 14, alignItems: 'center',
+    shadowColor: COLORS.forest, shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08, shadowRadius: 6, elevation: 2,
+  },
+  infoTileEmoji: { fontSize: 24, marginBottom: 6 },
+  infoTileValue: { fontSize: 20, fontWeight: '900', color: COLORS.textDark },
+  infoTileLabel: { fontSize: 11, color: COLORS.textLight, fontWeight: '600', marginTop: 2 },
+
+  /* ── Decorative Footer ── */
+  decFooter: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
+    paddingVertical: 20, gap: 6, marginBottom: 8,
+  },
+
+  /* ── User Cards ── */
   userCard: {
-    backgroundColor: '#fff', borderRadius: 12, padding: 16, marginBottom: 12,
-    shadowColor: '#000', shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1, shadowRadius: 4, elevation: 2,
+    backgroundColor: COLORS.white,
+    borderRadius: 16, padding: 16, marginBottom: 12,
+    flexDirection: 'row', gap: 14,
+    shadowColor: COLORS.forest, shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08, shadowRadius: 6, elevation: 2,
   },
-  userInfo:        { marginBottom: 12 },
-  userHeader:      { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 },
-  userName:        { fontSize: 18, fontWeight: '700', color: '#2D3E2D' },
-  roleBadge:       { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 12 },
-  roleBadgeText:   { color: '#fff', fontSize: 11, fontWeight: '700' },
-  userEmail:       { fontSize: 14, color: '#666', marginBottom: 2 },
-  userUsername:    { fontSize: 13, color: '#888', marginBottom: 4 },
-  userDate:        { fontSize: 12, color: '#999', marginTop: 2 },
-  userActions:     { flexDirection: 'row', gap: 8 },
-  actionButton: {
-    flex: 1, flexDirection: 'row', alignItems: 'center',
-    justifyContent: 'center', padding: 10, borderRadius: 8, gap: 6,
+  userAvatar: {
+    width: 52, height: 52, borderRadius: 26,
+    alignItems: 'center', justifyContent: 'center',
   },
-  actionButtonText:{ color: '#fff', fontSize: 13, fontWeight: '600' },
-  aboutHeader:     { alignItems: 'center', marginBottom: 24 },
-  aboutTitle:      { fontSize: 28, fontWeight: '700', color: '#2D3E2D', marginTop: 16, marginBottom: 4 },
-  aboutVersion:    { fontSize: 14, color: '#999' },
-  aboutSection:    { marginBottom: 24 },
-  aboutSectionTitle:{ fontSize: 18, fontWeight: '700', color: '#2D3E2D', marginBottom: 12 },
-  aboutText:       { fontSize: 14, color: '#666', lineHeight: 22 },
-  featureList:     { gap: 12 },
-  featureItem:     { flexDirection: 'row', alignItems: 'center', gap: 12 },
-  featureText:     { flex: 1, fontSize: 14, color: '#666' },
-  infoGrid:        { flexDirection: 'row', gap: 12 },
-  infoItem: {
-    flex: 1, backgroundColor: '#F5F3EF', padding: 16,
-    borderRadius: 12, alignItems: 'center', gap: 8,
+  userAvatarText: { fontSize: 22, fontWeight: '900', color: COLORS.cream },
+  adminBadgeDot: {
+    position: 'absolute', bottom: 0, right: 0,
+    backgroundColor: COLORS.mushCap, borderRadius: 10,
+    width: 18, height: 18, alignItems: 'center', justifyContent: 'center',
+    borderWidth: 2, borderColor: COLORS.white,
   },
-  infoLabel:       { fontSize: 12, color: '#666', textAlign: 'center' },
-  infoValue:       { fontSize: 20, fontWeight: '700', color: '#2D3E2D' },
+  userInfo:   { flex: 1 },
+  userRow:    { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 },
+  userName:   { fontSize: 16, fontWeight: '800', color: COLORS.textDark },
+  rolePill: {
+    paddingHorizontal: 9, paddingVertical: 3, borderRadius: 20,
+  },
+  rolePillText: { fontSize: 11, fontWeight: '700' },
+  userEmail:  { fontSize: 13, color: COLORS.textMid, marginBottom: 2 },
+  userMeta:   { fontSize: 11, color: COLORS.textLight, marginBottom: 4 },
+  statusRow:  { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 10 },
+  statusDot:  { width: 8, height: 8, borderRadius: 4 },
+  statusText: { fontSize: 12, fontWeight: '700' },
+  actionRow:  { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  actionPill: {
+    paddingHorizontal: 12, paddingVertical: 7, borderRadius: 20,
+  },
+  actionPillText: { fontSize: 12, fontWeight: '700' },
+
 });
