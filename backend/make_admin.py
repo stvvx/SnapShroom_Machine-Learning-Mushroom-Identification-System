@@ -20,7 +20,7 @@ MONGO_URI = os.getenv("DB_URI", "mongodb://localhost:27017/snapshroom_db")
 DB_NAME = "snapshroom_db"
 
 def make_admin(email):
-    """Promote a user to admin role"""
+    """Promote a user to admin (is_admin=1)"""
     client = MongoClient(MONGO_URI)
     db = client[DB_NAME]
     
@@ -31,17 +31,17 @@ def make_admin(email):
         print(f"❌ User with email '{email}' not found")
         return False
     
-    # Update the user's role to admin
+    # Update the user's is_admin to 1
     result = db.users.update_one(
         {"email": email},
-        {"$set": {"role": "admin"}}
+        {"$set": {"is_admin": 1}}
     )
     
     if result.modified_count > 0:
-        print(f"✅ User '{email}' has been promoted to admin")
+        print(f"✅ User '{email}' has been promoted to admin (is_admin=1)")
         return True
     else:
-        print(f"⚠️ User '{email}' already has admin role")
+        print(f"⚠️ User '{email}' is already an admin")
         return True
 
 if __name__ == "__main__":

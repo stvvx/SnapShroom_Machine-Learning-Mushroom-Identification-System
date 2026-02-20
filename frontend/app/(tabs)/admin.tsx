@@ -292,6 +292,7 @@ export default function AdminDashboard() {
 
   const handleToggleUserStatus = async (userId: string, currentStatus: boolean) => {
     try {
+      setAuthHeader();
       const endpoint = currentStatus
         ? `/admin/users/${userId}/deactivate`
         : `/admin/users/${userId}/activate`;
@@ -306,14 +307,17 @@ export default function AdminDashboard() {
   };
 
   const handleChangeRole = async (userId: string, currentRole: string) => {
-    const newRole = currentRole === 'admin' ? 'user' : 'admin';
-    Alert.alert('Confirm Role Change', `Change role to ${newRole}?`, [
+    setAuthHeader();
+    const newIsAdmin = currentRole === 'admin' ? 0 : 1;
+    const newRole = newIsAdmin === 1 ? 'admin' : 'user';
+    const actionLabel = newIsAdmin === 1 ? 'Make Admin' : 'Make User';
+    Alert.alert('Confirm Role Change', `${actionLabel}? This will change the role to ${newRole}.`, [
       { text: 'Cancel', style: 'cancel' },
       {
-        text: 'Confirm',
+        text: actionLabel,
         onPress: async () => {
           try {
-            const res = await api.put(`/admin/users/${userId}/role`, { role: newRole });
+            const res = await api.put(`/admin/users/${userId}/role`, { is_admin: newIsAdmin });
             if (res.data.success) {
               Alert.alert('Success', res.data.message);
               await loadUsers();
@@ -576,21 +580,50 @@ export default function AdminDashboard() {
                   {/* Actions */}
                   <View style={s.actionRow}>
                     <TouchableOpacity
-                      style={[s.actionPill, { backgroundColor: item.is_active ? 'rgba(201,64,64,0.1)' : 'rgba(58,140,92,0.1)' }]}
+                      style={[s.actionPill, {
+                        backgroundColor: item.is_active ? 'rgba(201,64,64,0.12)' : 'rgba(58,140,92,0.12)',
+                        borderWidth: 1,
+                        borderColor: item.is_active ? 'rgba(201,64,64,0.25)' : 'rgba(58,140,92,0.25)',
+                        paddingHorizontal: 14,
+                        paddingVertical: 8,
+                      }]}
                       onPress={() => handleToggleUserStatus(item.id, item.is_active)}
                     >
+                      <Ionicons
+                        name={item.is_active ? 'power' : 'power'}
+                        size={14}
+                        color={item.is_active ? COLORS.toxicRed : COLORS.safeGreen}
+                        style={{ marginRight: 4 }}
+                      />
                       <Text style={[s.actionPillText, { color: item.is_active ? COLORS.toxicRed : COLORS.safeGreen }]}>
-                        {item.is_active ? '⊗ Deactivate' : '✓ Activate'}
+                        {item.is_active ? 'Deactivate' : 'Activate'}
                       </Text>
                     </TouchableOpacity>
                     {item.id !== user.id && (
                       <TouchableOpacity
-                        style={[s.actionPill, { backgroundColor: 'rgba(74,103,65,0.1)' }]}
+                        style={[s.roleToggle, {
+                          backgroundColor: item.role === 'admin' ? COLORS.forest : COLORS.white,
+                          borderColor: item.role === 'admin' ? COLORS.forest : COLORS.moss,
+                        }]}
                         onPress={() => handleChangeRole(item.id, item.role)}
                       >
-                        <Text style={[s.actionPillText, { color: COLORS.moss }]}>
-                          {item.role === 'admin' ? '↓ Remove Admin' : '↑ Make Admin'}
+                        <Ionicons
+                          name={item.role === 'admin' ? 'shield-checkmark' : 'person-outline'}
+                          size={14}
+                          color={item.role === 'admin' ? COLORS.cream : COLORS.moss}
+                          style={{ marginRight: 6 }}
+                        />
+                        <Text style={[s.roleToggleText, {
+                          color: item.role === 'admin' ? COLORS.cream : COLORS.moss,
+                        }]}>
+                          {item.role === 'admin' ? 'Admin' : 'User'}
                         </Text>
+                        <Ionicons
+                          name="swap-horizontal"
+                          size={14}
+                          color={item.role === 'admin' ? COLORS.mint : COLORS.textLight}
+                          style={{ marginLeft: 6 }}
+                        />
                       </TouchableOpacity>
                     )}
                   </View>
@@ -1036,8 +1069,17 @@ const s = StyleSheet.create({
   statusText: { fontSize: 12, fontWeight: '700' },
   actionRow:  { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   actionPill: {
+    flexDirection: 'row', alignItems: 'center',
     paddingHorizontal: 12, paddingVertical: 7, borderRadius: 20,
   },
   actionPillText: { fontSize: 12, fontWeight: '700' },
+
+  /* ── Role Toggle Button ── */
+  roleToggle: {
+    flexDirection: 'row', alignItems: 'center',
+    paddingHorizontal: 14, paddingVertical: 8, borderRadius: 20,
+    borderWidth: 1.5,
+  },
+  roleToggleText: { fontSize: 12, fontWeight: '800' },
 
 });

@@ -11,7 +11,7 @@ notification_bp = Blueprint("notifications", __name__, url_prefix="/api/notifica
 def init_notification_routes(mongo: PyMongo):
     """Initialize notification routes with mongo instance"""
     
-    @notification_bp.route("/", methods=["GET"])
+    @notification_bp.route("", methods=["GET"])
     @jwt_required()
     def get_notifications():
         """Get user's notifications with pagination"""

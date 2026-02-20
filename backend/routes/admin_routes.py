@@ -3,8 +3,13 @@ from flask_jwt_extended import jwt_required, get_jwt_identity
 from bson import ObjectId
 from datetime import datetime
 from services.admin_service import AdminService
+from services.notification_service import NotificationService
 
 admin_bp = Blueprint("admin", __name__, url_prefix="/admin")
+
+# Helper to derive role string from is_admin field
+def get_role_from_user(u):
+    return "admin" if u.get("is_admin") == 1 else "user"
 
 # Middleware to check if user is admin
 def admin_required(f):
@@ -16,7 +21,7 @@ def admin_required(f):
             user_id = get_jwt_identity()
             user = mongo.db.users.find_one({"_id": ObjectId(user_id)})
             
-            if not user or user.get("role") != "admin":
+            if not user or user.get("is_admin") != 1:
                 return jsonify({"success": False, "message": "Admin access required"}), 403
             
             return f(*args, **kwargs)
@@ -35,11 +40,11 @@ def get_all_users():
     
     # Check if user is admin
     user = mongo.db.users.find_one({"_id": ObjectId(user_id)})
-    if not user or user.get("role") != "admin":
+    if not user or user.get("is_admin") != 1:
         return jsonify({"success": False, "message": "Admin access required"}), 403
     
     try:
-        users = list(mongo.db.users.find({"is_active": True}).sort("created_at", -1))
+        users = list(mongo.db.users.find().sort("created_at", -1))
         
         users_data = []
         for u in users:
@@ -48,9 +53,11 @@ def get_all_users():
                 "email": u["email"],
                 "name": u["name"],
                 "username": u["username"],
-                "role": u.get("role", "user"),
+                "role": get_role_from_user(u),
+                "is_admin": u.get("is_admin", 0),
                 "created_at": u.get("created_at").isoformat() if u.get("created_at") else None,
-                "is_active": u.get("is_active", True)
+                "is_active": u.get("is_active", True),
+                "last_login": u.get("last_login").isoformat() if u.get("last_login") else None
             })
         
         return jsonify({
@@ -74,7 +81,7 @@ def get_user_by_id(user_id):
     
     # Check if requester is admin
     admin = mongo.db.users.find_one({"_id": ObjectId(admin_id)})
-    if not admin or admin.get("role") != "admin":
+    if not admin or admin.get("is_admin") != 1:
         return jsonify({"success": False, "message": "Admin access required"}), 403
     
     try:
@@ -89,7 +96,8 @@ def get_user_by_id(user_id):
                 "email": user["email"],
                 "name": user["name"],
                 "username": user["username"],
-                "role": user.get("role", "user"),
+                "role": get_role_from_user(user),
+                "is_admin": user.get("is_admin", 0),
                 "created_at": user.get("created_at").isoformat() if user.get("created_at") else None,
                 "is_active": user.get("is_active", True)
             }
@@ -110,15 +118,24 @@ def update_user_role(user_id):
     
     # Check if requester is admin
     admin = mongo.db.users.find_one({"_id": ObjectId(admin_id)})
-    if not admin or admin.get("role") != "admin":
+    if not admin or admin.get("is_admin") != 1:
         return jsonify({"success": False, "message": "Admin access required"}), 403
     
     try:
         data = request.get_json()
-        new_role = data.get("role", "").lower().strip()
+        # Accept both formats: {"is_admin": 1/0} or {"role": "admin"/"user"}
+        new_is_admin = data.get("is_admin")
+        if new_is_admin is None:
+            new_role = data.get("role", "").lower().strip()
+            if new_role == "admin":
+                new_is_admin = 1
+            elif new_role == "user":
+                new_is_admin = 0
+            else:
+                return jsonify({"success": False, "message": "Invalid role"}), 400
         
-        if new_role not in ["admin", "user"]:
-            return jsonify({"success": False, "message": "Invalid role"}), 400
+        if new_is_admin not in [0, 1]:
+            return jsonify({"success": False, "message": "Invalid is_admin value. Must be 0 or 1"}), 400
         
         user = mongo.db.users.find_one({"_id": ObjectId(user_id)})
         if not user:
@@ -126,12 +143,20 @@ def update_user_role(user_id):
         
         mongo.db.users.update_one(
             {"_id": ObjectId(user_id)},
-            {"$set": {"role": new_role}}
+            {"$set": {"is_admin": new_is_admin}}
         )
+        
+        new_role_label = "admin" if new_is_admin == 1 else "user"
+        
+        # Notify user about role change
+        try:
+            NotificationService.notify_role_changed(mongo, user_id, new_role_label)
+        except Exception as notif_err:
+            print(f"Failed to send role change notification: {notif_err}")
         
         return jsonify({
             "success": True,
-            "message": f"User role updated to {new_role}"
+            "message": f"User role updated to {new_role_label}"
         }), 200
     
     except Exception as e:
@@ -149,7 +174,7 @@ def deactivate_user(user_id):
     
     # Check if requester is admin
     admin = mongo.db.users.find_one({"_id": ObjectId(admin_id)})
-    if not admin or admin.get("role") != "admin":
+    if not admin or admin.get("is_admin") != 1:
         return jsonify({"success": False, "message": "Admin access required"}), 403
     
     try:
@@ -164,6 +189,12 @@ def deactivate_user(user_id):
             {"_id": ObjectId(user_id)},
             {"$set": {"is_active": False}}
         )
+        
+        # Notify user about account deactivation
+        try:
+            NotificationService.notify_account_status_changed(mongo, user_id, False)
+        except Exception as notif_err:
+            print(f"Failed to send deactivation notification: {notif_err}")
         
         return jsonify({
             "success": True,
@@ -185,7 +216,7 @@ def activate_user(user_id):
     
     # Check if requester is admin
     admin = mongo.db.users.find_one({"_id": ObjectId(admin_id)})
-    if not admin or admin.get("role") != "admin":
+    if not admin or admin.get("is_admin") != 1:
         return jsonify({"success": False, "message": "Admin access required"}), 403
     
     try:
@@ -197,6 +228,12 @@ def activate_user(user_id):
             {"_id": ObjectId(user_id)},
             {"$set": {"is_active": True}}
         )
+        
+        # Notify user about account activation
+        try:
+            NotificationService.notify_account_status_changed(mongo, user_id, True)
+        except Exception as notif_err:
+            print(f"Failed to send activation notification: {notif_err}")
         
         return jsonify({
             "success": True,
@@ -218,7 +255,7 @@ def get_analytics():
     
     # Check if user is admin
     user = mongo.db.users.find_one({"_id": ObjectId(admin_id)})
-    if not user or user.get("role") != "admin":
+    if not user or user.get("is_admin") != 1:
         return jsonify({"success": False, "message": "Admin access required"}), 403
     
     try:
@@ -257,7 +294,7 @@ def get_mushroom_analytics():
     
     # Check if user is admin
     user = mongo.db.users.find_one({"_id": ObjectId(admin_id)})
-    if not user or user.get("role") != "admin":
+    if not user or user.get("is_admin") != 1:
         return jsonify({"success": False, "message": "Admin access required"}), 403
     
     try:
@@ -284,7 +321,7 @@ def get_user_analytics():
     
     # Check if user is admin
     user = mongo.db.users.find_one({"_id": ObjectId(admin_id)})
-    if not user or user.get("role") != "admin":
+    if not user or user.get("is_admin") != 1:
         return jsonify({"success": False, "message": "Admin access required"}), 403
     
     try:

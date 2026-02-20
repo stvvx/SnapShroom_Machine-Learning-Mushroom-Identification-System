@@ -70,7 +70,7 @@ def register():
             "password_hash": generate_password_hash(password),
             "created_at": datetime.utcnow(),
             "is_active": True,
-            "role": "user",
+            "is_admin": 0,
             "avatar": None,
             "access_token": None,
             "refresh_token": None,
@@ -183,7 +183,7 @@ def login():
                 "name": user["name"],
                 "username": user["username"],
                 "avatar": user.get("avatar"),
-                "role": user.get("role", "user")
+                "role": "admin" if user.get("is_admin") == 1 else "user"
             },
             "access_token": access_token,
             "refresh_token": refresh_token
@@ -259,7 +259,7 @@ def me():
             "name": user["name"],
             "username": user["username"],
             "avatar": user.get("avatar"),
-            "role": user.get("role", "user")
+            "role": "admin" if user.get("is_admin") == 1 else "user"
         }
     }), 200
 

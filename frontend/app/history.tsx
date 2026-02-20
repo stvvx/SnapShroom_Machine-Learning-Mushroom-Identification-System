@@ -16,11 +16,13 @@ import { Ionicons } from '@expo/vector-icons';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { API_URL } from '@/constants/api';
+import { useAuth } from '@/contexts/AuthContext';
 import HamburgerMenu from '@/components/HamburgerMenu';
 import NotificationDropdown from '@/components/NotificationDropdown';
 
 interface ScanRecord {
   _id: string;
+  user_id?: string | null;
   mushroom_detected: boolean;
   detection_confidence: number;
   mushroom_type: string | null;
@@ -34,31 +36,39 @@ interface ScanRecord {
   } | null;
   created_at: string;
   success: boolean;
+  scanned_by?: string;
 }
 
 const isWeb = Platform.OS === 'web';
 
 export default function HistoryScreen() {
   const router = useRouter();
+  const { user, accessToken } = useAuth();
   const [scans, setScans] = useState<ScanRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [activeFilter, setActiveFilter] = useState<'all' | 'detected' | 'edible' | 'poisonous'>('all');
+  const [scope, setScope] = useState<'mine' | 'universe'>('mine');
 
   useEffect(() => {
     fetchScanHistory();
-  }, []);
+  }, [scope, accessToken]);
 
   const fetchScanHistory = async () => {
     try {
       setLoading(true);
       setError(null);
 
-      const response = await fetch(`${API_URL}/api/toxicity/scans/history?limit=10000`, {
-        headers: {
-          'Content-Type': 'application/json',
-        },
+      const headers: Record<string, string> = {
+        'Content-Type': 'application/json',
+      };
+      if (accessToken) {
+        headers['Authorization'] = `Bearer ${accessToken}`;
+      }
+
+      const response = await fetch(`${API_URL}/api/toxicity/scans/history?limit=10000&scope=${scope}`, {
+        headers,
       });
 
       const data = await response.json();
@@ -200,6 +210,13 @@ export default function HistoryScreen() {
               </ThemedText>
             </View>
           )}
+
+          {scope === 'universe' && scan.scanned_by && (
+            <View style={styles.locationRow}>
+              <Ionicons name="person-circle" size={14} color="#999" />
+              <ThemedText style={styles.locationText}>{scan.scanned_by}</ThemedText>
+            </View>
+          )}
         </View>
       </TouchableOpacity>
     );
@@ -272,6 +289,15 @@ export default function HistoryScreen() {
               <Ionicons name="location" size={14} color="#aaa" />
               <Text style={webStyles.cardMeta} numberOfLines={1}>
                 {scan.location.province || scan.location.region}
+              </Text>
+            </View>
+          )}
+
+          {scope === 'universe' && scan.scanned_by && (
+            <View style={webStyles.cardRow}>
+              <Ionicons name="person-circle-outline" size={14} color="#aaa" />
+              <Text style={webStyles.cardMeta} numberOfLines={1}>
+                {scan.scanned_by}
               </Text>
             </View>
           )}
@@ -370,6 +396,31 @@ export default function HistoryScreen() {
               </View>
             </View>
 
+            {/* Scope Toggle: My Scans / Universe */}
+            <View style={webStyles.sidebarSection}>
+              <Text style={webStyles.sidebarHeading}>Source</Text>
+              <View style={webStyles.scopeToggle}>
+                <TouchableOpacity
+                  style={[webStyles.scopeBtn, scope === 'mine' && webStyles.scopeBtnActive]}
+                  onPress={() => setScope('mine')}
+                >
+                  <Ionicons name="person" size={15} color={scope === 'mine' ? '#fff' : '#7BA05B'} />
+                  <Text style={[webStyles.scopeBtnText, scope === 'mine' && webStyles.scopeBtnTextActive]}>
+                    My Scans
+                  </Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[webStyles.scopeBtn, scope === 'universe' && webStyles.scopeBtnActive]}
+                  onPress={() => setScope('universe')}
+                >
+                  <Ionicons name="globe" size={15} color={scope === 'universe' ? '#fff' : '#7BA05B'} />
+                  <Text style={[webStyles.scopeBtnText, scope === 'universe' && webStyles.scopeBtnTextActive]}>
+                    Universe
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+
             {/* Filters */}
             <View style={webStyles.sidebarSection}>
               <Text style={webStyles.sidebarHeading}>Filter</Text>
@@ -450,6 +501,24 @@ export default function HistoryScreen() {
         <ThemedText style={styles.headerTitle}>Scan History</ThemedText>
         <TouchableOpacity style={styles.refreshButton} onPress={handleRefresh} disabled={loading}>
           <Ionicons name="refresh" size={24} color="#7BA05B" />
+        </TouchableOpacity>
+      </View>
+
+      {/* Scope Toggle */}
+      <View style={styles.scopeRow}>
+        <TouchableOpacity
+          style={[styles.scopeTabBtn, scope === 'mine' && styles.scopeTabBtnActive]}
+          onPress={() => setScope('mine')}
+        >
+          <Ionicons name="person" size={16} color={scope === 'mine' ? '#fff' : '#7BA05B'} />
+          <ThemedText style={[styles.scopeTabText, scope === 'mine' && styles.scopeTabTextActive]}>My Scans</ThemedText>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[styles.scopeTabBtn, scope === 'universe' && styles.scopeTabBtnActive]}
+          onPress={() => setScope('universe')}
+        >
+          <Ionicons name="globe" size={16} color={scope === 'universe' ? '#fff' : '#7BA05B'} />
+          <ThemedText style={[styles.scopeTabText, scope === 'universe' && styles.scopeTabTextActive]}>Universe</ThemedText>
         </TouchableOpacity>
       </View>
 
@@ -643,6 +712,36 @@ const webStyles = StyleSheet.create({
     fontWeight: '700',
     color: '#888',
   },
+
+  /* ── Scope Toggle ── */
+  scopeToggle: {
+    flexDirection: 'row',
+    borderRadius: 10,
+    overflow: 'hidden' as any,
+    borderWidth: 1.5,
+    borderColor: '#7BA05B',
+  },
+  scopeBtn: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    paddingVertical: 10,
+    backgroundColor: '#fff',
+  },
+  scopeBtnActive: {
+    backgroundColor: '#7BA05B',
+  },
+  scopeBtnText: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#7BA05B',
+  },
+  scopeBtnTextActive: {
+    color: '#fff',
+  },
+
   sidebarScanBtn: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -978,5 +1077,32 @@ const styles = StyleSheet.create({
   locationText: {
     fontSize: 11,
     color: '#999',
+  },
+  scopeRow: {
+    flexDirection: 'row',
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    gap: 10,
+  },
+  scopeTabBtn: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    paddingVertical: 10,
+    borderRadius: 10,
+    backgroundColor: '#F0EDE8',
+  },
+  scopeTabBtnActive: {
+    backgroundColor: '#7BA05B',
+  },
+  scopeTabText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#7BA05B',
+  },
+  scopeTabTextActive: {
+    color: '#FFF',
   },
 });

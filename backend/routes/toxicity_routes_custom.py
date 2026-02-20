@@ -17,6 +17,7 @@ import logging
 print("[ROUTE] 2. Imported Flask...", file=sys.stderr, flush=True)
 
 from custom_predict import create_predictor
+from services.notification_service import NotificationService
 
 print("[ROUTE] 3. Importing create_predictor...", file=sys.stderr, flush=True)
 
@@ -139,6 +140,15 @@ def predict_mushroom():
             mongo.db.mushroom_scans.insert_one(scan_data)
             logger.info("✅ Scan data saved to database")
             
+            # Send notification to user about scan result
+            if user_id:
+                try:
+                    mushroom_name = result.get('classification', {}).get('label', 'Unknown') if result.get('classification') else 'Unknown'
+                    edibility = result.get('classification', {}).get('toxicity_level', 'unknown').lower() if result.get('classification') else 'unknown'
+                    NotificationService.notify_mushroom_scan(mongo, user_id, mushroom_name, edibility)
+                except Exception as notif_err:
+                    logger.warning(f"⚠️ Failed to send scan notification: {notif_err}")
+            
         except Exception as db_error:
             logger.warning(f"⚠️ Failed to save scan to database: {str(db_error)}")
             # Continue even if saving fails
@@ -171,25 +181,44 @@ def predict_mushroom():
 @toxicity_bp.route('/scans/history', methods=['GET'])
 def get_scan_history():
     """
-    Get user's scan history (all scans or filtered by user_id)
+    Get scan history with optional scope filtering.
     Query params:
-        - user_id: Filter by specific user (optional)
+        - user_id: Filter by specific user (optional, legacy)
+        - scope: 'mine' = current user's scans, 'universe' = everyone else's scans (optional)
         - limit: Max number of records (default: 50)
+    Requires JWT for scope=mine or scope=universe.
     """
     try:
         mongo = current_app.mongo
         
         # Get query parameters
         user_id = request.args.get('user_id')
+        scope = request.args.get('scope')  # 'mine' or 'universe'
         limit = int(request.args.get('limit', 50))
         
         # Build query
         query = {}
-        if user_id:
+        
+        # If scope is provided, resolve current user from JWT
+        if scope in ('mine', 'universe'):
+            current_user_id = None
+            try:
+                from flask_jwt_extended import get_jwt_identity
+                current_user_id = get_jwt_identity()
+            except Exception:
+                pass
+            
+            if current_user_id:
+                if scope == 'mine':
+                    query['user_id'] = ObjectId(current_user_id)
+                elif scope == 'universe':
+                    query['user_id'] = {'$ne': ObjectId(current_user_id)}
+        elif user_id:
+            # Legacy: filter by explicit user_id param
             try:
                 query['user_id'] = ObjectId(user_id)
-            except:
-                query['user_id'] = None  # Invalid ObjectId, search for null
+            except Exception:
+                query['user_id'] = None
         
         # Fetch scans sorted by most recent first
         scans = list(mongo.db.mushroom_scans.find(query)
@@ -201,6 +230,26 @@ def get_scan_history():
             scan['_id'] = str(scan['_id'])
             if scan.get('user_id'):
                 scan['user_id'] = str(scan['user_id'])
+        
+        # Look up usernames for scans (for universe view)
+        if scope == 'universe':
+            user_ids = set()
+            for scan in scans:
+                uid = scan.get('user_id')
+                if uid:
+                    user_ids.add(uid)
+            # Batch fetch usernames
+            user_map = {}
+            if user_ids:
+                users_cursor = mongo.db.users.find(
+                    {"_id": {"$in": [ObjectId(uid) for uid in user_ids]}},
+                    {"_id": 1, "username": 1, "name": 1}
+                )
+                for u in users_cursor:
+                    user_map[str(u["_id"])] = u.get("name") or u.get("username") or "Unknown"
+            for scan in scans:
+                uid = scan.get('user_id')
+                scan['scanned_by'] = user_map.get(uid, 'Anonymous') if uid else 'Anonymous'
         
         return jsonify({
             "success": True,

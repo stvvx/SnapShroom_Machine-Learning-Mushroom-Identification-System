@@ -35,12 +35,10 @@ export default function ProfileScreen() {
   const [uploading, setUploading] = useState(false);
   const [profileImage, setProfileImage] = useState<string | null>(user?.avatar || null);
   const [uploadError, setUploadError] = useState<string | null>(null);
-  const [debugLogs, setDebugLogs] = useState<string[]>([]);
 
-  // Helper to log debug messages
+  // Helper to log debug messages (console only)
   const addLog = (message: string) => {
     console.log(message);
-    setDebugLogs(prev => [...prev, `${new Date().toLocaleTimeString()}: ${message}`]);
   };
 
   // Name edit state
@@ -154,7 +152,6 @@ export default function ProfileScreen() {
   const uploadProfileImage = async () => {
     try {
       setUploadError(null);
-      setDebugLogs([]);
       addLog('Starting avatar upload process...');
       
       const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
@@ -460,34 +457,14 @@ export default function ProfileScreen() {
           </View>
         </View>
 
-        {/* Debug/Error Log Box */}
-        {(uploadError || debugLogs.length > 0) && (
+        {/* Upload Error Display */}
+        {uploadError && (
           <View style={styles.debugBox}>
             <View style={styles.debugHeader}>
-              <Ionicons 
-                name={uploadError ? 'alert-circle' : 'information-circle'} 
-                size={20} 
-                color={uploadError ? '#D32F2F' : '#1976D2'}
-              />
-              <ThemedText style={[styles.debugTitle, uploadError && { color: '#D32F2F' }]}>
-                {uploadError ? 'Upload Error' : 'Upload Logs'}
-              </ThemedText>
-              <TouchableOpacity onPress={() => setDebugLogs([])}>
-                <Ionicons name="close" size={20} color="#999" />
-              </TouchableOpacity>
+              <Ionicons name="alert-circle" size={20} color="#D32F2F" />
+              <ThemedText style={[styles.debugTitle, { color: '#D32F2F' }]}>Upload Error</ThemedText>
             </View>
-            {uploadError && (
-              <ThemedText style={styles.debugError}>{uploadError}</ThemedText>
-            )}
-            {debugLogs.length > 0 && (
-              <ScrollView style={styles.debugContent} nestedScrollEnabled={true}>
-                {debugLogs.map((log, index) => (
-                  <ThemedText key={index} style={styles.debugLog}>
-                    {log}
-                  </ThemedText>
-                ))}
-              </ScrollView>
-            )}
+            <ThemedText style={styles.debugError}>{uploadError}</ThemedText>
           </View>
         )}
 
@@ -969,15 +946,5 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: '#FFE8E8',
   },
-  debugContent: {
-    maxHeight: 200,
-    padding: 12,
-  },
-  debugLog: {
-    fontSize: 12,
-    color: '#555',
-    marginBottom: 6,
-    fontFamily: 'monospace',
-    lineHeight: 16,
-  },
+
 });

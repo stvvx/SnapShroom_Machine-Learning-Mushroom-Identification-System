@@ -19,7 +19,7 @@ class AdminService:
             inactive_users = self.mongo.db.users.count_documents({"is_active": False})
             
             # Admin count
-            admin_count = self.mongo.db.users.count_documents({"role": "admin", "is_active": True})
+            admin_count = self.mongo.db.users.count_documents({"is_admin": 1, "is_active": True})
             
             # Recent registrations (last 30 days)
             thirty_days_ago = datetime.utcnow() - timedelta(days=30)
@@ -198,7 +198,8 @@ class AdminService:
                     "email": user.get("email"),
                     "username": user.get("username"),
                     "name": user.get("name"),
-                    "role": user.get("role", "user"),
+                    "role": "admin" if user.get("is_admin") == 1 else "user",
+                    "is_admin": user.get("is_admin", 0),
                     "is_active": user.get("is_active", True),
                     "created_at": user.get("created_at").isoformat() if user.get("created_at") else None,
                     "last_login": user.get("last_login").isoformat() if user.get("last_login") else None,
@@ -215,15 +216,15 @@ class AdminService:
         except Exception as e:
             raise Exception(f"Error getting users: {str(e)}")
     
-    def update_user_role(self, user_id, new_role):
-        """Update user role."""
+    def update_user_role(self, user_id, new_is_admin):
+        """Update user admin status."""
         try:
-            if new_role not in ["admin", "user"]:
-                raise ValueError("Invalid role. Must be 'admin' or 'user'")
+            if new_is_admin not in [0, 1]:
+                raise ValueError("Invalid value. is_admin must be 0 or 1")
             
             result = self.mongo.db.users.update_one(
                 {"_id": ObjectId(user_id)},
-                {"$set": {"role": new_role}}
+                {"$set": {"is_admin": new_is_admin}}
             )
             
             if result.modified_count == 0:

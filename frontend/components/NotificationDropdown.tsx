@@ -46,6 +46,9 @@ export default function NotificationDropdown({
   useEffect(() => {
     if (user) {
       fetchUnreadCount();
+      // Poll for new notifications every 30 seconds
+      const interval = setInterval(fetchUnreadCount, 30000);
+      return () => clearInterval(interval);
     }
   }, [user]);
 
@@ -59,7 +62,7 @@ export default function NotificationDropdown({
     try {
       const response = await api.get('/notifications/unread-count');
       if (response.data.success) {
-        setUnreadCount(response.data.count);
+        setUnreadCount(response.data.unread_count ?? response.data.count ?? 0);
       }
     } catch (error) {
       console.error('Error fetching unread count:', error);
