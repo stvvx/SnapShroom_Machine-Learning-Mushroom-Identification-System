@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { View, TouchableOpacity, Text, Modal, StyleSheet, ScrollView, Animated } from 'react-native';
+import { View, TouchableOpacity, Text, Modal, StyleSheet, ScrollView, Animated, useWindowDimensions, Platform } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { useAuth } from '@/contexts/AuthContext';
@@ -14,7 +14,13 @@ export default function HamburgerMenu({ onAdminNavigate, currentSection }: Hambu
   const router = useRouter();
   const { user, logout } = useAuth();
   const isAdmin = user?.role === 'admin';
-  const slideAnim = useRef(new Animated.Value(-300)).current;
+  const { width } = useWindowDimensions();
+  const isWeb = width > 768;
+
+  // Fixed px width: 280 on mobile, 300 on web
+  const MENU_WIDTH = isWeb ? 300 : 280;
+
+  const slideAnim = useRef(new Animated.Value(-MENU_WIDTH)).current;
 
   useEffect(() => {
     if (menuOpen) {
@@ -26,7 +32,7 @@ export default function HamburgerMenu({ onAdminNavigate, currentSection }: Hambu
       }).start();
     } else {
       Animated.timing(slideAnim, {
-        toValue: -300,
+        toValue: -MENU_WIDTH,
         duration: 250,
         useNativeDriver: true,
       }).start();
@@ -36,21 +42,16 @@ export default function HamburgerMenu({ onAdminNavigate, currentSection }: Hambu
   const handleNavigate = (item: any) => {
     setMenuOpen(false);
     if (item.section) {
-      // Always navigate to admin dashboard with section
       if (onAdminNavigate) {
-        // Already on admin page, just change section
         onAdminNavigate(item.section);
       } else {
-        // Navigate to admin page (will default to section)
         router.push('/(tabs)/admin' as any);
       }
     } else if (item.route) {
-      // Navigate to a different route
       router.push(item.route as any);
     }
   };
 
-  // Admin menu items
   const adminMenuItems = [
     { label: 'Home', icon: 'home', section: 'home', description: 'Dashboard & Quick Actions' },
     { label: 'User Management', icon: 'people', section: 'users', description: 'Manage users & roles' },
@@ -61,7 +62,6 @@ export default function HamburgerMenu({ onAdminNavigate, currentSection }: Hambu
     { label: 'Profile', icon: 'person', route: '/(tabs)/profile' },
   ];
 
-  // Regular user menu items
   const userMenuItems = [
     { label: 'Home', icon: 'home', route: '/(tabs)/' },
     { label: 'Capture', icon: 'camera', route: '/(tabs)/camera' },
@@ -93,10 +93,11 @@ export default function HamburgerMenu({ onAdminNavigate, currentSection }: Hambu
         onRequestClose={() => setMenuOpen(false)}
       >
         <View style={styles.modalOverlay}>
-          <Animated.View 
+          <Animated.View
             style={[
               styles.menuContainer,
               {
+                width: MENU_WIDTH,
                 transform: [{ translateX: slideAnim }],
               },
             ]}
@@ -113,10 +114,13 @@ export default function HamburgerMenu({ onAdminNavigate, currentSection }: Hambu
             <Text style={styles.menuTitle}>SnapShroom</Text>
 
             {/* Menu Items */}
-            <ScrollView style={styles.menuItems}>
+            <ScrollView
+              style={styles.menuItems}
+              showsVerticalScrollIndicator={false}
+            >
               {menuItems.map((item, index) => {
                 const isActive = currentSection === (item as any).section;
-                
+
                 return (
                   <TouchableOpacity
                     key={(item as any).section || (item as any).route || index}
@@ -126,10 +130,10 @@ export default function HamburgerMenu({ onAdminNavigate, currentSection }: Hambu
                     ]}
                     onPress={() => handleNavigate(item)}
                   >
-                    <Ionicons 
-                      name={item.icon as any} 
-                      size={24} 
-                      color={'#E6F4FE'} 
+                    <Ionicons
+                      name={item.icon as any}
+                      size={24}
+                      color={'#E6F4FE'}
                     />
                     <View style={styles.menuItemContent}>
                       <Text style={[
@@ -201,7 +205,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
   },
   menuContainer: {
-    width: '35%',
+    // width set dynamically above
     height: '100%',
     backgroundColor: '#2D3E2D',
     paddingTop: 50,
@@ -220,11 +224,14 @@ const styles = StyleSheet.create({
   },
   menuItems: {
     flex: 1,
+    // Hide scrollbar on web via platform check
+    ...(Platform.OS === 'web' ? ({ scrollbarWidth: 'none' } as any) : {}),
   },
   menuItem: {
     flexDirection: 'row',
     alignItems: 'center',
     paddingVertical: 16,
+    paddingHorizontal: 4,
     borderBottomWidth: 1,
     borderBottomColor: '#3D4E3D',
     position: 'relative',
@@ -237,11 +244,13 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#E6F4FE',
     fontWeight: '500',
+    flexShrink: 1,
   },
   menuItemDescription: {
     fontSize: 12,
     color: 'rgba(230, 244, 254, 0.6)',
     marginTop: 2,
+    flexShrink: 1,
   },
   activeMenuItem: {
     backgroundColor: 'rgba(18, 58, 10, 0)',
@@ -258,6 +267,7 @@ const styles = StyleSheet.create({
     borderRadius: 4,
     backgroundColor: '#dad018',
     marginLeft: 8,
+    flexShrink: 0,
   },
   divider: {
     height: 1,
