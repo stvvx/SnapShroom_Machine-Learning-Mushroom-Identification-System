@@ -9,6 +9,7 @@ import {
   ActivityIndicator,
   RefreshControl,
   Alert,
+  Platform,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -35,12 +36,15 @@ interface ScanRecord {
   success: boolean;
 }
 
+const isWeb = Platform.OS === 'web';
+
 export default function HistoryScreen() {
   const router = useRouter();
   const [scans, setScans] = useState<ScanRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [activeFilter, setActiveFilter] = useState<'all' | 'detected' | 'edible' | 'poisonous'>('all');
 
   useEffect(() => {
     fetchScanHistory();
@@ -51,7 +55,7 @@ export default function HistoryScreen() {
       setLoading(true);
       setError(null);
 
-      const response = await fetch(`${API_URL}/api/toxicity/scans/history?limit=100`, {
+      const response = await fetch(`${API_URL}/api/toxicity/scans/history?limit=10000`, {
         headers: {
           'Content-Type': 'application/json',
         },
@@ -78,19 +82,29 @@ export default function HistoryScreen() {
     fetchScanHistory();
   };
 
+  const isDangerous = (edibility: string | null) => {
+    if (!edibility) return false;
+    const lower = edibility.toLowerCase();
+    return lower.includes('poison') || lower.includes('toxic') || lower.includes('deadly') || lower.includes('dangerous');
+  };
+
+  const isEdible = (edibility: string | null) => {
+    if (!edibility) return false;
+    const lower = edibility.toLowerCase();
+    return lower.includes('safe') || lower.includes('edible');
+  };
+
   const getEdibilityColor = (edibility: string | null) => {
     if (!edibility) return '#999';
-    const lower = edibility.toLowerCase();
-    if (lower.includes('safe') || lower.includes('edible')) return '#4CAF50';
-    if (lower.includes('poison') || lower.includes('toxic') || lower.includes('deadly')) return '#D32F2F';
+    if (isEdible(edibility)) return '#4CAF50';
+    if (isDangerous(edibility)) return '#D32F2F';
     return '#FF9800';
   };
 
   const getEdibilityIcon = (edibility: string | null) => {
     if (!edibility) return 'help-circle';
-    const lower = edibility.toLowerCase();
-    if (lower.includes('safe') || lower.includes('edible')) return 'checkmark-circle';
-    if (lower.includes('poison') || lower.includes('toxic') || lower.includes('deadly')) return 'alert-circle';
+    if (isEdible(edibility)) return 'checkmark-circle';
+    if (isDangerous(edibility)) return 'alert-circle';
     return 'warning';
   };
 
@@ -111,6 +125,16 @@ export default function HistoryScreen() {
     return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
   };
 
+  const getFilteredScans = () => {
+    switch (activeFilter) {
+      case 'detected': return scans.filter(s => s.mushroom_detected);
+      case 'edible': return scans.filter(s => isEdible(s.edibility));
+      case 'poisonous': return scans.filter(s => isDangerous(s.edibility));
+      default: return scans;
+    }
+  };
+
+  // ── MOBILE card renderer ──────────────────────────────────────────────────
   const renderScanCard = (scan: ScanRecord) => {
     const edibilityColor = getEdibilityColor(scan.edibility);
     const edibilityIcon = getEdibilityIcon(scan.edibility);
@@ -131,35 +155,25 @@ export default function HistoryScreen() {
           }
         }}
       >
-        {/* Image */}
         <View style={styles.imageContainer}>
           {scan.image_url ? (
-            <Image
-              source={{ uri: scan.image_url }}
-              style={styles.scanImage}
-              resizeMode="cover"
-            />
+            <Image source={{ uri: scan.image_url }} style={styles.scanImage} resizeMode="cover" />
           ) : (
             <View style={[styles.scanImage, styles.noImagePlaceholder]}>
               <Ionicons name="image-outline" size={40} color="#CCC" />
             </View>
           )}
-          
-          {/* Detection Badge */}
           <View style={[styles.detectionBadge, { backgroundColor: scan.mushroom_detected ? '#4CAF50' : '#D32F2F' }]}>
             <Ionicons name={scan.mushroom_detected ? 'checkmark' : 'close'} size={14} color="#FFF" />
           </View>
         </View>
 
-        {/* Info */}
         <View style={styles.scanInfo}>
           <View style={styles.scanHeader}>
             <ThemedText style={styles.mushroomName}>
               {scan.mushroom_type || 'Unknown Mushroom'}
             </ThemedText>
-            <ThemedText style={styles.scanDate}>
-              {formatDate(scan.created_at)}
-            </ThemedText>
+            <ThemedText style={styles.scanDate}>{formatDate(scan.created_at)}</ThemedText>
           </View>
 
           {scan.mushroom_detected && scan.classification_confidence !== null && (
@@ -191,62 +205,258 @@ export default function HistoryScreen() {
     );
   };
 
+  // ── WEB grid card renderer ─────────────────────────────────────────────────
+  const renderWebCard = (scan: ScanRecord) => {
+    const edibilityColor = getEdibilityColor(scan.edibility);
+    const edibilityIcon = getEdibilityIcon(scan.edibility);
+
+    return (
+      <TouchableOpacity
+        key={scan._id}
+        style={webStyles.gridCard}
+        onPress={() => {
+          if (scan.mushroom_type) {
+            Alert.alert(
+              scan.mushroom_type,
+              `Confidence: ${((scan.classification_confidence || 0) * 100).toFixed(1)}%\n` +
+              `Edibility: ${scan.edibility || 'Unknown'}\n` +
+              `Location: ${scan.location?.region || 'Unknown'}`,
+              [{ text: 'OK' }]
+            );
+          }
+        }}
+      >
+        {/* Square image */}
+        <View style={webStyles.cardImageWrap}>
+          {scan.image_url ? (
+            <Image source={{ uri: scan.image_url }} style={webStyles.cardImage} resizeMode="cover" />
+          ) : (
+            <View style={[webStyles.cardImage, webStyles.cardImagePlaceholder]}>
+              <Ionicons name="image-outline" size={36} color="#CCC" />
+            </View>
+          )}
+          {/* Detection pill */}
+          <View style={[webStyles.detectionPill, { backgroundColor: scan.mushroom_detected ? '#4CAF50' : '#D32F2F' }]}>
+            <Ionicons name={scan.mushroom_detected ? 'checkmark' : 'close'} size={11} color="#FFF" />
+            <Text style={webStyles.detectionPillText}>{scan.mushroom_detected ? 'Detected' : 'Not Detected'}</Text>
+          </View>
+        </View>
+
+        {/* Card body */}
+        <View style={webStyles.cardBody}>
+          <Text style={webStyles.cardTitle} numberOfLines={1}>
+            {scan.mushroom_type || 'Unknown Mushroom'}
+          </Text>
+          <Text style={webStyles.cardDate}>{formatDate(scan.created_at)}</Text>
+
+          <View style={webStyles.cardDivider} />
+
+          <View style={webStyles.cardRow}>
+            <Ionicons name={edibilityIcon} size={14} color={edibilityColor} />
+            <Text style={[webStyles.cardEdibility, { color: edibilityColor }]}>
+              {scan.edibility ? scan.edibility.charAt(0).toUpperCase() + scan.edibility.slice(1) : 'Unknown'}
+            </Text>
+          </View>
+
+          {scan.classification_confidence !== null && (
+            <View style={webStyles.cardRow}>
+              <Ionicons name="analytics" size={14} color="#888" />
+              <Text style={webStyles.cardMeta}>
+                {(scan.classification_confidence * 100).toFixed(1)}% confidence
+              </Text>
+            </View>
+          )}
+
+          {scan.location?.region && (
+            <View style={webStyles.cardRow}>
+              <Ionicons name="location" size={14} color="#aaa" />
+              <Text style={webStyles.cardMeta} numberOfLines={1}>
+                {scan.location.province || scan.location.region}
+              </Text>
+            </View>
+          )}
+        </View>
+      </TouchableOpacity>
+    );
+  };
+
+  // ── Shared loading / error / empty states ──────────────────────────────────
+  const renderLoading = () => (
+    <View style={styles.centerContent}>
+      <ActivityIndicator size="large" color="#7BA05B" />
+      <ThemedText style={styles.loadingText}>Loading your scan history...</ThemedText>
+    </View>
+  );
+
+  const renderError = () => (
+    <View style={styles.centerContent}>
+      <Ionicons name="alert-circle" size={48} color="#D32F2F" />
+      <ThemedText style={styles.errorText}>{error}</ThemedText>
+      <TouchableOpacity style={styles.retryButton} onPress={fetchScanHistory}>
+        <ThemedText style={styles.retryButtonText}>Retry</ThemedText>
+      </TouchableOpacity>
+    </View>
+  );
+
+  const renderEmpty = () => (
+    <View style={styles.centerContent}>
+      <Ionicons name="camera-outline" size={64} color="#CCC" />
+      <ThemedText style={styles.emptyTitle}>No Scans Yet</ThemedText>
+      <ThemedText style={styles.emptyText}>
+        Start scanning mushrooms to see your history here!
+      </ThemedText>
+      <TouchableOpacity style={styles.scanButton} onPress={() => router.push('/(tabs)/camera')}>
+        <Ionicons name="camera" size={20} color="#FFF" />
+        <ThemedText style={styles.scanButtonText}>Scan Mushroom</ThemedText>
+      </TouchableOpacity>
+    </View>
+  );
+
+  // ── WEB LAYOUT ─────────────────────────────────────────────────────────────
+  if (isWeb) {
+    const filtered = getFilteredScans();
+
+    const filterOptions: { key: typeof activeFilter; label: string; icon: string }[] = [
+      { key: 'all', label: 'All Scans', icon: 'list' },
+      { key: 'detected', label: 'Detected', icon: 'checkmark-circle' },
+      { key: 'edible', label: 'Edible', icon: 'leaf' },
+      { key: 'poisonous', label: 'Poisonous', icon: 'warning' },
+    ];
+
+    return (
+      <ThemedView style={webStyles.pageWrapper}>
+        {/* ── TOP HEADER ─────────────────────────────────────────────────── */}
+        <View style={webStyles.topHeader}>
+          <View style={webStyles.headerLeft}>
+            <HamburgerMenu />
+            <NotificationDropdown iconColor="#7BA05B" />
+            <Text style={webStyles.headerTitle}>Scan History</Text>
+          </View>
+          <TouchableOpacity style={webStyles.refreshBtn} onPress={handleRefresh} disabled={loading}>
+            <Ionicons name="refresh" size={20} color="#7BA05B" />
+            <Text style={webStyles.refreshBtnText}>Refresh</Text>
+          </TouchableOpacity>
+        </View>
+
+        <View style={webStyles.bodyRow}>
+          {/* ── LEFT SIDEBAR ───────────────────────────────────────────────── */}
+          <View style={webStyles.sidebar}>
+            {/* Stats */}
+            <View style={webStyles.sidebarSection}>
+              <Text style={webStyles.sidebarHeading}>Overview</Text>
+              <View style={webStyles.statBlock}>
+                <Text style={webStyles.statBigNumber}>{scans.length}</Text>
+                <Text style={webStyles.statBlockLabel}>Total Scans</Text>
+              </View>
+              <View style={webStyles.statRow}>
+                <View style={[webStyles.miniStat, { borderColor: '#4CAF50' }]}>
+                  <Text style={[webStyles.miniStatNum, { color: '#4CAF50' }]}>
+                    {scans.filter(s => s.mushroom_detected).length}
+                  </Text>
+                  <Text style={webStyles.miniStatLabel}>Detected</Text>
+                </View>
+                <View style={[webStyles.miniStat, { borderColor: '#7BA05B' }]}>
+                  <Text style={[webStyles.miniStatNum, { color: '#7BA05B' }]}>
+                    {scans.filter(s => isEdible(s.edibility)).length}
+                  </Text>
+                  <Text style={webStyles.miniStatLabel}>Edible</Text>
+                </View>
+                <View style={[webStyles.miniStat, { borderColor: '#D32F2F' }]}>
+                  <Text style={[webStyles.miniStatNum, { color: '#D32F2F' }]}>
+                    {scans.filter(s => isDangerous(s.edibility)).length}
+                  </Text>
+                  <Text style={webStyles.miniStatLabel}>Toxic</Text>
+                </View>
+              </View>
+            </View>
+
+            {/* Filters */}
+            <View style={webStyles.sidebarSection}>
+              <Text style={webStyles.sidebarHeading}>Filter</Text>
+              {filterOptions.map(f => (
+                <TouchableOpacity
+                  key={f.key}
+                  style={[webStyles.filterBtn, activeFilter === f.key && webStyles.filterBtnActive]}
+                  onPress={() => setActiveFilter(f.key)}
+                >
+                  <Ionicons
+                    name={f.icon as any}
+                    size={16}
+                    color={activeFilter === f.key ? '#fff' : '#7BA05B'}
+                  />
+                  <Text style={[webStyles.filterBtnText, activeFilter === f.key && webStyles.filterBtnTextActive]}>
+                    {f.label}
+                  </Text>
+                  <View style={[webStyles.filterCount, activeFilter === f.key && webStyles.filterCountActive]}>
+                    <Text style={[webStyles.filterCountText, activeFilter === f.key && { color: '#7BA05B' }]}>
+                      {f.key === 'all' ? scans.length
+                        : f.key === 'detected' ? scans.filter(s => s.mushroom_detected).length
+                        : f.key === 'edible' ? scans.filter(s => isEdible(s.edibility)).length
+                        : scans.filter(s => isDangerous(s.edibility)).length}
+                    </Text>
+                  </View>
+                </TouchableOpacity>
+              ))}
+            </View>
+
+            {/* CTA */}
+            <TouchableOpacity style={webStyles.sidebarScanBtn} onPress={() => router.push('/(tabs)/camera')}>
+              <Ionicons name="camera" size={18} color="#fff" />
+              <Text style={webStyles.sidebarScanBtnText}>New Scan</Text>
+            </TouchableOpacity>
+          </View>
+
+          {/* ── MAIN CONTENT ───────────────────────────────────────────────── */}
+          <ScrollView style={webStyles.mainArea} contentContainerStyle={webStyles.mainContent}>
+            {loading && !refreshing && renderLoading()}
+            {error && !loading && renderError()}
+            {!loading && !error && scans.length === 0 && renderEmpty()}
+
+            {!loading && !error && scans.length > 0 && (
+              <>
+                <View style={webStyles.contentHeader}>
+                  <Text style={webStyles.contentTitle}>
+                    {filtered.length} {filtered.length === 1 ? 'scan' : 'scans'}
+                    {activeFilter !== 'all' ? ` · ${filterOptions.find(f => f.key === activeFilter)?.label}` : ''}
+                  </Text>
+                </View>
+
+                {filtered.length === 0 ? (
+                  <View style={webStyles.emptyFilter}>
+                    <Ionicons name="search-outline" size={48} color="#CCC" />
+                    <Text style={webStyles.emptyFilterText}>No scans match this filter.</Text>
+                  </View>
+                ) : (
+                  <View style={webStyles.grid}>
+                    {filtered.map(scan => renderWebCard(scan))}
+                  </View>
+                )}
+              </>
+            )}
+          </ScrollView>
+        </View>
+      </ThemedView>
+    );
+  }
+
+  // ── MOBILE LAYOUT (untouched) ───────────────────────────────────────────────
   return (
     <ThemedView style={styles.container}>
-      {/* Header */}
       <View style={styles.header}>
         <View style={styles.headerLeft}>
           <HamburgerMenu />
           <NotificationDropdown iconColor="#7BA05B" />
         </View>
         <ThemedText style={styles.headerTitle}>Scan History</ThemedText>
-        <TouchableOpacity
-          style={styles.refreshButton}
-          onPress={handleRefresh}
-          disabled={loading}
-        >
+        <TouchableOpacity style={styles.refreshButton} onPress={handleRefresh} disabled={loading}>
           <Ionicons name="refresh" size={24} color="#7BA05B" />
         </TouchableOpacity>
       </View>
 
-      {/* Loading State */}
-      {loading && !refreshing && (
-        <View style={styles.centerContent}>
-          <ActivityIndicator size="large" color="#7BA05B" />
-          <ThemedText style={styles.loadingText}>Loading your scan history...</ThemedText>
-        </View>
-      )}
+      {loading && !refreshing && renderLoading()}
+      {error && !loading && renderError()}
+      {!loading && !error && scans.length === 0 && renderEmpty()}
 
-      {/* Error State */}
-      {error && !loading && (
-        <View style={styles.centerContent}>
-          <Ionicons name="alert-circle" size={48} color="#D32F2F" />
-          <ThemedText style={styles.errorText}>{error}</ThemedText>
-          <TouchableOpacity style={styles.retryButton} onPress={fetchScanHistory}>
-            <ThemedText style={styles.retryButtonText}>Retry</ThemedText>
-          </TouchableOpacity>
-        </View>
-      )}
-
-      {/* Empty State */}
-      {!loading && !error && scans.length === 0 && (
-        <View style={styles.centerContent}>
-          <Ionicons name="camera-outline" size={64} color="#CCC" />
-          <ThemedText style={styles.emptyTitle}>No Scans Yet</ThemedText>
-          <ThemedText style={styles.emptyText}>
-            Start scanning mushrooms to see your history here!
-          </ThemedText>
-          <TouchableOpacity
-            style={styles.scanButton}
-            onPress={() => router.push('/(tabs)/camera')}
-          >
-            <Ionicons name="camera" size={20} color="#FFF" />
-            <ThemedText style={styles.scanButtonText}>Scan Mushroom</ThemedText>
-          </TouchableOpacity>
-        </View>
-      )}
-
-      {/* Scan List */}
       {!loading && !error && scans.length > 0 && (
         <ScrollView
           style={styles.scrollView}
@@ -255,7 +465,6 @@ export default function HistoryScreen() {
             <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} colors={['#7BA05B']} />
           }
         >
-          {/* Stats Card */}
           <View style={styles.statsCard}>
             <View style={styles.statItem}>
               <ThemedText style={styles.statNumber}>{scans.length}</ThemedText>
@@ -263,21 +472,18 @@ export default function HistoryScreen() {
             </View>
             <View style={styles.statDivider} />
             <View style={styles.statItem}>
-              <ThemedText style={styles.statNumber}>
-                {scans.filter(s => s.mushroom_detected).length}
-              </ThemedText>
+              <ThemedText style={styles.statNumber}>{scans.filter(s => s.mushroom_detected).length}</ThemedText>
               <ThemedText style={styles.statLabel}>Detected</ThemedText>
             </View>
             <View style={styles.statDivider} />
             <View style={styles.statItem}>
               <ThemedText style={styles.statNumber}>
-                {scans.filter(s => s.edibility && s.edibility.toLowerCase().includes('safe')).length}
+                {scans.filter(s => isEdible(s.edibility)).length}
               </ThemedText>
               <ThemedText style={styles.statLabel}>Edible</ThemedText>
             </View>
           </View>
 
-          {/* Scan Cards */}
           <View style={styles.scanList}>
             {scans.map(scan => renderScanCard(scan))}
           </View>
@@ -287,6 +493,284 @@ export default function HistoryScreen() {
   );
 }
 
+// ── WEB STYLES ─────────────────────────────────────────────────────────────────
+const webStyles = StyleSheet.create({
+  pageWrapper: {
+    flex: 1,
+    backgroundColor: '#F2F4F0',
+    height: '100%' as any,
+  },
+  topHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 28,
+    paddingVertical: 14,
+    backgroundColor: '#fff',
+    borderBottomWidth: 1,
+    borderBottomColor: '#E8E4DE',
+  },
+  headerLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  headerTitle: {
+    fontSize: 22,
+    fontWeight: '700',
+    color: '#2D3E2D',
+    marginLeft: 4,
+  },
+  refreshBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 8,
+    borderWidth: 1.5,
+    borderColor: '#7BA05B',
+  },
+  refreshBtnText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#7BA05B',
+  },
+  bodyRow: {
+    flex: 1,
+    flexDirection: 'row',
+    height: '100%' as any,
+    overflow: 'hidden' as any,
+  },
+  // ── Sidebar ────────────────────────────────────────────────────────────────
+  sidebar: {
+    width: 260,
+    backgroundColor: '#fff',
+    borderRightWidth: 1,
+    borderRightColor: '#E8E4DE',
+    padding: 20,
+    gap: 8,
+    position: 'sticky' as any,
+    top: 0,
+    alignSelf: 'flex-start',
+    height: '100vh' as any,
+    overflowY: 'auto' as any,
+  },
+  sidebarSection: {
+    marginBottom: 24,
+  },
+  sidebarHeading: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#aaa',
+    letterSpacing: 1.2,
+    textTransform: 'uppercase' as any,
+    marginBottom: 12,
+  },
+  statBlock: {
+    backgroundColor: '#F5F3EF',
+    borderRadius: 12,
+    padding: 16,
+    alignItems: 'center',
+    marginBottom: 10,
+  },
+  statBigNumber: {
+    fontSize: 42,
+    fontWeight: '800',
+    color: '#7BA05B',
+    lineHeight: 48,
+  },
+  statBlockLabel: {
+    fontSize: 12,
+    color: '#999',
+    marginTop: 2,
+  },
+  statRow: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  miniStat: {
+    flex: 1,
+    borderWidth: 1.5,
+    borderRadius: 10,
+    paddingVertical: 10,
+    alignItems: 'center',
+    backgroundColor: '#FAFAF8',
+  },
+  miniStatNum: {
+    fontSize: 20,
+    fontWeight: '700',
+  },
+  miniStatLabel: {
+    fontSize: 10,
+    color: '#aaa',
+    marginTop: 2,
+  },
+  filterBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    borderRadius: 10,
+    marginBottom: 4,
+    backgroundColor: 'transparent',
+  },
+  filterBtnActive: {
+    backgroundColor: '#7BA05B',
+  },
+  filterBtnText: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: '#444',
+    flex: 1,
+  },
+  filterBtnTextActive: {
+    color: '#fff',
+    fontWeight: '600',
+  },
+  filterCount: {
+    backgroundColor: '#F0EDE8',
+    borderRadius: 20,
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+  },
+  filterCountActive: {
+    backgroundColor: '#fff',
+  },
+  filterCountText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#888',
+  },
+  sidebarScanBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    backgroundColor: '#7BA05B',
+    borderRadius: 12,
+    paddingVertical: 14,
+    marginTop: 8,
+  },
+  sidebarScanBtnText: {
+    color: '#fff',
+    fontSize: 15,
+    fontWeight: '700',
+  },
+  // ── Main content area ──────────────────────────────────────────────────────
+  mainArea: {
+    flex: 1,
+    height: '100vh' as any,
+  },
+  mainContent: {
+    padding: 28,
+    paddingTop: 20,
+  },
+  contentHeader: {
+    marginBottom: 18,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  contentTitle: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#888',
+  },
+  emptyFilter: {
+    alignItems: 'center',
+    paddingTop: 60,
+    gap: 12,
+  },
+  emptyFilterText: {
+    fontSize: 15,
+    color: '#bbb',
+  },
+  // ── Grid ──────────────────────────────────────────────────────────────────
+  grid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 18,
+  },
+  gridCard: {
+    width: 220,
+    backgroundColor: '#fff',
+    borderRadius: 14,
+    overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: '#EAE8E3',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.07,
+    shadowRadius: 8,
+    elevation: 3,
+  },
+  cardImageWrap: {
+    position: 'relative',
+  },
+  cardImage: {
+    width: '100%',
+    aspectRatio: 1,
+    backgroundColor: '#F5F3EF',
+  },
+  cardImagePlaceholder: {
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  detectionPill: {
+    position: 'absolute',
+    top: 10,
+    left: 10,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 20,
+  },
+  detectionPillText: {
+    color: '#fff',
+    fontSize: 10,
+    fontWeight: '700',
+  },
+  cardBody: {
+    padding: 14,
+    gap: 4,
+  },
+  cardTitle: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#2D3E2D',
+  },
+  cardDate: {
+    fontSize: 11,
+    color: '#bbb',
+    marginBottom: 2,
+  },
+  cardDivider: {
+    height: 1,
+    backgroundColor: '#F0EDE8',
+    marginVertical: 8,
+  },
+  cardRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginBottom: 3,
+  },
+  cardEdibility: {
+    fontSize: 13,
+    fontWeight: '600',
+  },
+  cardMeta: {
+    fontSize: 12,
+    color: '#888',
+    flex: 1,
+  },
+});
+
+// ── MOBILE STYLES (untouched) ──────────────────────────────────────────────────
 const styles = StyleSheet.create({
   container: {
     flex: 1,
