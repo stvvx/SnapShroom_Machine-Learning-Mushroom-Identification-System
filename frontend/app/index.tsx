@@ -1,5 +1,5 @@
 import { Image } from 'expo-image';
-import { TouchableOpacity, StyleSheet, Alert, ScrollView, View, Dimensions, Animated, Linking, Platform } from 'react-native';
+import { TouchableOpacity, StyleSheet, Alert, ScrollView, View, Dimensions, Animated, Linking } from 'react-native';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { useRouter } from 'expo-router';
@@ -52,64 +52,6 @@ const SPACING = {
   xxl: 28,
   xxxl: 40,
 };
-
-// Mushroom resource links
-const MUSHROOM_LINKS = [
-  {
-    id: '1',
-    title: 'Wikipedia: Mushroom',
-    description: 'Comprehensive overview of mushroom biology, types, and uses.',
-    url: 'https://en.wikipedia.org/wiki/Mushroom',
-    icon: 'book-outline' as const,
-    color: '#6366F1',
-    bgColor: '#EEF2FF',
-  },
-  {
-    id: '2',
-    title: 'Mushroom Expert',
-    description: 'One of the most detailed mushroom identification resources online.',
-    url: 'https://www.mushroomexpert.com/',
-    icon: 'search-outline' as const,
-    color: '#059669',
-    bgColor: '#ECFDF5',
-  },
-  {
-    id: '3',
-    title: 'iNaturalist Fungi',
-    description: 'Community-powered platform for identifying fungi with photos.',
-    url: 'https://www.inaturalist.org/taxa/47170-Fungi',
-    icon: 'people-outline' as const,
-    color: '#D97706',
-    bgColor: '#FFFBEB',
-  },
-  {
-    id: '4',
-    title: 'North American Mycological',
-    description: 'Hub for mycological clubs, forays, and educational resources.',
-    url: 'https://namyco.org/',
-    icon: 'globe-outline' as const,
-    color: '#DC2626',
-    bgColor: '#FEF2F2',
-  },
-  {
-    id: '5',
-    title: 'First Nature: Fungi',
-    description: 'Photo-rich guide to fungi identification across the UK & Europe.',
-    url: 'https://www.first-nature.com/fungi/',
-    icon: 'leaf-outline' as const,
-    color: '#7C3AED',
-    bgColor: '#F5F3FF',
-  },
-  {
-    id: '6',
-    title: 'MycoBank Database',
-    description: 'Scientific database of fungal nomenclature and taxonomy.',
-    url: 'https://www.mycobank.org/',
-    icon: 'flask-outline' as const,
-    color: '#0891B2',
-    bgColor: '#ECFEFF',
-  },
-];
 
 // Hero carousel images
 const HERO_SLIDES = [
@@ -1444,7 +1386,7 @@ export default function LandingPage() {
 
               <TouchableOpacity style={styles.secondaryButton} onPress={handleInfoPress}>
                 <ThemedText style={styles.secondaryButtonText}>About Us</ThemedText>
-                <Ionicons name="information-circle-outline" size={16} color={COLORS.white} />
+                <Ionicons name="arrow-forward" size={16} color={COLORS.white} />
               </TouchableOpacity>
             </View>
 
@@ -1490,39 +1432,93 @@ export default function LandingPage() {
         <View style={styles.resourcesSection}>
           <View style={styles.sectionHeader}>
             <View style={styles.sectionBadge}>
-              <Ionicons name="link-outline" size={14} color={COLORS.forest} style={{ marginRight: 6 }} />
+              <Ionicons name="library-outline" size={14} color={COLORS.forest} style={{ marginRight: 6 }} />
               <ThemedText style={styles.sectionLabel}>RESOURCES</ThemedText>
             </View>
-            <ThemedText style={styles.sectionTitle}>Learn About Mushrooms</ThemedText>
+            <ThemedText style={styles.sectionTitle}>Learn More About Mushrooms</ThemedText>
             <ThemedText style={styles.sectionDescription}>
-              Curated links from trusted sources around the web
+              Explore trusted sources to deepen your mycology knowledge
             </ThemedText>
           </View>
 
           <View style={styles.resourcesGrid}>
-            {MUSHROOM_LINKS.map((link) => (
-              <TouchableOpacity
-                key={link.id}
-                style={styles.resourceCard}
-                activeOpacity={0.8}
-                onPress={() => {
-                  if (Platform.OS === 'web') {
-                    window.open(link.url, '_blank');
-                  } else {
-                    Linking.openURL(link.url);
-                  }
-                }}
-              >
-                <View style={[styles.resourceIconWrap, { backgroundColor: link.bgColor }]}>
-                  <Ionicons name={link.icon} size={22} color={link.color} />
-                </View>
-                <View style={styles.resourceTextWrap}>
-                  <ThemedText style={styles.resourceTitle} numberOfLines={1}>{link.title}</ThemedText>
-                  <ThemedText style={styles.resourceDesc} numberOfLines={2}>{link.description}</ThemedText>
-                </View>
-                <Ionicons name="open-outline" size={16} color={COLORS.stone} style={{ marginLeft: 4 }} />
-              </TouchableOpacity>
-            ))}
+            <TouchableOpacity
+              style={styles.resourceCard}
+              onPress={() => Linking.openURL('https://www.mushroomexpert.com/')}
+            >
+              <View style={[styles.resourceIcon, { backgroundColor: '#E8F5E9' }]}>
+                <Ionicons name="book" size={24} color="#4CAF50" />
+              </View>
+              <View style={styles.resourceContent}>
+                <ThemedText style={styles.resourceTitle}>MushroomExpert</ThemedText>
+                <ThemedText style={styles.resourceDesc}>Comprehensive identification guides & photos</ThemedText>
+              </View>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.resourceCard}
+              onPress={() => Linking.openURL('https://www.inaturalist.org/taxa/47170-Fungi')}
+            >
+              <View style={[styles.resourceIcon, { backgroundColor: '#FFF3E0' }]}>
+                <Ionicons name="globe" size={24} color="#FF9800" />
+              </View>
+              <View style={styles.resourceContent}>
+                <ThemedText style={styles.resourceTitle}>iNaturalist Fungi</ThemedText>
+                <ThemedText style={styles.resourceDesc}>Community-powered species observations</ThemedText>
+              </View>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.resourceCard}
+              onPress={() => Linking.openURL('https://www.mykoweb.com/')}
+            >
+              <View style={[styles.resourceIcon, { backgroundColor: '#E3F2FD' }]}>
+                <Ionicons name="camera" size={24} color="#2196F3" />
+              </View>
+              <View style={styles.resourceContent}>
+                <ThemedText style={styles.resourceTitle}>MykoWeb</ThemedText>
+                <ThemedText style={styles.resourceDesc}>California fungi photo gallery & info</ThemedText>
+              </View>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.resourceCard}
+              onPress={() => Linking.openURL('https://www.first-nature.com/fungi/')}
+            >
+              <View style={[styles.resourceIcon, { backgroundColor: '#F3E5F5' }]}>
+                <Ionicons name="leaf" size={24} color="#9C27B0" />
+              </View>
+              <View style={styles.resourceContent}>
+                <ThemedText style={styles.resourceTitle}>First Nature</ThemedText>
+                <ThemedText style={styles.resourceDesc}>UK & European fungi identification</ThemedText>
+              </View>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.resourceCard}
+              onPress={() => Linking.openURL('https://www.shroomery.org/')}
+            >
+              <View style={[styles.resourceIcon, { backgroundColor: '#ECEFF1' }]}>
+                <Ionicons name="people" size={24} color="#607D8B" />
+              </View>
+              <View style={styles.resourceContent}>
+                <ThemedText style={styles.resourceTitle}>Shroomery</ThemedText>
+                <ThemedText style={styles.resourceDesc}>Active mycology community & forums</ThemedText>
+              </View>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.resourceCard}
+              onPress={() => Linking.openURL('https://namyco.org/')}
+            >
+              <View style={[styles.resourceIcon, { backgroundColor: '#E8F5E9' }]}>
+                <Ionicons name="school" size={24} color="#388E3C" />
+              </View>
+              <View style={styles.resourceContent}>
+                <ThemedText style={styles.resourceTitle}>NAMA</ThemedText>
+                <ThemedText style={styles.resourceDesc}>North American Mycological Association</ThemedText>
+              </View>
+            </TouchableOpacity>
           </View>
         </View>
 
@@ -1630,7 +1626,19 @@ export default function LandingPage() {
           </View>
         )}
 
-      
+        {/* Safety Notice */}
+        <View style={styles.safetySection}>
+          <View style={styles.safetyCard}>
+            <Ionicons name="warning-outline" size={40} color="#92400E" />
+            <View style={styles.safetyContent}>
+              <ThemedText style={styles.safetyTitle}>Safety First</ThemedText>
+              <ThemedText style={styles.safetyText}>
+                Never consume any mushroom based solely on app identification. Always consult multiple sources and
+                experts before consuming wild mushrooms. This app is for educational purposes only.
+              </ThemedText>
+            </View>
+          </View>
+        </View>
 
         {/* System Status */}
         {isLoggedIn && (

@@ -235,62 +235,58 @@ export const styles = StyleSheet.create({
     backgroundColor: COLORS.cloud,
   },
 
-  // Mushroom Resources Section
+  // Resources Section
   resourcesSection: {
-    paddingVertical: SPACING.xxl,
+    paddingVertical: SPACING.xl,
     paddingHorizontal: SPACING.md,
     backgroundColor: COLORS.cream,
   },
   resourcesGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
     gap: 12,
-    ...(isSmallScreen
-      ? {}
-      : {
-          flexDirection: 'row' as const,
-          flexWrap: 'wrap' as const,
-          justifyContent: 'center' as const,
-        }),
+    justifyContent: 'space-between',
   },
   resourceCard: {
-    flexDirection: 'row' as const,
+    flexDirection: 'column',
     alignItems: 'center',
     backgroundColor: COLORS.white,
     borderRadius: 16,
-    padding: 14,
+    padding: 16,
+    gap: 10,
     borderWidth: 1,
     borderColor: COLORS.cloud,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
+    shadowOpacity: 0.04,
     shadowRadius: 8,
     elevation: 2,
-    ...(isSmallScreen
-      ? {}
-      : {
-          width: '48%' as any,
-        }),
+    width: '48%' as any,
+    minHeight: 140,
   },
-  resourceIconWrap: {
-    width: 44,
-    height: 44,
+  resourceIcon: {
+    width: 48,
+    height: 48,
     borderRadius: 12,
     alignItems: 'center',
     justifyContent: 'center',
-    marginRight: 12,
   },
-  resourceTextWrap: {
+  resourceContent: {
     flex: 1,
-    gap: 2,
+    gap: 4,
+    alignItems: 'center',
   },
   resourceTitle: {
     fontSize: 14,
     fontWeight: '700',
     color: COLORS.charcoal,
+    textAlign: 'center',
   },
   resourceDesc: {
-    fontSize: 12,
+    fontSize: 11,
     color: COLORS.stone,
-    lineHeight: 16,
+    lineHeight: 15,
+    textAlign: 'center',
   },
 
   // Infographics Section
