@@ -9,7 +9,9 @@ import {
   RefreshControl,
   FlatList,
   Dimensions,
+  useWindowDimensions,
   Text,
+  Platform,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
@@ -20,7 +22,6 @@ import {
 } from 'react-native-chart-kit';
 import * as Print from 'expo-print';
 import * as Sharing from 'expo-sharing';
-import * as FileSystem from 'expo-file-system';
 
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
@@ -32,9 +33,6 @@ import {
   buildUsersReport,
   buildOverviewReport,
 } from '@/components/pdf-reports';
-
-const { width } = Dimensions.get('window');
-const CHART_WIDTH = width - 48;
 
 /* ─── Design Tokens ─── */
 const COLORS = {
@@ -56,62 +54,8 @@ const COLORS = {
   textDark:    '#1A2E1A',
   textMid:     '#4A6741',
   textLight:   '#7A9E74',
-  shadow:      'rgba(26,46,26,0.12)',
-};
-
-/* ─── Mushroom SVG Stickers (inline as Unicode + styled) ─── */
-const MushroomSticker = ({
-  variant = 'red',
-  size = 40,
-  style,
-}: {
-  variant?: 'red' | 'brown' | 'white' | 'tiny';
-  size?: number;
-  style?: any;
-}) => {
-  const configs = {
-    red:   { cap: '🍄', bg: 'rgba(201,64,64,0.12)',   border: 'rgba(201,64,64,0.25)' },
-    brown: { cap: '🍄‍🟫', bg: 'rgba(193,123,63,0.12)', border: 'rgba(193,123,63,0.25)' },
-    white: { cap: '🍄', bg: 'rgba(168,197,160,0.15)', border: 'rgba(122,158,116,0.3)' },
-    tiny:  { cap: '🍄', bg: 'rgba(74,103,65,0.1)',    border: 'rgba(74,103,65,0.2)'  },
-  };
-  const cfg = configs[variant];
-  return (
-    <View style={[{
-      width: size, height: size, borderRadius: size / 2,
-      backgroundColor: cfg.bg, borderWidth: 1.5,
-      borderColor: cfg.border, alignItems: 'center',
-      justifyContent: 'center',
-    }, style]}>
-      <Text style={{ fontSize: size * 0.5 }}>{cfg.cap}</Text>
-    </View>
-  );
-};
-
-/* ─── Decorative spore dots ─── */
-const SporeDot = ({ size = 6, color = COLORS.mint, style }: any) => (
-  <View style={[{ width: size, height: size, borderRadius: size / 2, backgroundColor: color, opacity: 0.5 }, style]} />
-);
-
-const chartConfig = {
-  backgroundGradientFrom: '#F8F5EE',
-  backgroundGradientTo:   '#EDE8DD',
-  decimalPlaces: 0,
-  color: (opacity = 1) => `rgba(74,103,65,${opacity})`,
-  labelColor:   () => COLORS.textMid,
-  propsForDots: { r: '4', strokeWidth: '2', stroke: COLORS.moss, fill: COLORS.cream },
-  propsForBackgroundLines: {
-    strokeDasharray: '3 5', stroke: COLORS.spore, strokeWidth: 1,
-  },
-};
-
-const safeBarData = (items: { label: string; value: number }[], max = 5) => {
-  const filtered = items.filter(i => typeof i.value === 'number').slice(0, max);
-  if (filtered.length === 0) return { labels: ['No data'], datasets: [{ data: [0] }] };
-  return {
-    labels: filtered.map(i => (i.label.length > 8 ? i.label.slice(0, 7) + '…' : i.label)),
-    datasets: [{ data: filtered.map(i => i.value) }],
-  };
+  shadow:      'rgba(26,46,26,0.10)',
+  border:      'rgba(74,103,65,0.12)',
 };
 
 /* ─── Types ─── */
@@ -148,52 +92,114 @@ interface User {
 }
 type Section = 'home' | 'users' | 'analytics';
 
-/* ─── Reusable Card ─── */
-const Card = ({ children, style }: { children: React.ReactNode; style?: any }) => (
-  <View style={[s.card, style]}>{children}</View>
-);
+/* ─── Base chart config ─── */
+const chartConfig = {
+  backgroundGradientFrom: COLORS.white,
+  backgroundGradientTo:   COLORS.white,
+  decimalPlaces: 0,
+  color: (opacity = 1) => `rgba(74,103,65,${opacity})`,
+  labelColor:   () => COLORS.textMid,
+  propsForDots: { r: '4', strokeWidth: '2', stroke: COLORS.moss, fill: COLORS.white },
+  propsForBackgroundLines: {
+    strokeDasharray: '4 4',
+    stroke: COLORS.border,
+    strokeWidth: 1,
+  },
+  fillShadowGradientFrom: COLORS.sage,
+  fillShadowGradientTo:   COLORS.white,
+  fillShadowGradientOpacity: 0.15,
+};
 
-/* ─── Section Badge ─── */
-const SectionBadge = ({ label, icon }: { label: string; icon: string }) => (
-  <View style={s.sectionBadge}>
-    <Text style={s.sectionBadgeIcon}>{icon}</Text>
-    <Text style={s.sectionBadgeText}>{label}</Text>
+const mushroomChartConfig = {
+  ...chartConfig,
+  color: (opacity = 1) => `rgba(193,123,63,${opacity})`,
+  fillShadowGradientFrom: COLORS.mushCap,
+  fillShadowGradientOpacity: 0.12,
+};
+
+/* ─── Reusable Components ─── */
+const SectionHeader = ({ title, subtitle, emoji }: { title: string; subtitle?: string; emoji?: string }) => (
+  <View style={s.sectionHeader}>
+    <View style={s.sectionHeaderLeft}>
+      {emoji && <Text style={s.sectionEmoji}>{emoji}</Text>}
+      <View>
+        <Text style={s.sectionTitle}>{title}</Text>
+        {subtitle && <Text style={s.sectionSubtitle}>{subtitle}</Text>}
+      </View>
+    </View>
   </View>
 );
 
-/* ─── Stat Card ─── */
-const StatCard = ({
-  icon,
-  value,
-  label,
-  accent,
-  emoji,
-}: {
-  icon: string;
-  value: string | number;
-  label: string;
-  accent: string;
-  emoji?: string;
+const Card = ({ children, style, title, subtitle }: {
+  children: React.ReactNode; style?: any; title?: string; subtitle?: string;
 }) => (
-  <View style={[s.statCard, { borderTopColor: accent }]}>
-    {emoji && <Text style={s.statEmoji}>{emoji}</Text>}
-    <Text style={[s.statValue, { color: accent }]}>{value}</Text>
-    <Text style={s.statLabel}>{label}</Text>
+  <View style={[s.card, style]}>
+    {(title || subtitle) && (
+      <View style={s.cardHeader}>
+        {title    && <Text style={s.cardTitle}>{title}</Text>}
+        {subtitle && <Text style={s.cardSubtitle}>{subtitle}</Text>}
+      </View>
+    )}
+    {children}
   </View>
 );
 
-/* ─── Export Button ─── */
-const ExportButton = ({ onPress, label, icon = 'document-text' }: {
+const StatTile = ({ emoji, value, label, accentColor, wide = false }: {
+  emoji: string; value: string | number; label: string; accentColor: string; wide?: boolean;
+}) => (
+  <View style={[s.statTile, wide && s.statTileWide]}>
+    <View style={[s.statTileAccent, { backgroundColor: accentColor }]} />
+    <Text style={s.statTileEmoji}>{emoji}</Text>
+    <Text style={[s.statTileValue, { color: accentColor }]}>{value}</Text>
+    <Text style={s.statTileLabel}>{label}</Text>
+  </View>
+);
+
+const InlineStatRow = ({ items }: {
+  items: { emoji: string; value: string | number; label: string; color: string }[];
+}) => (
+  <View style={s.inlineStatRow}>
+    {items.map((item, i) => (
+      <React.Fragment key={i}>
+        {i > 0 && <View style={s.inlineDivider} />}
+        <View style={s.inlineStat}>
+          <Text style={s.inlineStatEmoji}>{item.emoji}</Text>
+          <Text style={[s.inlineStatValue, { color: item.color }]}>{item.value}</Text>
+          <Text style={s.inlineStatLabel}>{item.label}</Text>
+        </View>
+      </React.Fragment>
+    ))}
+  </View>
+);
+
+const RankItem = ({ rank, name, value, valueLabel = '' }: {
+  rank: number; name: string; value: number; valueLabel?: string;
+}) => {
+  const rankColors     = [COLORS.mushCap, COLORS.sage, COLORS.spore];
+  const rankTextColors = [COLORS.white, COLORS.white, COLORS.textMid];
+  const bgColor  = rankColors[rank - 1]     ?? COLORS.parchment;
+  const txtColor = rankTextColors[rank - 1] ?? COLORS.textMid;
+  return (
+    <View style={s.rankItem}>
+      <View style={[s.rankBadge, { backgroundColor: bgColor }]}>
+        <Text style={[s.rankBadgeText, { color: txtColor }]}>{rank}</Text>
+      </View>
+      <Text style={s.rankItemName} numberOfLines={1}>{name}</Text>
+      <View style={s.rankItemRight}>
+        <Text style={s.rankItemCount}>{value}</Text>
+        {valueLabel ? <Text style={s.rankItemUnit}>{valueLabel}</Text> : null}
+      </View>
+    </View>
+  );
+};
+
+const ExportButton = ({ onPress, label, icon = 'document-text-outline' }: {
   onPress: () => void; label: string; icon?: string;
 }) => (
-  <TouchableOpacity style={s.exportBtn} onPress={onPress} activeOpacity={0.85}>
-    <View style={s.exportBtnInner}>
-      <Ionicons name={icon as any} size={18} color={COLORS.cream} />
-      <Text style={s.exportBtnText}>{label}</Text>
-    </View>
-    <View style={s.exportBtnAccent}>
-      <Ionicons name="arrow-forward" size={14} color={COLORS.mint} />
-    </View>
+  <TouchableOpacity style={s.exportBtn} onPress={onPress} activeOpacity={0.8}>
+    <Ionicons name={icon as any} size={15} color={COLORS.cream} />
+    <Text style={s.exportBtnText}>{label}</Text>
+    <Ionicons name="arrow-forward" size={13} color={COLORS.mint} />
   </TouchableOpacity>
 );
 
@@ -201,19 +207,38 @@ const ExportButton = ({ onPress, label, icon = 'document-text' }: {
 const exportPDF = async (html: string, filename: string) => {
   try {
     Alert.alert('Generating PDF', 'Please wait…');
+
+    // Web: open HTML in a new window and trigger browser print (no native file APIs)
+    if (Platform.OS === 'web') {
+      const w = window.open('', '_blank');
+      if (!w) {
+        Alert.alert('Export Failed', 'Unable to open print preview (popup blocked).');
+        return;
+      }
+      w.document.write(html);
+      w.document.close();
+      w.focus();
+      setTimeout(() => w.print(), 600);
+      return;
+    }
+
+    // Native (iOS / Android): create PDF file and share/save
     const { uri } = await Print.printToFileAsync({
-      html, base64: false,
-      width: 595, height: 842, orientation: 'portrait',
+      html,
+      base64: false,
+      width: 595,
+      height: 842,
+      orientation: 'portrait',
     });
+
+    // Dynamically import file system to avoid bundling it for web
+    const FileSystem = (await import('expo-file-system')) as typeof import('expo-file-system');
     const fileInfo = await FileSystem.getInfoAsync(uri);
     if (!fileInfo.exists) throw new Error('PDF file was not created');
+
     const canShare = await Sharing.isAvailableAsync();
     if (canShare) {
-      await Sharing.shareAsync(uri, {
-        mimeType: 'application/pdf',
-        dialogTitle: `Save ${filename}`,
-        UTI: 'com.adobe.pdf',
-      });
+      await Sharing.shareAsync(uri, { mimeType: 'application/pdf', dialogTitle: `Save ${filename}`, UTI: 'com.adobe.pdf' });
     } else {
       Alert.alert('PDF Saved', `Report saved to:\n${uri}`);
     }
@@ -222,12 +247,86 @@ const exportPDF = async (html: string, filename: string) => {
   }
 };
 
+/* ─── FIX: Custom legend for ProgressChart (replaces built-in side legend) ─── */
+const ProgressLegend = ({ items }: {
+  items: { label: string; color: string; pct: number }[];
+}) => (
+  <View style={s.progressLegend}>
+    {items.map((item, i) => (
+      <View key={i} style={s.progressLegendItem}>
+        <View style={[s.progressLegendDot, { backgroundColor: item.color }]} />
+        <Text style={s.progressLegendLabel}>{item.label}</Text>
+        <Text style={[s.progressLegendPct, { color: item.color }]}>
+          {Math.round(item.pct * 100)}%
+        </Text>
+      </View>
+    ))}
+  </View>
+);
+
 /* ════════════════════════════════════════════
-   COMPONENT
+   MAIN COMPONENT
 ════════════════════════════════════════════ */
 export default function AdminDashboard() {
   const { user, accessToken } = useAuth();
   const router = useRouter();
+
+  // ─── Responsive layout via hook (re-renders on rotation/resize) ───
+  const { width: screenWidth } = useWindowDimensions();
+  const IS_WIDE = screenWidth >= 768;
+
+  // Full-width chart (mobile): card has 16px padding each side, page 16px each side
+  const FULL_CHART_W  = screenWidth - 48 - 32; // page padding + card padding
+  // Half-width chart (web): two columns with 8px gap
+  const HALF_CHART_W  = Math.floor((screenWidth - 48 - 8) / 2) - 32;
+  // Which to use based on layout
+  const CHART_W       = IS_WIDE ? HALF_CHART_W : FULL_CHART_W;
+
+  // Bar column width per item:
+  // Mobile: 70px — rotated labels are diagonal so bars can be closer
+  // Web: 100px — two-line horizontal labels need more horizontal room
+  const BAR_ITEM_W = IS_WIDE ? 100 : 70;
+  // Mobile bar chart height — extra tall to give 45deg rotated labels room below bars
+  const MOBILE_BAR_H = 300;
+  const WEB_BAR_H = 240;
+
+  // Inline styles for responsive rows
+  const rowStyle  = { flexDirection: IS_WIDE ? 'row' as const : 'column' as const, gap: IS_WIDE ? 8 : 0, marginBottom: 16, alignItems: 'flex-start' as const };
+  const halfStyle = { flex: IS_WIDE ? 1 : undefined, width: IS_WIDE ? undefined : '100%' as const, marginBottom: IS_WIDE ? 0 : 8 };
+
+  // Label strategy:
+  // Mobile: full label as-is, rotated 45deg so they never overlap
+  // Web: split near middle with \n so they stack on two lines
+  const formatBarLabel = (label: string): string => {
+    if (!IS_WIDE) return label; // mobile: no modification, rotation handles overlap
+    if (label.length <= 9) return label;
+    const mid = Math.floor(label.length / 2);
+    let splitAt = label.lastIndexOf(' ', mid);
+    if (splitAt === -1) splitAt = label.indexOf(' ');
+    if (splitAt === -1) return label.slice(0, 8) + '…';
+    return label.slice(0, splitAt) + '\n' + label.slice(splitAt + 1);
+  };
+
+  // safeBarData — builds chart-ready labels + auto-calculates chart width
+  const safeBarData = (items: { label: string; value: number }[], max = 5) => {
+    const filtered = items.filter(i => typeof i.value === 'number').slice(0, max);
+    if (filtered.length === 0) return { labels: ['No data'], datasets: [{ data: [0] }], chartWidth: CHART_W };
+    return {
+      labels:     filtered.map(i => formatBarLabel(i.label)),
+      datasets:   [{ data: filtered.map(i => i.value) }],
+      chartWidth: Math.max(CHART_W, filtered.length * BAR_ITEM_W),
+    };
+  };
+
+  // Timeline labels
+  const timelineLabels = (tl: { date: string; scans: number }[]) => {
+    const step = IS_WIDE ? 4 : 3;
+    return tl.map((t, i) => {
+      if (i % step !== 0 && i !== tl.length - 1) return '';
+      const parts = t.date.split('-');
+      return parts.length === 3 ? `${parts[1]}/${parts[2]}` : t.date;
+    });
+  };
 
   const [currentSection, setCurrentSection] = useState<Section>('home');
   const [loading, setLoading]               = useState(false);
@@ -276,8 +375,9 @@ export default function AdminDashboard() {
   useEffect(() => {
     const load = async () => {
       setLoading(true);
-      if (currentSection === 'home')       await loadAnalytics();
-      else if (currentSection === 'users') await loadUsers();
+      if (currentSection === 'home')           await loadAnalytics();
+      else if (currentSection === 'users')     await loadUsers();
+      else if (currentSection === 'analytics') await loadAnalytics();
       setLoading(false);
     };
     if (user && user.role === 'admin' && accessToken) load();
@@ -308,8 +408,8 @@ export default function AdminDashboard() {
 
   const handleChangeRole = async (userId: string, currentRole: string) => {
     setAuthHeader();
-    const newIsAdmin = currentRole === 'admin' ? 0 : 1;
-    const newRole = newIsAdmin === 1 ? 'admin' : 'user';
+    const newIsAdmin  = currentRole === 'admin' ? 0 : 1;
+    const newRole     = newIsAdmin === 1 ? 'admin' : 'user';
     const actionLabel = newIsAdmin === 1 ? 'Make Admin' : 'Make User';
     Alert.alert('Confirm Role Change', `${actionLabel}? This will change the role to ${newRole}.`, [
       { text: 'Cancel', style: 'cancel' },
@@ -338,395 +438,366 @@ export default function AdminDashboard() {
     );
   }
 
-  /* ────────────────────────────────────────
+  const renderLoading = (message: string) => (
+    <View style={s.loadingContainer}>
+      <Text style={s.loadingIcon}>🍄</Text>
+      <ActivityIndicator size="large" color={COLORS.moss} style={{ marginTop: 12 }} />
+      <Text style={s.loadingText}>{message}</Text>
+    </View>
+  );
+
+  const renderEmpty = () => (
+    <View style={s.emptyContainer}>
+      <Text style={{ fontSize: 56 }}>🍄</Text>
+      <Text style={s.emptyTitle}>No data yet</Text>
+      <Text style={s.emptySubtitle}>Pull down to refresh</Text>
+    </View>
+  );
+
+  /* ════════════════════════════════════════════
      HOME SECTION
-  ──────────────────────────────────────── */
-  const renderHome = () => (
-    <View style={s.contentContainer}>
-      {loading ? (
-        <View style={s.loadingContainer}>
-          <Text style={s.loadingMushroom}>🍄</Text>
-          <ActivityIndicator size="large" color={COLORS.moss} style={{ marginTop: 16 }} />
-          <Text style={s.loadingText}>Gathering spores…</Text>
+  ════════════════════════════════════════════ */
+  const renderHome = () => {
+    if (loading)    return renderLoading('Gathering spores…');
+    if (!analytics) return renderEmpty();
+
+    const { users: U, mushrooms: M, timeline } = analytics;
+
+    // FIX: progress chart data & legend items defined once, reused in both mobile and web
+    const progressData = {
+      labels: ['Active', 'Inactive', 'Admins'],
+      data: [
+        U.total_users > 0 ? U.active_users   / U.total_users : 0,
+        U.total_users > 0 ? U.inactive_users / U.total_users : 0,
+        U.total_users > 0 ? U.admin_count    / U.total_users : 0,
+      ],
+    };
+    const progressLegendItems = [
+      { label: 'Active',   color: `rgba(58,140,92,1)`,   pct: progressData.data[0] },
+      { label: 'Inactive', color: `rgba(201,64,64,1)`,   pct: progressData.data[1] },
+      { label: 'Admins',   color: `rgba(74,103,65,1)`,   pct: progressData.data[2] },
+    ];
+    const progressChartConfig = {
+      ...chartConfig,
+      color: (opacity = 1, index?: number) => {
+        const colors = [`rgba(58,140,92,${opacity})`, `rgba(201,64,64,${opacity})`, `rgba(74,103,65,${opacity})`];
+        return colors[index ?? 0] ?? colors[0];
+      },
+    };
+
+    return (
+      <View style={s.page}>
+
+        <View style={s.pageHeader}>
+          <View>
+            <Text style={s.pageHeaderEyebrow}>ADMIN DASHBOARD</Text>
+            <Text style={s.pageHeaderTitle}>Overview</Text>
+            <Text style={s.pageHeaderSub}>Forest index healthy · All systems normal</Text>
+          </View>
+          <Text style={{ fontSize: 44 }}>🍄</Text>
         </View>
-      ) : analytics ? (
-        <>
-          {/* Hero banner */}
-          <View style={s.heroBanner}>
-            <View style={s.heroBannerDecor}>
-              <MushroomSticker variant="red"   size={52} style={{ position: 'absolute', top: -10, right: 20, transform: [{ rotate: '12deg' }] }} />
-              <MushroomSticker variant="brown" size={38} style={{ position: 'absolute', bottom: 8,  right: 72, transform: [{ rotate: '-8deg' }] }} />
-              <SporeDot size={8}  color={COLORS.mint}  style={{ position: 'absolute', top: 18, right: 140 }} />
-              <SporeDot size={5}  color={COLORS.mushGill} style={{ position: 'absolute', top: 38, right: 110 }} />
-              <SporeDot size={10} color={COLORS.sage}  style={{ position: 'absolute', bottom: 18, right: 155 }} />
-            </View>
-            <Text style={s.heroBannerLabel}>ADMIN CONTROL CENTER</Text>
-            <Text style={s.heroBannerTitle}>Overview</Text>
-            <Text style={s.heroBannerSub}>All systems nominal · Forest index healthy</Text>
-            <ExportButton
-              onPress={() => exportPDF(buildOverviewReport(analytics, user.name), 'SnapShroom_Overview_Report.pdf')}
-              label="Export Overview Report"
-              icon="document-text"
-            />
-          </View>
 
-          {/* Quick Actions */}
-          <SectionBadge label="Quick Actions" icon="⚡" />
-          <View style={s.quickActionsRow}>
-            <TouchableOpacity
-              style={[s.quickCard, { backgroundColor: COLORS.forestMid }]}
-              onPress={() => setCurrentSection('users')}
-              activeOpacity={0.85}
-            >
-              <Text style={s.quickCardEmoji}>👥</Text>
-              <Text style={s.quickCardLabel}>Users</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={[s.quickCard, { backgroundColor: COLORS.moss }]}
-              onPress={() => setCurrentSection('analytics')}
-              activeOpacity={0.85}
-            >
-              <Text style={s.quickCardEmoji}>📊</Text>
-              <Text style={s.quickCardLabel}>Analytics</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={[s.quickCard, { backgroundColor: COLORS.mushCap }]}
-              onPress={() => loadAnalytics()}
-              activeOpacity={0.85}
-            >
-              <Text style={s.quickCardEmoji}>🔄</Text>
-              <Text style={s.quickCardLabel}>Refresh</Text>
-            </TouchableOpacity>
-          </View>
+        <SectionHeader title="Quick Actions" emoji="⚡" />
+        <View style={s.quickRow}>
+          <TouchableOpacity style={[s.quickBtn, { backgroundColor: COLORS.forestMid }]} onPress={() => setCurrentSection('users')} activeOpacity={0.85}>
+            <Text style={s.quickBtnEmoji}>👥</Text>
+            <Text style={s.quickBtnLabel}>Users</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={[s.quickBtn, { backgroundColor: COLORS.moss }]} onPress={() => setCurrentSection('analytics')} activeOpacity={0.85}>
+            <Text style={s.quickBtnEmoji}>📊</Text>
+            <Text style={s.quickBtnLabel}>Analytics</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={[s.quickBtn, { backgroundColor: COLORS.mushCap }]} onPress={loadAnalytics} activeOpacity={0.85}>
+            <Text style={s.quickBtnEmoji}>🔄</Text>
+            <Text style={s.quickBtnLabel}>Refresh</Text>
+          </TouchableOpacity>
+        </View>
 
-          {/* Overview Stats */}
-          <SectionBadge label="Overview Statistics" icon="📊" />
-          <View style={s.statsRow}>
-            <StatCard icon="people" value={analytics.users.total_users}   label="Total Users"   accent={COLORS.moss}     emoji="👥" />
-            <StatCard icon="check"  value={analytics.users.active_users}  label="Active"        accent={COLORS.safeGreen} emoji="✅" />
-            <StatCard icon="scan"   value={analytics.mushrooms.total_scans} label="Total Scans" accent={COLORS.mushCap}   emoji="🔍" />
-            <StatCard icon="cal"    value={analytics.mushrooms.scans_last_30d} label="30d Scans" accent={COLORS.sage}     emoji="📅" />
-          </View>
+        <SectionHeader title="At a Glance" emoji="📊" />
+        <View style={s.statGrid}>
+          <StatTile emoji="👥" value={U.total_users}    label="Total Users"  accentColor={COLORS.moss} />
+          <StatTile emoji="✅" value={U.active_users}   label="Active Users" accentColor={COLORS.safeGreen} />
+          <StatTile emoji="🔍" value={M.total_scans}    label="Total Scans"  accentColor={COLORS.mushCap} />
+          <StatTile emoji="📅" value={M.scans_last_30d} label="Scans (30d)"  accentColor={COLORS.sage} />
+        </View>
 
-          {/* Timeline Chart */}
-          {analytics.timeline && analytics.timeline.length > 0 && (
-            <>
-              <SectionBadge label="Scan Timeline" icon="📈" />
-              <Card>
-                <Text style={s.cardSubLabel}>Daily scan activity</Text>
+        <Card style={s.mb16}>
+          <InlineStatRow items={[
+            { emoji: '🛡️', value: U.admin_count,                     label: 'Admins',    color: COLORS.moss },
+            { emoji: '🎯', value: `${M.detection_success_rate}%`,    label: 'Success',   color: COLORS.safeGreen },
+            { emoji: '📝', value: U.recent_registrations_30d ?? '—', label: 'New (30d)', color: COLORS.mushCap },
+          ]} />
+        </Card>
+
+        {/* ── Scan Timeline ── */}
+        <SectionHeader title="Scan Timeline" subtitle="Daily scan activity" emoji="📈" />
+        <View style={rowStyle}>
+          <View style={halfStyle}>
+            <Card style={s.mb0}>
+              {timeline && timeline.length > 0 ? (
                 <ScrollView horizontal showsHorizontalScrollIndicator={false}>
                   <LineChart
                     data={{
-                      labels:   analytics.timeline.map(t => t.date),
-                      datasets: [{ data: analytics.timeline.map(t => t.scans), color: () => COLORS.mushCap }],
+                      labels:   timelineLabels(timeline),
+                      datasets: [{ data: timeline.map(t => t.scans) }],
                     }}
-                    width={Math.max(CHART_WIDTH - 32, analytics.timeline.length * 52)}
+                    width={Math.max(CHART_W, timeline.length * (IS_WIDE ? 32 : 52))}
                     height={200}
-                    chartConfig={{ ...chartConfig, color: (o = 1) => `rgba(193,123,63,${o})` }}
+                    chartConfig={mushroomChartConfig}
                     bezier
                     withShadow={false}
                     style={s.chart}
                   />
                 </ScrollView>
-              </Card>
-            </>
-          )}
+              ) : (
+                <View style={s.chartPlaceholder}><Text style={s.chartPlaceholderText}>No data yet</Text></View>
+              )}
+            </Card>
+          </View>
 
-          {/* User Status Rings */}
-          <SectionBadge label="User Status Breakdown" icon="👤" />
-          <Card>
-            <Text style={s.cardSubLabel}>Active · Inactive · Admins (as % of total)</Text>
-            <ProgressChart
-              data={{
-                labels: ['Active', 'Inactive', 'Admins'],
-                data: [
-                  analytics.users.total_users > 0 ? analytics.users.active_users   / analytics.users.total_users : 0,
-                  analytics.users.total_users > 0 ? analytics.users.inactive_users / analytics.users.total_users : 0,
-                  analytics.users.total_users > 0 ? analytics.users.admin_count    / analytics.users.total_users : 0,
-                ],
-              }}
-              width={CHART_WIDTH - 32}
-              height={180}
-              strokeWidth={14}
-              radius={36}
-              chartConfig={{
-                ...chartConfig,
-                color: (opacity = 1, index?: number) => {
-                  const colors = [
-                    `rgba(58,140,92,${opacity})`,
-                    `rgba(201,64,64,${opacity})`,
-                    `rgba(74,103,65,${opacity})`,
-                  ];
-                  return colors[index ?? 0] ?? colors[0];
-                },
-              }}
-              style={s.chart}
-              hideLegend={false}
+          {/* On web: user breakdown right beside timeline */}
+          {IS_WIDE && (
+            <View style={halfStyle}>
+              <Card style={s.mb0} title="User Breakdown" subtitle="Active · Inactive · Admins">
+                <ProgressChart
+                  data={progressData}
+                  width={CHART_W}
+                  height={200}
+                  strokeWidth={14}
+                  radius={36}
+                  chartConfig={progressChartConfig}
+                  style={s.chart}
+                  hideLegend={false}
+                />
+              </Card>
+            </View>
+          )}
+        </View>
+
+        {/* FIX: On mobile, User Breakdown uses hideLegend + custom legend below */}
+        {!IS_WIDE && (
+          <>
+            <SectionHeader title="User Breakdown" subtitle="Active · Inactive · Admins" emoji="👤" />
+            <Card>
+              <ProgressChart
+                data={progressData}
+                width={FULL_CHART_W}
+                height={220}
+                strokeWidth={16}
+                radius={42}
+                chartConfig={progressChartConfig}
+                style={s.chart}
+                hideLegend={true}
+              />
+              {/* Custom legend below the chart so labels are fully visible */}
+              <ProgressLegend items={progressLegendItems} />
+            </Card>
+          </>
+        )}
+
+        <SectionHeader title="Reports" emoji="📄" />
+        <Card style={s.mb24}>
+          <ExportButton
+            onPress={() => exportPDF(buildOverviewReport(analytics, user.name), 'SnapShroom_Overview_Report.pdf')}
+            label="Export Overview Report"
+            icon="document-text-outline"
+          />
+        </Card>
+
+      </View>
+    );
+  };
+
+  /* ════════════════════════════════════════════
+     USERS SECTION
+  ════════════════════════════════════════════ */
+  const renderUsers = () => {
+    if (loading) return renderLoading('Loading user mycelium…');
+
+    return (
+      <View style={s.page}>
+        <View style={s.pageHeader}>
+          <View>
+            <Text style={s.pageHeaderEyebrow}>USER DIRECTORY</Text>
+            <Text style={s.pageHeaderTitle}>{users.length} Members</Text>
+            <Text style={s.pageHeaderSub}>Manage roles and access control</Text>
+          </View>
+          <Text style={{ fontSize: 44 }}>👥</Text>
+        </View>
+
+        {users.length > 0 && (
+          <Card style={s.mb20}>
+            <ExportButton
+              onPress={() => exportPDF(buildUsersReport(users, user.name), 'SnapShroom_User_Directory.pdf')}
+              label="Export User Directory"
+              icon="people-outline"
             />
           </Card>
+        )}
 
-          {/* Quick Info */}
-          <SectionBadge label="Quick Info" icon="ℹ️" />
-          <View style={s.infoRow}>
-            <View style={s.infoTile}>
-              <Text style={s.infoTileEmoji}>🛡️</Text>
-              <Text style={s.infoTileValue}>{analytics.users.admin_count}</Text>
-              <Text style={s.infoTileLabel}>Admins</Text>
-            </View>
-            <View style={s.infoTile}>
-              <Text style={s.infoTileEmoji}>🎯</Text>
-              <Text style={s.infoTileValue}>{analytics.mushrooms.detection_success_rate}%</Text>
-              <Text style={s.infoTileLabel}>Success Rate</Text>
-            </View>
-            <View style={s.infoTile}>
-              <Text style={s.infoTileEmoji}>📝</Text>
-              <Text style={s.infoTileValue}>{analytics.users.recent_registrations_30d ?? '—'}</Text>
-              <Text style={s.infoTileLabel}>New 30d</Text>
-            </View>
-          </View>
+        <SectionHeader title="All Users" subtitle={`${users.length} registered accounts`} emoji="👥" />
 
-          {/* Decorative footer mushrooms */}
-          <View style={s.decFooter}>
-            <MushroomSticker variant="white" size={36} />
-            <MushroomSticker variant="tiny"  size={24} style={{ marginHorizontal: 8 }} />
-            <MushroomSticker variant="brown" size={36} />
-            <MushroomSticker variant="tiny"  size={20} style={{ marginHorizontal: 8 }} />
-            <MushroomSticker variant="red"   size={28} />
-          </View>
-        </>
-      ) : (
-        <View style={s.emptyContainer}>
-          <Text style={{ fontSize: 64 }}>🍄</Text>
-          <Text style={s.emptyText}>No spores found yet</Text>
-          <Text style={s.emptySubText}>Pull down to refresh</Text>
-        </View>
-      )}
-    </View>
-  );
-
-  /* ────────────────────────────────────────
-     USERS SECTION
-  ──────────────────────────────────────── */
-  const renderUsers = () => (
-    <View style={s.contentContainer}>
-      {loading ? (
-        <View style={s.loadingContainer}>
-          <Text style={s.loadingMushroom}>🍄</Text>
-          <ActivityIndicator size="large" color={COLORS.moss} style={{ marginTop: 16 }} />
-          <Text style={s.loadingText}>Loading user mycelium…</Text>
-        </View>
-      ) : (
-        <>
-          {/* Hero */}
-          <View style={[s.heroBanner, { backgroundColor: COLORS.forestMid }]}>
-            <View style={s.heroBannerDecor}>
-              <MushroomSticker variant="white" size={48} style={{ position: 'absolute', top: -8, right: 16, transform: [{ rotate: '10deg' }] }} />
-              <MushroomSticker variant="tiny"  size={30} style={{ position: 'absolute', bottom: 8, right: 68, transform: [{ rotate: '-6deg' }] }} />
-            </View>
-            <Text style={s.heroBannerLabel}>USER DIRECTORY</Text>
-            <Text style={s.heroBannerTitle}>{users.length} Members</Text>
-            <Text style={s.heroBannerSub}>Manage roles and access control</Text>
-            {users.length > 0 && (
-              <ExportButton
-                onPress={() => exportPDF(buildUsersReport(users, user.name), 'SnapShroom_User_Directory.pdf')}
-                label="Export User Directory"
-                icon="people"
-              />
-            )}
-          </View>
-
-          <SectionBadge label="All Users" icon="👥" />
-
-          <FlatList
-            data={users}
-            keyExtractor={item => item.id}
-            scrollEnabled={false}
-            renderItem={({ item, index }) => (
-              <View style={[s.userCard, index === 0 && { marginTop: 0 }]}>
-                {/* Avatar circle */}
-                <View style={[s.userAvatar, { backgroundColor: item.role === 'admin' ? COLORS.moss : COLORS.sage }]}>
-                  <Text style={s.userAvatarText}>{item.name.charAt(0).toUpperCase()}</Text>
+        <FlatList
+          data={users}
+          keyExtractor={item => item.id}
+          scrollEnabled={false}
+          renderItem={({ item }) => (
+            <View style={s.userCard}>
+              <View style={s.userCardTop}>
+                <View style={[s.avatar, { backgroundColor: item.role === 'admin' ? COLORS.moss : COLORS.sage }]}>
+                  <Text style={s.avatarText}>{item.name.charAt(0).toUpperCase()}</Text>
                   {item.role === 'admin' && (
-                    <View style={s.adminBadgeDot}>
-                      <Text style={{ fontSize: 8 }}>⭐</Text>
-                    </View>
+                    <View style={s.avatarBadge}><Text style={{ fontSize: 8 }}>⭐</Text></View>
                   )}
                 </View>
-
-                {/* Info */}
-                <View style={s.userInfo}>
-                  <View style={s.userRow}>
-                    <Text style={s.userName}>{item.name}</Text>
-                    <View style={[s.rolePill, { backgroundColor: item.role === 'admin' ? COLORS.forest : COLORS.spore }]}>
+                <View style={s.userCardMeta}>
+                  <View style={s.userCardNameRow}>
+                    <Text style={s.userCardName} numberOfLines={1}>{item.name}</Text>
+                    <View style={[s.rolePill, { backgroundColor: item.role === 'admin' ? COLORS.forest : COLORS.parchment }]}>
                       <Text style={[s.rolePillText, { color: item.role === 'admin' ? COLORS.cream : COLORS.textMid }]}>
                         {item.role === 'admin' ? '⭐ Admin' : 'User'}
                       </Text>
                     </View>
                   </View>
-                  <Text style={s.userEmail}>{item.email}</Text>
-                  <Text style={s.userMeta}>@{item.username}  ·  Joined {new Date(item.created_at).toLocaleDateString()}</Text>
-                  {item.last_login && (
-                    <Text style={s.userMeta}>Last login {new Date(item.last_login).toLocaleDateString()}</Text>
-                  )}
-
-                  {/* Status indicator */}
-                  <View style={s.statusRow}>
-                    <View style={[s.statusDot, { backgroundColor: item.is_active ? COLORS.safeGreen : COLORS.toxicRed }]} />
-                    <Text style={[s.statusText, { color: item.is_active ? COLORS.safeGreen : COLORS.toxicRed }]}>
-                      {item.is_active ? 'Active' : 'Inactive'}
-                    </Text>
-                  </View>
-
-                  {/* Actions */}
-                  <View style={s.actionRow}>
-                    <TouchableOpacity
-                      style={[s.actionPill, {
-                        backgroundColor: item.is_active ? 'rgba(201,64,64,0.12)' : 'rgba(58,140,92,0.12)',
-                        borderWidth: 1,
-                        borderColor: item.is_active ? 'rgba(201,64,64,0.25)' : 'rgba(58,140,92,0.25)',
-                        paddingHorizontal: 14,
-                        paddingVertical: 8,
-                      }]}
-                      onPress={() => handleToggleUserStatus(item.id, item.is_active)}
-                    >
-                      <Ionicons
-                        name={item.is_active ? 'power' : 'power'}
-                        size={14}
-                        color={item.is_active ? COLORS.toxicRed : COLORS.safeGreen}
-                        style={{ marginRight: 4 }}
-                      />
-                      <Text style={[s.actionPillText, { color: item.is_active ? COLORS.toxicRed : COLORS.safeGreen }]}>
-                        {item.is_active ? 'Deactivate' : 'Activate'}
-                      </Text>
-                    </TouchableOpacity>
-                    {item.id !== user.id && (
-                      <TouchableOpacity
-                        style={[s.roleToggle, {
-                          backgroundColor: item.role === 'admin' ? COLORS.forest : COLORS.white,
-                          borderColor: item.role === 'admin' ? COLORS.forest : COLORS.moss,
-                        }]}
-                        onPress={() => handleChangeRole(item.id, item.role)}
-                      >
-                        <Ionicons
-                          name={item.role === 'admin' ? 'shield-checkmark' : 'person-outline'}
-                          size={14}
-                          color={item.role === 'admin' ? COLORS.cream : COLORS.moss}
-                          style={{ marginRight: 6 }}
-                        />
-                        <Text style={[s.roleToggleText, {
-                          color: item.role === 'admin' ? COLORS.cream : COLORS.moss,
-                        }]}>
-                          {item.role === 'admin' ? 'Admin' : 'User'}
-                        </Text>
-                        <Ionicons
-                          name="swap-horizontal"
-                          size={14}
-                          color={item.role === 'admin' ? COLORS.mint : COLORS.textLight}
-                          style={{ marginLeft: 6 }}
-                        />
-                      </TouchableOpacity>
-                    )}
-                  </View>
+                  <Text style={s.userCardEmail}>{item.email}</Text>
+                  <Text style={s.userCardInfo}>@{item.username} · Joined {new Date(item.created_at).toLocaleDateString()}</Text>
                 </View>
               </View>
-            )}
-          />
-
-          {/* Footer mushrooms */}
-          <View style={s.decFooter}>
-            <MushroomSticker variant="brown" size={32} />
-            <MushroomSticker variant="tiny" size={20} style={{ marginHorizontal: 6 }} />
-            <MushroomSticker variant="red" size={28} />
-          </View>
-        </>
-      )}
-    </View>
-  );
-
-  /* ────────────────────────────────────────
-     ANALYTICS SECTION
-  ──────────────────────────────────────── */
-  const renderAnalytics = () => (
-    <View style={s.contentContainer}>
-      {loading ? (
-        <View style={s.loadingContainer}>
-          <Text style={s.loadingMushroom}>🍄</Text>
-          <ActivityIndicator size="large" color={COLORS.moss} style={{ marginTop: 16 }} />
-          <Text style={s.loadingText}>Analyzing mycelium network…</Text>
-        </View>
-      ) : analytics ? (
-        <>
-          {/* Hero */}
-          <View style={[s.heroBanner, { backgroundColor: '#3B3020' }]}>
-            <View style={s.heroBannerDecor}>
-              <MushroomSticker variant="red"   size={50} style={{ position: 'absolute', top: -10, right: 14, transform: [{ rotate: '15deg' }] }} />
-              <MushroomSticker variant="brown" size={34} style={{ position: 'absolute', bottom: 6,  right: 68, transform: [{ rotate: '-5deg' }] }} />
-              <SporeDot size={7} color={COLORS.mushGill} style={{ position: 'absolute', top: 20, right: 130 }} />
-              <SporeDot size={4} color={COLORS.mint}     style={{ position: 'absolute', top: 40, right: 105 }} />
+              <View style={s.userCardDivider} />
+              <View style={s.userCardStatusRow}>
+                <View style={s.statusBadge}>
+                  <View style={[s.statusDot, { backgroundColor: item.is_active ? COLORS.safeGreen : COLORS.toxicRed }]} />
+                  <Text style={[s.statusLabel, { color: item.is_active ? COLORS.safeGreen : COLORS.toxicRed }]}>
+                    {item.is_active ? 'Active' : 'Inactive'}
+                  </Text>
+                </View>
+                {item.last_login && (
+                  <Text style={s.lastLoginText}>Last login {new Date(item.last_login).toLocaleDateString()}</Text>
+                )}
+              </View>
+              <View style={s.userCardActions}>
+                <TouchableOpacity
+                  style={[s.actionBtn, {
+                    backgroundColor: item.is_active ? 'rgba(201,64,64,0.08)' : 'rgba(58,140,92,0.08)',
+                    borderColor:     item.is_active ? 'rgba(201,64,64,0.2)'  : 'rgba(58,140,92,0.2)',
+                  }]}
+                  onPress={() => handleToggleUserStatus(item.id, item.is_active)}
+                  activeOpacity={0.8}
+                >
+                  <Ionicons name="power" size={14} color={item.is_active ? COLORS.toxicRed : COLORS.safeGreen} />
+                  <Text style={[s.actionBtnText, { color: item.is_active ? COLORS.toxicRed : COLORS.safeGreen }]}>
+                    {item.is_active ? 'Deactivate' : 'Activate'}
+                  </Text>
+                </TouchableOpacity>
+                {item.id !== user.id && (
+                  <TouchableOpacity
+                    style={[s.actionBtn, {
+                      backgroundColor: item.role === 'admin' ? COLORS.forest : COLORS.white,
+                      borderColor:     item.role === 'admin' ? COLORS.forest : COLORS.moss,
+                    }]}
+                    onPress={() => handleChangeRole(item.id, item.role)}
+                    activeOpacity={0.8}
+                  >
+                    <Ionicons
+                      name={item.role === 'admin' ? 'shield-checkmark' : 'person-outline'}
+                      size={14}
+                      color={item.role === 'admin' ? COLORS.cream : COLORS.moss}
+                    />
+                    <Text style={[s.actionBtnText, { color: item.role === 'admin' ? COLORS.cream : COLORS.moss }]}>
+                      {item.role === 'admin' ? 'Admin' : 'User'}
+                    </Text>
+                    <Ionicons
+                      name="swap-horizontal" size={13}
+                      color={item.role === 'admin' ? COLORS.mint : COLORS.textLight}
+                    />
+                  </TouchableOpacity>
+                )}
+              </View>
             </View>
-            <Text style={s.heroBannerLabel}>FULL ANALYTICS</Text>
-            <Text style={s.heroBannerTitle}>Insights</Text>
-            <Text style={s.heroBannerSub}>Scan trends, species data & locations</Text>
-            <ExportButton
-              onPress={() => exportPDF(buildAnalyticsReport(analytics, user.name), 'SnapShroom_Full_Analytics.pdf')}
-              label="Export Full Analytics"
-              icon="bar-chart"
-            />
+          )}
+        />
+      </View>
+    );
+  };
+
+  /* ════════════════════════════════════════════
+     ANALYTICS SECTION
+  ════════════════════════════════════════════ */
+  const renderAnalytics = () => {
+    if (loading)    return renderLoading('Analyzing mycelium network…');
+    if (!analytics) return renderEmpty();
+
+    const { users: U, mushrooms: M, timeline } = analytics;
+
+    // FIX: progress chart config & legend items (same pattern as home)
+    const progressChartConfig = {
+      ...chartConfig,
+      color: (opacity = 1, index?: number) => {
+        const colors = [`rgba(58,140,92,${opacity})`, `rgba(201,64,64,${opacity})`, `rgba(74,103,65,${opacity})`];
+        return colors[index ?? 0] ?? colors[0];
+      },
+    };
+
+    return (
+      <View style={s.page}>
+        <View style={s.pageHeader}>
+          <View>
+            <Text style={s.pageHeaderEyebrow}>FULL ANALYTICS</Text>
+            <Text style={s.pageHeaderTitle}>Insights</Text>
+            <Text style={s.pageHeaderSub}>Scan trends, species & locations</Text>
+          </View>
+          <Text style={{ fontSize: 44 }}>📊</Text>
+        </View>
+
+        {/* ═══ USER STATS ═══ */}
+        <SectionHeader title="User Analytics" emoji="👥" />
+        <View style={s.statGrid}>
+          <StatTile emoji="👥" value={U.total_users}    label="Total"    accentColor={COLORS.moss} />
+          <StatTile emoji="✅" value={U.active_users}   label="Active"   accentColor={COLORS.safeGreen} />
+          <StatTile emoji="⭕" value={U.inactive_users} label="Inactive" accentColor={COLORS.toxicRed} />
+          <StatTile emoji="⭐" value={U.admin_count}    label="Admins"   accentColor={COLORS.mushCap} />
+        </View>
+
+        {/* ── User Composition chart ── */}
+        <SectionHeader title="User Composition" subtitle="Active vs Inactive vs Admins" emoji="📊" />
+        <View style={rowStyle}>
+          <View style={halfStyle}>
+            <Card style={s.mb0}>
+              {/* FIX: wrap in ScrollView so bars never get clipped */}
+              <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+                <BarChart
+                  data={{
+                    labels: ['Active', 'Inactive', 'Admins'],
+                    datasets: [{
+                      data: [U.active_users, U.inactive_users, U.admin_count],
+                      colors: [() => COLORS.safeGreen, () => COLORS.toxicRed, () => COLORS.moss],
+                    }],
+                  }}
+                  width={Math.max(CHART_W, 3 * BAR_ITEM_W)}
+                  height={200}
+                  fromZero
+                  showValuesOnTopOfBars
+                  withCustomBarColorFromData
+                  flatColor
+                  chartConfig={{ ...chartConfig, barPercentage: 0.55 }}
+                  style={s.chart}
+                />
+              </ScrollView>
+            </Card>
           </View>
 
-          {/* User Analytics */}
-          <SectionBadge label="User Analytics" icon="👥" />
-          <View style={s.statsRow}>
-            <StatCard value={analytics.users.total_users}    label="Total"    accent={COLORS.moss}       emoji="👥" />
-            <StatCard value={analytics.users.active_users}   label="Active"   accent={COLORS.safeGreen}  emoji="✅" />
-            <StatCard value={analytics.users.inactive_users} label="Inactive" accent={COLORS.toxicRed}   emoji="⭕" />
-            <StatCard value={analytics.users.admin_count}    label="Admins"   accent={COLORS.mushCap}    emoji="⭐" />
-          </View>
-
-          <Card>
-            <Text style={s.cardTitle}>User Composition</Text>
-            <Text style={s.cardSubLabel}>Active vs Inactive vs Admins</Text>
-            <BarChart
-              data={{
-                labels: ['Active', 'Inactive', 'Admins'],
-                datasets: [{
-                  data: [analytics.users.active_users, analytics.users.inactive_users, analytics.users.admin_count],
-                  colors: [() => COLORS.safeGreen, () => COLORS.toxicRed, () => COLORS.moss],
-                }],
-              }}
-              width={CHART_WIDTH - 32}
-              height={200}
-              fromZero
-              showValuesOnTopOfBars
-              withCustomBarColorFromData
-              flatColor
-              chartConfig={{ ...chartConfig, barPercentage: 0.6 }}
-              style={s.chart}
-            />
-          </Card>
-
-          {/* Mushroom Stats */}
-          <SectionBadge label="Mushroom Analytics" icon="🍄" />
-          <View style={s.statsRow}>
-            <StatCard value={analytics.mushrooms.total_scans}         label="Total Scans"  accent={COLORS.mushCap}    emoji="🔍" />
-            <StatCard value={analytics.mushrooms.scans_last_30d}      label="Last 30d"     accent={COLORS.sage}       emoji="📅" />
-            <StatCard value={`${analytics.mushrooms.detection_success_rate}%`} label="Success" accent={COLORS.safeGreen} emoji="🎯" />
-          </View>
-
-          {/* Scan Timeline */}
-          {analytics.timeline && analytics.timeline.length > 0 && (
-            <>
-              <SectionBadge label="Scan Timeline" icon="📈" />
-              <Card>
-                <Text style={s.cardSubLabel}>Daily scan activity over time</Text>
+          {/* On web, scan timeline goes beside user composition */}
+          {IS_WIDE && timeline && timeline.length > 0 && (
+            <View style={halfStyle}>
+              <Card style={s.mb0} title="Scan Timeline" subtitle="Daily activity">
                 <ScrollView horizontal showsHorizontalScrollIndicator={false}>
                   <LineChart
                     data={{
-                      labels:   analytics.timeline.map(t => t.date),
-                      datasets: [{ data: analytics.timeline.map(t => t.scans) }],
+                      labels:   timelineLabels(timeline),
+                      datasets: [{ data: timeline.map(t => t.scans) }],
                     }}
-                    width={Math.max(CHART_WIDTH - 32, analytics.timeline.length * 52)}
-                    height={220}
+                    width={Math.max(CHART_W, timeline.length * 32)}
+                    height={200}
                     chartConfig={chartConfig}
                     bezier
                     withShadow={false}
@@ -734,133 +805,223 @@ export default function AdminDashboard() {
                   />
                 </ScrollView>
               </Card>
-            </>
+            </View>
           )}
-
-          {/* Most Scanned */}
-          {analytics.mushrooms.most_scanned_mushrooms.length > 0 && (
-            <>
-              <SectionBadge label="Most Scanned Mushrooms" icon="🏆" />
-              <Card>
-                {analytics.mushrooms.most_scanned_mushrooms.slice(0, 5).map((item, index) => (
-                  <View key={index} style={s.rankRow}>
-                    <View style={[s.rankCircle, { backgroundColor: index === 0 ? COLORS.mushCap : index === 1 ? COLORS.sage : COLORS.spore }]}>
-                      <Text style={[s.rankNum, { color: index < 2 ? COLORS.white : COLORS.textMid }]}>#{index + 1}</Text>
-                    </View>
-                    <Text style={s.rankName}>{item.name}</Text>
-                    <Text style={s.rankCount}>{item.count}</Text>
-                  </View>
-                ))}
-                <Text style={[s.cardSubLabel, { marginTop: 16, marginBottom: 4 }]}>Scan Count Chart</Text>
-                <BarChart
-                  data={safeBarData(analytics.mushrooms.most_scanned_mushrooms.map(m => ({ label: m.name, value: m.count })))}
-                  width={CHART_WIDTH - 32}
-                  height={240}
-                  fromZero
-                  showValuesOnTopOfBars
-                  chartConfig={{ ...chartConfig, barPercentage: 0.55, color: (o = 1) => `rgba(193,123,63,${o})` }}
-                  style={s.chart}
-                />
-              </Card>
-            </>
-          )}
-
-          {/* Top Locations */}
-          {analytics.mushrooms.top_locations.length > 0 && (
-            <>
-              <SectionBadge label="Top Scan Locations" icon="📍" />
-              <Card>
-                {analytics.mushrooms.top_locations.slice(0, 5).map((item, index) => (
-                  <View key={index} style={s.rankRow}>
-                    <Text style={{ fontSize: 20 }}>📍</Text>
-                    <Text style={s.rankName}>{item.location}</Text>
-                    <Text style={s.rankCount}>{item.count} scans</Text>
-                  </View>
-                ))}
-                <Text style={[s.cardSubLabel, { marginTop: 16, marginBottom: 4 }]}>Location Chart</Text>
-                <BarChart
-                  data={safeBarData(analytics.mushrooms.top_locations.map(l => ({ label: l.location, value: l.count })))}
-                  width={CHART_WIDTH - 32}
-                  height={240}
-                  fromZero
-                  showValuesOnTopOfBars
-                  chartConfig={{ ...chartConfig, barPercentage: 0.55, color: (o = 1) => `rgba(122,158,116,${o})` }}
-                  style={s.chart}
-                />
-              </Card>
-            </>
-          )}
-
-          {/* Footer mushrooms */}
-          <View style={s.decFooter}>
-            <MushroomSticker variant="red"   size={36} />
-            <MushroomSticker variant="tiny"  size={22} style={{ marginHorizontal: 8 }} />
-            <MushroomSticker variant="brown" size={30} />
-            <MushroomSticker variant="tiny"  size={18} style={{ marginHorizontal: 8 }} />
-            <MushroomSticker variant="white" size={34} />
-          </View>
-        </>
-      ) : (
-        <View style={s.emptyContainer}>
-          <Text style={{ fontSize: 64 }}>🍄</Text>
-          <Text style={s.emptyText}>No analytics data yet</Text>
-          <Text style={s.emptySubText}>Pull down to refresh</Text>
         </View>
-      )}
-    </View>
-  );
 
+        {/* On mobile: scan timeline gets its own full-width section */}
+        {!IS_WIDE && timeline && timeline.length > 0 && (
+          <>
+            <SectionHeader title="Scan Timeline" subtitle="Daily scan activity" emoji="📈" />
+            <Card>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+                <LineChart
+                  data={{
+                    labels:   timelineLabels(timeline),
+                    datasets: [{ data: timeline.map(t => t.scans) }],
+                  }}
+                  width={Math.max(FULL_CHART_W, timeline.length * 52)}
+                  height={200}
+                  chartConfig={chartConfig}
+                  bezier
+                  withShadow={false}
+                  style={s.chart}
+                />
+              </ScrollView>
+            </Card>
+          </>
+        )}
 
+        {/* ═══ MUSHROOM STATS ═══ */}
+        <SectionHeader title="Mushroom Analytics" emoji="🍄" />
+        <View style={s.statGridThree}>
+          <StatTile emoji="🔍" value={M.total_scans}                   label="Total Scans"  accentColor={COLORS.mushCap} wide />
+          <StatTile emoji="📅" value={M.scans_last_30d}                label="Last 30d"     accentColor={COLORS.sage}    wide />
+          <StatTile emoji="🎯" value={`${M.detection_success_rate}%`} label="Success Rate" accentColor={COLORS.safeGreen} wide />
+        </View>
 
-  /* ────────────────────────────────────────
-     NAV TAB BAR
-  ──────────────────────────────────────── */
+        {/* ═══ RANK LISTS ═══ */}
+        {(M.most_scanned_mushrooms.length > 0 || M.top_locations.length > 0) && (
+          <View style={rowStyle}>
+            {M.most_scanned_mushrooms.length > 0 && (
+              <View style={halfStyle}>
+                <SectionHeader title="Top Species" subtitle="Most scanned" emoji="🏆" />
+                <Card style={s.mb0}>
+                  {M.most_scanned_mushrooms.slice(0, 5).map((item, i) => (
+                    <RankItem key={i} rank={i + 1} name={item.name} value={item.count} valueLabel="scans" />
+                  ))}
+                </Card>
+              </View>
+            )}
+            {M.top_locations.length > 0 && (
+              <View style={halfStyle}>
+                <SectionHeader title="Top Locations" subtitle="Most active" emoji="📍" />
+                <Card style={s.mb0}>
+                  {M.top_locations.slice(0, 5).map((item, i) => (
+                    <RankItem key={i} rank={i + 1} name={item.location} value={item.count} valueLabel="scans" />
+                  ))}
+                </Card>
+              </View>
+            )}
+          </View>
+        )}
 
+        {/* ═══ SPECIES CHART ═══ — FIX: always in ScrollView, width computed from item count */}
+        {M.most_scanned_mushrooms.length > 0 && (
+          <>
+            <SectionHeader title="Species Chart" subtitle="Scan count by mushroom" emoji="🍄" />
+            <View style={rowStyle}>
+              <View style={halfStyle}>
+                <Card style={s.mb0}>
+                  {/* FIX: horizontal scroll + wider chart so wrapped labels fit */}
+                  <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+                    {(() => {
+                      const bd = safeBarData(M.most_scanned_mushrooms.map(m => ({ label: m.name, value: m.count })));
+                      return (
+                        <BarChart
+                          data={{ labels: bd.labels, datasets: bd.datasets }}
+                          width={bd.chartWidth}
+                          height={IS_WIDE ? WEB_BAR_H : MOBILE_BAR_H}
+                          fromZero
+                          showValuesOnTopOfBars
+                          chartConfig={{ ...mushroomChartConfig, barPercentage: 0.55 }}
+                          style={s.chart}
+                          verticalLabelRotation={IS_WIDE ? 0 : 45}
+                        />
+                      );
+                    })()}
+                  </ScrollView>
+                </Card>
+              </View>
 
-  /* ────────────────────────────────────────
+              {/* On web: locations chart beside species chart — also in ScrollView */}
+              {IS_WIDE && M.top_locations.length > 0 && (
+                <View style={halfStyle}>
+                  <Card style={s.mb0}>
+                    <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+                      {(() => {
+                        const bd = safeBarData(M.top_locations.map(l => ({ label: l.location, value: l.count })));
+                        return (
+                          <BarChart
+                            data={{ labels: bd.labels, datasets: bd.datasets }}
+                            width={bd.chartWidth}
+                            height={WEB_BAR_H}
+                            fromZero
+                            showValuesOnTopOfBars
+                            chartConfig={{ ...chartConfig, barPercentage: 0.6, color: (o = 1) => `rgba(122,158,116,${o})` }}
+                            style={s.chart}
+                            verticalLabelRotation={0}
+                          />
+                        );
+                      })()}
+                    </ScrollView>
+                  </Card>
+                </View>
+              )}
+            </View>
+          </>
+        )}
+
+        {/* On mobile: locations chart gets its own full-width section — also in ScrollView */}
+        {!IS_WIDE && M.top_locations.length > 0 && (
+          <>
+            <SectionHeader title="Locations Chart" subtitle="Scans by location" emoji="📍" />
+            <Card>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+                {(() => {
+                  const bd = safeBarData(M.top_locations.map(l => ({ label: l.location, value: l.count })));
+                  return (
+                    <BarChart
+                      data={{ labels: bd.labels, datasets: bd.datasets }}
+                      width={bd.chartWidth}
+                      height={MOBILE_BAR_H}
+                      fromZero
+                      showValuesOnTopOfBars
+                      chartConfig={{ ...chartConfig, barPercentage: 0.55, color: (o = 1) => `rgba(122,158,116,${o})` }}
+                      style={s.chart}
+                      verticalLabelRotation={45}
+                    />
+                  );
+                })()}
+              </ScrollView>
+            </Card>
+          </>
+        )}
+
+        {/* ═══ EXPORT ═══ */}
+        <SectionHeader title="Reports" emoji="📄" />
+        <Card style={s.mb24}>
+          <ExportButton
+            onPress={() => exportPDF(buildAnalyticsReport(analytics, user.name), 'SnapShroom_Full_Analytics.pdf')}
+            label="Export Full Analytics"
+            icon="bar-chart-outline"
+          />
+        </Card>
+
+      </View>
+    );
+  };
+
+  /* ════════════════════════════════════════════
      ROOT RENDER
-  ──────────────────────────────────────── */
+  ════════════════════════════════════════════ */
   return (
     <ThemedView style={s.container}>
-      {/* ── Header ── */}
-      <View style={s.header}>
-        {/* Left cluster */}
-        <View style={s.headerLeft}>
+
+      <View style={s.topHeader}>
+        <View style={s.topHeaderLeft}>
           <HamburgerMenu
             onAdminNavigate={(section) => setCurrentSection(section as Section)}
             currentSection={currentSection}
           />
           <NotificationDropdown iconColor={COLORS.mint} />
         </View>
-
-        {/* Center */}
-        <View style={s.headerCenter}>
-          <Text style={s.headerLogo}>🍄</Text>
-          <Text style={s.headerTitle}>SnapShroom</Text>
+        <View style={s.topHeaderCenter}>
+          <Text style={s.topHeaderLogo}>🍄</Text>
+          <Text style={s.topHeaderTitle}>SnapShroom</Text>
         </View>
-
-        {/* Right: admin pill */}
-        <View style={s.headerRight}>
-          <View style={s.adminPill}>
-            <Text style={s.adminPillText}>Admin</Text>
+        <View style={s.topHeaderRight}>
+          <View style={s.adminBadge}>
+            <Text style={s.adminBadgeText}>Admin</Text>
           </View>
         </View>
       </View>
 
-      {/* ── Section subtitle bar ── */}
-      <View style={s.subBar}>
-        <Text style={s.subBarText}>
+      <View style={s.tabBar}>
+        {(['home', 'users', 'analytics'] as Section[]).map(section => {
+          const labels: Record<Section, { label: string; emoji: string }> = {
+            home:      { label: 'Overview',  emoji: '🏠' },
+            users:     { label: 'Users',     emoji: '👥' },
+            analytics: { label: 'Analytics', emoji: '📊' },
+          };
+          const isActive = currentSection === section;
+          return (
+            <TouchableOpacity
+              key={section}
+              style={[s.tabItem, isActive && s.tabItemActive]}
+              onPress={() => setCurrentSection(section)}
+              activeOpacity={0.85}
+            >
+              <Text style={[s.tabEmoji, isActive && s.tabEmojiActive]}>{labels[section].emoji}</Text>
+              <Text style={[s.tabLabel, isActive && s.tabLabelActive]}>{labels[section].label}</Text>
+              {isActive && <View style={s.tabIndicator} />}
+            </TouchableOpacity>
+          );
+        })}
+      </View>
+
+      <View style={s.contextStrip}>
+        <Text style={s.contextUser}>⊕ {user.name}</Text>
+        <Text style={s.contextSection}>
           {currentSection === 'home'      && 'Dashboard Overview'}
           {currentSection === 'users'     && 'User Management'}
           {currentSection === 'analytics' && 'Analytics & Insights'}
         </Text>
-        <Text style={s.subBarUser}>⊕ {user.name}</Text>
       </View>
 
-      {/* ── Content ── */}
       <ScrollView
-        style={{ flex: 1 }}
-        contentContainerStyle={{ paddingBottom: 32 }}
+        style={{ flex: 1, backgroundColor: COLORS.cream }}
+        contentContainerStyle={{ paddingBottom: 40 }}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={COLORS.moss} />}
         showsVerticalScrollIndicator={false}
       >
@@ -868,7 +1029,6 @@ export default function AdminDashboard() {
         {currentSection === 'users'     && renderUsers()}
         {currentSection === 'analytics' && renderAnalytics()}
       </ScrollView>
-
 
     </ThemedView>
   );
@@ -878,10 +1038,10 @@ export default function AdminDashboard() {
    STYLES
 ════════════════════════════════════════════ */
 const s = StyleSheet.create({
-  container:  { flex: 1, backgroundColor: COLORS.cream },
 
-  /* ── Header ── */
-  header: {
+  container: { flex: 1, backgroundColor: COLORS.cream },
+
+  topHeader: {
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 16,
@@ -889,197 +1049,218 @@ const s = StyleSheet.create({
     paddingBottom: 14,
     backgroundColor: COLORS.forest,
     borderBottomWidth: 1,
-    borderBottomColor: 'rgba(168,197,160,0.15)',
+    borderBottomColor: 'rgba(168,197,160,0.12)',
   },
-  headerLeft:   { flexDirection: 'row', alignItems: 'center', gap: 8, flex: 1 },
-  headerCenter: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  headerRight:  { flex: 1, alignItems: 'flex-end' },
-  headerLogo:   { fontSize: 22 },
-  headerTitle:  { fontSize: 20, fontWeight: '800', color: COLORS.cream, letterSpacing: 0.5 },
-  adminPill: {
+  topHeaderLeft:   { flexDirection: 'row', alignItems: 'center', gap: 8, flex: 1 },
+  topHeaderCenter: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  topHeaderRight:  { flex: 1, alignItems: 'flex-end' },
+  topHeaderLogo:   { fontSize: 22 },
+  topHeaderTitle:  { fontSize: 20, fontWeight: '800', color: COLORS.cream, letterSpacing: 0.4 },
+  adminBadge: {
     backgroundColor: COLORS.moss,
     paddingHorizontal: 10, paddingVertical: 4,
     borderRadius: 20,
   },
-  adminPillText: { color: COLORS.cream, fontSize: 11, fontWeight: '700', letterSpacing: 0.5 },
+  adminBadgeText: { color: COLORS.cream, fontSize: 11, fontWeight: '700', letterSpacing: 0.5 },
 
-  /* ── Sub-bar ── */
-  subBar: {
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-    paddingHorizontal: 16, paddingVertical: 10,
+  tabBar: {
+    flexDirection: 'row',
     backgroundColor: COLORS.forestMid,
-    borderBottomWidth: 1, borderBottomColor: 'rgba(168,197,160,0.1)',
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(168,197,160,0.12)',
   },
-  subBarText: { color: COLORS.mint, fontSize: 13, fontWeight: '600' },
-  subBarUser: { color: COLORS.sage,  fontSize: 12 },
-
-  /* ── Content ── */
-  contentContainer: { paddingHorizontal: 16, paddingTop: 16 },
-
-  /* ── Loading / Empty ── */
-  loadingContainer: { padding: 60, alignItems: 'center' },
-  loadingMushroom:  { fontSize: 56 },
-  loadingText:      { marginTop: 12, color: COLORS.textLight, fontSize: 15 },
-  emptyContainer:   { padding: 60, alignItems: 'center' },
-  emptyText:        { marginTop: 16, color: COLORS.textMid,   fontSize: 18, fontWeight: '700' },
-  emptySubText:     { marginTop: 6,  color: COLORS.textLight, fontSize: 14 },
-
-  /* ── Hero Banner ── */
-  heroBanner: {
-    backgroundColor: COLORS.forest,
-    borderRadius: 20,
-    padding: 20,
-    marginBottom: 20,
-    overflow: 'hidden',
+  tabItem: {
+    flex: 1, alignItems: 'center', paddingVertical: 10, gap: 2, position: 'relative',
   },
-  heroBannerDecor: { position: 'absolute', top: 0, right: 0, bottom: 0, width: 180 },
-  heroBannerLabel: {
-    color: COLORS.mint, fontSize: 10, fontWeight: '800',
-    letterSpacing: 2, marginBottom: 6,
+  tabItemActive: { backgroundColor: 'rgba(168,197,160,0.1)' },
+  tabEmoji:       { fontSize: 16 },
+  tabEmojiActive: { transform: [{ scale: 1.1 }] },
+  tabLabel:       { fontSize: 11, color: COLORS.sage, fontWeight: '600' },
+  tabLabelActive: { color: COLORS.mint, fontWeight: '800' },
+  tabIndicator: {
+    position: 'absolute', bottom: 0, left: '15%', right: '15%',
+    height: 2.5, backgroundColor: COLORS.mint, borderRadius: 2,
   },
-  heroBannerTitle: {
-    color: COLORS.cream, fontSize: 32, fontWeight: '900',
-    letterSpacing: -0.5, marginBottom: 4,
-  },
-  heroBannerSub: { color: COLORS.sage, fontSize: 13, marginBottom: 16 },
 
-  /* ── Export Button ── */
-  exportBtn: {
+  contextStrip: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-    backgroundColor: 'rgba(255,255,255,0.1)',
-    borderRadius: 12, paddingHorizontal: 14, paddingVertical: 11,
-    borderWidth: 1, borderColor: 'rgba(168,197,160,0.25)',
-    marginRight: 170,
+    paddingHorizontal: 16, paddingVertical: 8,
+    backgroundColor: COLORS.parchment,
+    borderBottomWidth: 1, borderBottomColor: COLORS.spore,
   },
-  exportBtnInner: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  exportBtnText:  { color: COLORS.cream, fontSize: 13, fontWeight: '700' },
-  exportBtnAccent:{ width: 26, height: 26, borderRadius: 13, backgroundColor: 'rgba(168,197,160,0.2)', alignItems: 'center', justifyContent: 'center' },
+  contextUser:    { color: COLORS.textLight, fontSize: 12 },
+  contextSection: { color: COLORS.textMid,   fontSize: 12, fontWeight: '700' },
 
-  /* ── Section Badge ── */
-  sectionBadge: {
-    flexDirection: 'row', alignItems: 'center', gap: 6,
+  page: { paddingHorizontal: 16, paddingTop: 20 },
+
+  pageHeader: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+    backgroundColor: COLORS.forest, borderRadius: 18, padding: 20, marginBottom: 24,
+  },
+  pageHeaderEyebrow: { color: COLORS.mint, fontSize: 10, fontWeight: '800', letterSpacing: 2, marginBottom: 4 },
+  pageHeaderTitle:   { color: COLORS.cream, fontSize: 28, fontWeight: '900', letterSpacing: -0.5, marginBottom: 4 },
+  pageHeaderSub:     { color: COLORS.sage, fontSize: 12 },
+
+  sectionHeader: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
     marginBottom: 10, marginTop: 4,
   },
-  sectionBadgeIcon: { fontSize: 16 },
-  sectionBadgeText: {
-    fontSize: 13, fontWeight: '800', color: COLORS.textMid,
-    letterSpacing: 0.5, textTransform: 'uppercase',
-  },
+  sectionHeaderLeft: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  sectionEmoji:      { fontSize: 18 },
+  sectionTitle:      { fontSize: 14, fontWeight: '800', color: COLORS.textDark, letterSpacing: 0.2 },
+  sectionSubtitle:   { fontSize: 11, color: COLORS.textLight, marginTop: 1 },
 
-  /* ── Quick Actions ── */
-  quickActionsRow: { flexDirection: 'row', gap: 10, marginBottom: 20 },
-  quickCard: {
-    flex: 1, borderRadius: 16, padding: 16,
-    alignItems: 'center', justifyContent: 'center', gap: 6,
-    shadowColor: COLORS.forest, shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.2, shadowRadius: 8, elevation: 4,
-  },
-  quickCardEmoji: { fontSize: 28 },
-  quickCardLabel: { color: COLORS.cream, fontSize: 12, fontWeight: '700' },
-
-  /* ── Stat Cards ── */
-  statsRow: {
-    flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginBottom: 20,
-  },
-  statCard: {
-    flex: 1, minWidth: (width - 52) / 2 - 10,
-    backgroundColor: COLORS.white, borderRadius: 16,
-    padding: 14, alignItems: 'center',
-    borderTopWidth: 3,
-    shadowColor: COLORS.forest, shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.08, shadowRadius: 6, elevation: 2,
-  },
-  statEmoji: { fontSize: 22, marginBottom: 4 },
-  statValue: { fontSize: 26, fontWeight: '900', letterSpacing: -0.5 },
-  statLabel: { fontSize: 11, color: COLORS.textLight, fontWeight: '600', marginTop: 2 },
-
-  /* ── Card ── */
   card: {
     backgroundColor: COLORS.white,
     borderRadius: 16, padding: 16, marginBottom: 16,
-    shadowColor: COLORS.forest, shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.08, shadowRadius: 8, elevation: 2,
+    shadowColor: COLORS.forest,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.07, shadowRadius: 8, elevation: 2,
+    borderWidth: 1, borderColor: COLORS.border,
   },
-  cardTitle:    { fontSize: 15, fontWeight: '700', color: COLORS.textDark, marginBottom: 4 },
-  cardSubLabel: { fontSize: 12, color: COLORS.textLight, marginBottom: 12 },
-  chart: { borderRadius: 12, alignSelf: 'center' },
+  cardHeader:   { marginBottom: 14 },
+  cardTitle:    { fontSize: 14, fontWeight: '700', color: COLORS.textDark },
+  cardSubtitle: { fontSize: 11, color: COLORS.textLight, marginTop: 2 },
+  chart:        { borderRadius: 10, alignSelf: 'center' },
 
-  /* ── Rank rows ── */
-  rankRow: {
-    flexDirection: 'row', alignItems: 'center',
-    gap: 12, paddingVertical: 10,
-    borderBottomWidth: 1, borderBottomColor: COLORS.parchment,
-  },
-  rankCircle: {
-    width: 34, height: 34, borderRadius: 17,
-    alignItems: 'center', justifyContent: 'center',
-  },
-  rankNum:   { fontSize: 11, fontWeight: '800', color: COLORS.white },
-  rankName:  { flex: 1, fontSize: 14, fontWeight: '600', color: COLORS.textDark },
-  rankCount: { fontSize: 13, color: COLORS.textLight, fontWeight: '700' },
+  chartPlaceholder:     { height: 100, alignItems: 'center', justifyContent: 'center' },
+  chartPlaceholderText: { color: COLORS.textLight, fontSize: 12 },
 
-  /* ── Info Tiles ── */
-  infoRow: { flexDirection: 'row', gap: 10, marginBottom: 20 },
-  infoTile: {
-    flex: 1, backgroundColor: COLORS.white,
-    borderRadius: 16, padding: 14, alignItems: 'center',
-    shadowColor: COLORS.forest, shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.08, shadowRadius: 6, elevation: 2,
+  statGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginBottom: 16 },
+  statTile: {
+    width: (Dimensions.get('window').width - 48 - 10) / 2,
+    backgroundColor: COLORS.white, borderRadius: 14, padding: 16,
+    alignItems: 'flex-start', overflow: 'hidden',
+    borderWidth: 1, borderColor: COLORS.border,
+    shadowColor: COLORS.forest, shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.06, shadowRadius: 4, elevation: 1,
   },
-  infoTileEmoji: { fontSize: 24, marginBottom: 6 },
-  infoTileValue: { fontSize: 20, fontWeight: '900', color: COLORS.textDark },
-  infoTileLabel: { fontSize: 11, color: COLORS.textLight, fontWeight: '600', marginTop: 2 },
-
-  /* ── Decorative Footer ── */
-  decFooter: {
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
-    paddingVertical: 20, gap: 6, marginBottom: 8,
+  statTileWide: { width: (Dimensions.get('window').width - 48 - 20) / 3 },
+  statTileAccent: {
+    position: 'absolute', top: 0, left: 0, right: 0, height: 3,
+    borderTopLeftRadius: 14, borderTopRightRadius: 14,
   },
+  statTileEmoji: { fontSize: 24, marginBottom: 8, marginTop: 4 },
+  statTileValue: { fontSize: 24, fontWeight: '900', letterSpacing: -0.5, marginBottom: 2 },
+  statTileLabel: { fontSize: 11, color: COLORS.textLight, fontWeight: '600' },
 
-  /* ── User Cards ── */
+  statGridThree: { flexDirection: 'row', gap: 8, marginBottom: 16 },
+
+  inlineStatRow:   { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-around', paddingVertical: 4 },
+  inlineDivider:   { width: 1, height: 40, backgroundColor: COLORS.border },
+  inlineStat:      { flex: 1, alignItems: 'center', gap: 3 },
+  inlineStatEmoji: { fontSize: 20 },
+  inlineStatValue: { fontSize: 20, fontWeight: '900' },
+  inlineStatLabel: { fontSize: 11, color: COLORS.textLight, fontWeight: '600' },
+
+  quickRow: { flexDirection: 'row', gap: 10, marginBottom: 20 },
+  quickBtn: {
+    flex: 1, borderRadius: 14, paddingVertical: 14, alignItems: 'center', gap: 6,
+    shadowColor: COLORS.forest, shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.15, shadowRadius: 6, elevation: 3,
+  },
+  quickBtnEmoji: { fontSize: 24 },
+  quickBtnLabel: { color: COLORS.cream, fontSize: 12, fontWeight: '700' },
+
+  rankItem: {
+    flexDirection: 'row', alignItems: 'center', gap: 12,
+    paddingVertical: 11, borderBottomWidth: 1, borderBottomColor: COLORS.parchment,
+  },
+  rankBadge:     { width: 32, height: 32, borderRadius: 16, alignItems: 'center', justifyContent: 'center', backgroundColor: COLORS.spore },
+  rankBadgeText: { fontSize: 12, fontWeight: '800' },
+  rankItemName:  { flex: 1, fontSize: 14, fontWeight: '600', color: COLORS.textDark },
+  rankItemRight: { alignItems: 'flex-end' },
+  rankItemCount: { fontSize: 15, fontWeight: '800', color: COLORS.textDark },
+  rankItemUnit:  { fontSize: 10, color: COLORS.textLight },
+
+  exportBtn: {
+    flexDirection: 'row', alignItems: 'center', gap: 8,
+    backgroundColor: COLORS.moss, borderRadius: 12,
+    paddingHorizontal: 16, paddingVertical: 12, alignSelf: 'flex-start',
+  },
+  exportBtnText: { color: COLORS.cream, fontSize: 13, fontWeight: '700', flex: 1 },
+
+  loadingContainer: { paddingVertical: 80, alignItems: 'center' },
+  loadingIcon:      { fontSize: 56 },
+  loadingText:      { marginTop: 14, color: COLORS.textLight, fontSize: 14 },
+  emptyContainer:   { paddingVertical: 80, alignItems: 'center' },
+  emptyTitle:       { marginTop: 16, color: COLORS.textDark, fontSize: 18, fontWeight: '800' },
+  emptySubtitle:    { marginTop: 6, color: COLORS.textLight, fontSize: 13 },
+
   userCard: {
-    backgroundColor: COLORS.white,
-    borderRadius: 16, padding: 16, marginBottom: 12,
-    flexDirection: 'row', gap: 14,
+    backgroundColor: COLORS.white, borderRadius: 16, padding: 16, marginBottom: 12,
     shadowColor: COLORS.forest, shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.08, shadowRadius: 6, elevation: 2,
+    shadowOpacity: 0.07, shadowRadius: 6, elevation: 2,
+    borderWidth: 1, borderColor: COLORS.border,
   },
-  userAvatar: {
-    width: 52, height: 52, borderRadius: 26,
-    alignItems: 'center', justifyContent: 'center',
-  },
-  userAvatarText: { fontSize: 22, fontWeight: '900', color: COLORS.cream },
-  adminBadgeDot: {
-    position: 'absolute', bottom: 0, right: 0,
-    backgroundColor: COLORS.mushCap, borderRadius: 10,
+  userCardTop: { flexDirection: 'row', gap: 12, alignItems: 'flex-start', marginBottom: 12 },
+  avatar: { width: 48, height: 48, borderRadius: 24, alignItems: 'center', justifyContent: 'center' },
+  avatarText:  { fontSize: 20, fontWeight: '900', color: COLORS.cream },
+  avatarBadge: {
+    position: 'absolute', bottom: -1, right: -1,
+    backgroundColor: COLORS.mushCap, borderRadius: 9,
     width: 18, height: 18, alignItems: 'center', justifyContent: 'center',
     borderWidth: 2, borderColor: COLORS.white,
   },
-  userInfo:   { flex: 1 },
-  userRow:    { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 },
-  userName:   { fontSize: 16, fontWeight: '800', color: COLORS.textDark },
-  rolePill: {
-    paddingHorizontal: 9, paddingVertical: 3, borderRadius: 20,
+  userCardMeta: { flex: 1 },
+  userCardNameRow: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 3,
   },
-  rolePillText: { fontSize: 11, fontWeight: '700' },
-  userEmail:  { fontSize: 13, color: COLORS.textMid, marginBottom: 2 },
-  userMeta:   { fontSize: 11, color: COLORS.textLight, marginBottom: 4 },
-  statusRow:  { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 10 },
-  statusDot:  { width: 8, height: 8, borderRadius: 4 },
-  statusText: { fontSize: 12, fontWeight: '700' },
-  actionRow:  { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-  actionPill: {
-    flexDirection: 'row', alignItems: 'center',
-    paddingHorizontal: 12, paddingVertical: 7, borderRadius: 20,
+  userCardName:  { fontSize: 15, fontWeight: '800', color: COLORS.textDark, flex: 1, marginRight: 6 },
+  rolePill:      { paddingHorizontal: 8, paddingVertical: 3, borderRadius: 20 },
+  rolePillText:  { fontSize: 10, fontWeight: '700' },
+  userCardEmail: { fontSize: 13, color: COLORS.textMid, marginBottom: 2 },
+  userCardInfo:  { fontSize: 11, color: COLORS.textLight },
+  userCardDivider: { height: 1, backgroundColor: COLORS.parchment, marginBottom: 12 },
+  userCardStatusRow: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12,
   },
-  actionPillText: { fontSize: 12, fontWeight: '700' },
+  statusBadge:   { flexDirection: 'row', alignItems: 'center', gap: 5 },
+  statusDot:     { width: 7, height: 7, borderRadius: 4 },
+  statusLabel:   { fontSize: 12, fontWeight: '700' },
+  lastLoginText: { fontSize: 11, color: COLORS.textLight },
+  userCardActions: { flexDirection: 'row', gap: 8, flexWrap: 'wrap' },
+  actionBtn: {
+    flexDirection: 'row', alignItems: 'center', gap: 5,
+    paddingHorizontal: 12, paddingVertical: 8,
+    borderRadius: 10, borderWidth: 1,
+  },
+  actionBtnText: { fontSize: 12, fontWeight: '700' },
 
-  /* ── Role Toggle Button ── */
-  roleToggle: {
-    flexDirection: 'row', alignItems: 'center',
-    paddingHorizontal: 14, paddingVertical: 8, borderRadius: 20,
-    borderWidth: 1.5,
+  // FIX: Custom ProgressChart legend styles
+  progressLegend: {
+    flexDirection: 'row',
+    justifyContent: 'space-evenly',
+    alignItems: 'center',
+    paddingTop: 12,
+    paddingBottom: 4,
+    borderTopWidth: 1,
+    borderTopColor: COLORS.border,
+    marginTop: 8,
   },
-  roleToggleText: { fontSize: 12, fontWeight: '800' },
+  progressLegendItem: {
+    flexDirection: 'column',
+    alignItems: 'center',
+    gap: 4,
+  },
+  progressLegendDot: {
+    width: 12,
+    height: 12,
+    borderRadius: 6,
+  },
+  progressLegendLabel: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: COLORS.textDark,
+  },
+  progressLegendPct: {
+    fontSize: 13,
+    fontWeight: '800',
+  },
 
+  mb0:  { marginBottom: 0 },
+  mb8:  { marginBottom: 8 },
+  mb16: { marginBottom: 16 },
+  mb20: { marginBottom: 20 },
+  mb24: { marginBottom: 24 },
 });

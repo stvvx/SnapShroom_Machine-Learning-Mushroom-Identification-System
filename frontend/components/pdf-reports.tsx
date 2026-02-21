@@ -1,8 +1,14 @@
 /* ═══════════════════════════════════════════════════════════════
-   SnapShroom  ·  Formal PDF Report Generator
+   SnapShroom  ·  PDF Report Generator
    ───────────────────────────────────────────────────────────────
    Generates professional A4 report HTML for expo-print.
-   FIXED: Proper A4 page sizing and print-specific CSS
+   
+   KEY FIXES:
+   - @page margin: 0 + padding via .page div → suppresses browser-
+     injected URL, date, and page-number headers/footers in WebKit
+   - Removed .page-header bar that mimicked the website nav
+   - Cover page uses text-only logo (emojis are unreliable in PDF)
+   - All charts rendered as pure HTML/CSS bars (no canvas needed)
 ═══════════════════════════════════════════════════════════════ */
 
 /* ─── colour palette ─── */
@@ -24,6 +30,7 @@ const C = {
   white:   '#FFFFFF',
   mid:     '#6B7C6B',
   light:   '#A8B8A8',
+  mushroom:'#C17B3F',
 };
 
 /* ─── helpers ─── */
@@ -42,149 +49,162 @@ const barW = (n: number, max: number) =>
   max > 0 ? Math.max(2, Math.round((n / max) * 100)) : 2;
 
 const medal = (i: number) =>
-  i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : `#${i + 1}`;
+  i === 0 ? '#1' : i === 1 ? '#2' : i === 2 ? '#3' : `#${i + 1}`;
 
 /* ════════════════════════════════════════════════════════════════
-   SHARED CSS — FIXED FOR PROPER PDF PRINTING
+   BASE CSS
+   
+   CRITICAL for suppressing WebKit/expo-print browser chrome:
+   - @page { size: A4; margin: 0; }  → removes the margin area
+     where the browser normally injects URL, title, date, page #
+   - All padding lives inside .page div, not on @page
+   - -webkit-print-color-adjust: exact → preserves bg colours
 ════════════════════════════════════════════════════════════════ */
 const BASE_CSS = `
-  /* Critical print styles */
+  @page {
+    size: A4;
+    margin: 0mm;
+  }
+
   @media print {
-    @page {
-      size: A4;
-      margin: 0;
-    }
-    
     * {
-      -webkit-print-color-adjust: exact;
-      print-color-adjust: exact;
+      -webkit-print-color-adjust: exact !important;
+      print-color-adjust: exact !important;
+    }
+    html, body {
+      margin: 0 !important;
+      padding: 0 !important;
     }
   }
 
-  /* Base styles for both screen and print */
   * {
     margin: 0;
     padding: 0;
     box-sizing: border-box;
   }
 
-  body {
-    width: 100%;
-    background: ${C.white};
+  html, body {
+    width: 210mm;
+    background: #e0e0e0;
     font-family: Helvetica, Arial, sans-serif;
     font-size: 10pt;
     color: ${C.ink};
-    line-height: 1.4;
+    line-height: 1.45;
   }
 
-  /* Page container */
+  /* ── Page shell ──
+     Each .page is exactly A4. The 18mm padding replaces the
+     @page margin so content is still inset from the edge.      */
   .page {
     width: 210mm;
     min-height: 297mm;
-    padding: 20mm;
-    margin: 0 auto;
+    padding: 18mm 20mm 16mm 20mm;
     background: ${C.white};
     position: relative;
     page-break-after: always;
-    box-shadow: 0 0 10px rgba(0,0,0,0.1);
+    overflow: hidden;
   }
 
   @media print {
     .page {
       box-shadow: none;
-      margin: 0;
-      padding: 20mm;
     }
   }
 
-  /* Cover page */
+  /* ── Cover page ── */
   .cover {
     width: 210mm;
-    min-height: 297mm;
+    height: 297mm;
     background-color: ${C.forest};
     position: relative;
     page-break-after: always;
-    padding: 20mm;
+    padding: 0;
+    overflow: hidden;
   }
 
-  .cover-top-bar {
-    background-color: ${C.moss};
-    height: 8mm;
+  .cover-top-accent {
+    background-color: ${C.teal};
+    height: 10mm;
     width: 100%;
     position: absolute;
     top: 0;
     left: 0;
   }
 
-  .cover-accent-bar {
-    background-color: ${C.teal};
-    width: 16mm;
+  .cover-side-accent {
+    background-color: ${C.moss};
+    width: 14mm;
     height: 297mm;
     position: absolute;
     top: 0;
     right: 0;
   }
 
-  .cover-logo {
-    font-size: 10pt;
+  .cover-body {
+    padding: 22mm 24mm 20mm 24mm;
+  }
+
+  .cover-wordmark {
+    font-size: 9pt;
     font-weight: bold;
-    letter-spacing: 3px;
+    letter-spacing: 4px;
     text-transform: uppercase;
     color: ${C.teal};
     border-left: 3px solid ${C.teal};
     padding-left: 8px;
-    margin-bottom: 40mm;
+    margin-bottom: 42mm;
   }
 
   .cover-eyebrow {
-    font-size: 7.5pt;
-    letter-spacing: 4px;
+    font-size: 7pt;
+    letter-spacing: 5px;
     text-transform: uppercase;
     color: ${C.light};
     margin-bottom: 5mm;
   }
 
   .cover-title {
-    font-size: 26pt;
+    font-size: 28pt;
     font-weight: bold;
     color: ${C.white};
-    line-height: 1.25;
+    line-height: 1.2;
     margin-bottom: 5mm;
-    max-width: 120mm;
+    max-width: 125mm;
   }
 
   .cover-subtitle {
-    font-size: 11pt;
+    font-size: 10.5pt;
     color: ${C.light};
-    margin-bottom: 14mm;
-    max-width: 110mm;
-    line-height: 1.5;
+    margin-bottom: 12mm;
+    max-width: 112mm;
+    line-height: 1.6;
   }
 
-  .cover-divider {
-    width: 22mm;
+  .cover-rule {
+    width: 20mm;
     height: 2px;
     background-color: ${C.teal};
     margin-bottom: 8mm;
   }
 
-  .cover-meta-table {
-    border-collapse: collapse;
-    margin-top: 30mm;
-    width: 100%;
+  .cover-meta {
+    margin-top: 32mm;
+    border-top: 0.5pt solid rgba(255,255,255,0.15);
+    padding-top: 6mm;
+    display: flex;
+    gap: 10mm;
   }
 
-  .cover-meta-table td {
-    padding: 2mm 0;
+  .cover-meta-item {
+    flex: 1;
   }
 
   .cover-meta-label {
-    font-size: 7pt;
-    letter-spacing: 2px;
+    font-size: 6.5pt;
+    letter-spacing: 2.5px;
     text-transform: uppercase;
     color: ${C.light};
-    padding-right: 12mm;
-    vertical-align: top;
+    margin-bottom: 1.5mm;
   }
 
   .cover-meta-value {
@@ -193,64 +213,41 @@ const BASE_CSS = `
     font-weight: bold;
   }
 
-  .cover-classification {
-    margin-top: 8mm;
+  .cover-confidential {
+    margin-top: 6mm;
     display: inline-block;
-    border: 1px solid ${C.red};
+    border: 1pt solid ${C.red};
     color: ${C.red};
-    font-size: 7pt;
-    letter-spacing: 3px;
-    text-transform: uppercase;
-    padding: 2mm 4mm;
-    font-weight: bold;
-  }
-
-  /* Header and Footer */
-  .page-header {
-    border-bottom: 1.5pt solid ${C.forest};
-    padding-bottom: 2.5mm;
-    margin-bottom: 7mm;
-    display: flex;
-    justify-content: space-between;
-  }
-
-  .page-header-left {
-    font-size: 7pt;
-    letter-spacing: 2px;
-    text-transform: uppercase;
-    color: ${C.sage};
-    font-weight: bold;
-  }
-
-  .page-header-right {
-    font-size: 7pt;
-    color: ${C.light};
-  }
-
-  .page-footer {
-    border-top: 0.5pt solid ${C.rule};
-    padding-top: 3mm;
-    margin-top: 10mm;
-    display: flex;
-    justify-content: space-between;
-    font-size: 7pt;
-    color: ${C.light};
-  }
-
-  .conf-strip {
-    background-color: ${C.redLt};
-    border-top: 1pt solid ${C.red};
-    text-align: center;
     font-size: 6.5pt;
     letter-spacing: 3px;
     text-transform: uppercase;
-    color: ${C.red};
+    padding: 1.5mm 4mm;
     font-weight: bold;
-    padding: 1.5mm 0;
-    margin-top: 5mm;
   }
 
-  /* TOC */
+  /* ── Page footer (replaces old page-header + page-footer combo) ── */
+  .page-footer {
+    position: absolute;
+    bottom: 8mm;
+    left: 20mm;
+    right: 20mm;
+    border-top: 0.5pt solid ${C.rule};
+    padding-top: 2.5mm;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 7pt;
+    color: ${C.light};
+  }
+
+  .page-footer-brand {
+    font-weight: bold;
+    color: ${C.sage};
+    letter-spacing: 1px;
+    text-transform: uppercase;
+  }
+
+  /* ── TOC ── */
   .toc-title {
     font-size: 17pt;
     font-weight: bold;
@@ -283,7 +280,7 @@ const BASE_CSS = `
     color: ${C.ink};
   }
 
-  /* Section headings */
+  /* ── Section headings ── */
   .section-heading {
     display: flex;
     align-items: center;
@@ -296,10 +293,11 @@ const BASE_CSS = `
     color: ${C.teal};
     letter-spacing: 1px;
     width: 10mm;
+    flex-shrink: 0;
   }
 
   .section-title {
-    font-size: 14pt;
+    font-size: 13pt;
     font-weight: bold;
     color: ${C.forest};
   }
@@ -308,28 +306,29 @@ const BASE_CSS = `
     height: 2pt;
     background-color: ${C.teal};
     margin-bottom: 5mm;
-    width: 100%;
   }
 
   .subsection-title {
-    font-size: 9.5pt;
+    font-size: 8.5pt;
     font-weight: bold;
     color: ${C.moss};
     text-transform: uppercase;
     letter-spacing: 1.5px;
     margin: 5mm 0 2.5mm;
+    border-bottom: 0.5pt solid ${C.rule};
+    padding-bottom: 1.5mm;
   }
 
-  /* Executive summary */
+  /* ── Executive summary box ── */
   .exec-box {
     background-color: ${C.mist};
     border-left: 4pt solid ${C.teal};
-    padding: 4.5mm 5.5mm;
+    padding: 4mm 5mm;
     margin-bottom: 6mm;
   }
 
   .exec-label {
-    font-size: 7pt;
+    font-size: 6.5pt;
     letter-spacing: 3px;
     text-transform: uppercase;
     color: ${C.teal};
@@ -338,12 +337,12 @@ const BASE_CSS = `
   }
 
   .exec-text {
-    font-size: 9.5pt;
+    font-size: 9pt;
     line-height: 1.65;
     color: ${C.ink};
   }
 
-  /* KPI cards */
+  /* ── KPI cards ── */
   .kpi-grid {
     display: flex;
     gap: 3mm;
@@ -353,24 +352,25 @@ const BASE_CSS = `
 
   .kpi-card {
     flex: 1;
-    min-width: 60mm;
+    min-width: 55mm;
     background-color: ${C.bg};
     border: 0.5pt solid ${C.rule};
     border-top: 3pt solid ${C.sage};
-    padding: 4mm 3mm;
+    padding: 4mm 3mm 3.5mm;
     text-align: center;
   }
 
-  .kpi-card.teal { border-top-color: ${C.teal}; }
-  .kpi-card.red { border-top-color: ${C.red}; }
+  .kpi-card.teal  { border-top-color: ${C.teal}; }
+  .kpi-card.red   { border-top-color: ${C.red}; }
   .kpi-card.amber { border-top-color: ${C.amber}; }
+  .kpi-card.mush  { border-top-color: ${C.mushroom}; }
 
   .kpi-value {
-    font-size: 17pt;
+    font-size: 16pt;
     font-weight: bold;
     color: ${C.forest};
     line-height: 1;
-    margin-bottom: 1mm;
+    margin-bottom: 1.5mm;
     display: block;
   }
 
@@ -390,17 +390,18 @@ const BASE_CSS = `
     display: block;
   }
 
-  /* Distribution bars */
+  /* ── Horizontal distribution bars ── */
   .dist-item {
     display: flex;
     align-items: center;
-    margin-bottom: 2mm;
+    margin-bottom: 2.5mm;
   }
 
   .dist-label {
-    width: 32mm;
-    font-size: 8.5pt;
+    width: 36mm;
+    font-size: 8pt;
     font-weight: bold;
+    flex-shrink: 0;
   }
 
   .dist-track {
@@ -408,21 +409,23 @@ const BASE_CSS = `
     height: 5mm;
     background-color: ${C.mist};
     margin: 0 3mm;
+    border-radius: 1px;
   }
 
   .dist-fill {
     height: 5mm;
-    background-color: ${C.sage};
+    border-radius: 1px;
   }
 
   .dist-value {
-    width: 26mm;
+    width: 30mm;
     text-align: right;
     font-size: 8pt;
     color: ${C.mid};
+    flex-shrink: 0;
   }
 
-  /* Ranked lists */
+  /* ── Ranked items ── */
   .rank-item {
     display: flex;
     align-items: center;
@@ -432,8 +435,10 @@ const BASE_CSS = `
 
   .rank-medal {
     width: 9mm;
-    font-size: 11pt;
-    text-align: center;
+    font-size: 8pt;
+    font-weight: bold;
+    color: ${C.teal};
+    flex-shrink: 0;
   }
 
   .rank-name {
@@ -444,15 +449,17 @@ const BASE_CSS = `
   }
 
   .rank-bar {
-    width: 36mm;
+    width: 40mm;
     height: 3.5mm;
     background-color: ${C.mist};
     margin: 0 2mm;
+    flex-shrink: 0;
+    border-radius: 1px;
   }
 
   .rank-bar-fill {
     height: 3.5mm;
-    background-color: ${C.sage};
+    border-radius: 1px;
   }
 
   .rank-count {
@@ -460,20 +467,30 @@ const BASE_CSS = `
     text-align: right;
     font-size: 8.5pt;
     font-weight: bold;
+    flex-shrink: 0;
+  }
+
+  .rank-unit {
+    width: 9mm;
+    text-align: right;
+    font-size: 7pt;
+    color: ${C.light};
+    flex-shrink: 0;
   }
 
   .rank-pct {
-    width: 14mm;
+    width: 13mm;
     text-align: right;
     font-size: 7.5pt;
     color: ${C.light};
+    flex-shrink: 0;
   }
 
-  /* Data tables */
+  /* ── Data tables ── */
   .data-table {
     width: 100%;
     border-collapse: collapse;
-    margin: 3mm 0 5mm;
+    margin: 2mm 0 4mm;
     font-size: 8.5pt;
   }
 
@@ -481,7 +498,7 @@ const BASE_CSS = `
     background-color: ${C.forest};
     padding: 2.5mm 3mm;
     text-align: left;
-    font-size: 7.5pt;
+    font-size: 7pt;
     letter-spacing: 1px;
     text-transform: uppercase;
     font-weight: bold;
@@ -491,94 +508,128 @@ const BASE_CSS = `
   .data-table td {
     padding: 2mm 3mm;
     border-bottom: 0.5pt solid ${C.rule};
+    vertical-align: middle;
   }
 
   .data-table tr:nth-child(even) td {
     background-color: ${C.bg};
   }
 
-  .data-table .right {
-    text-align: right;
-  }
+  .data-table .right { text-align: right; }
 
-  .data-table tfoot td {
-    background-color: ${C.mist};
-    font-weight: bold;
-    border-top: 1.5pt solid ${C.sage};
-  }
-
-  /* Badges */
+  /* ── Badges ── */
   .badge {
     display: inline-block;
     padding: 0.8mm 2.5mm;
     font-size: 6.5pt;
     font-weight: bold;
-    letter-spacing: 1px;
+    letter-spacing: 0.5px;
     text-transform: uppercase;
+    border-radius: 2px;
   }
 
-  .badge-active {
-    background-color: #D5F5E3;
-    color: #1E8449;
-  }
+  .badge-active   { background-color: #D5F5E3; color: #1E8449; }
+  .badge-inactive { background-color: ${C.redLt}; color: ${C.red}; }
+  .badge-admin    { background-color: ${C.mist}; color: ${C.moss}; border: 0.5pt solid ${C.sage}; }
+  .badge-user     { background-color: ${C.tealLt}; color: ${C.teal}; }
 
-  .badge-inactive {
-    background-color: ${C.redLt};
-    color: ${C.red};
-  }
-
-  .badge-admin {
-    background-color: ${C.mist};
-    color: ${C.moss};
-    border: 0.5pt solid ${C.sage};
-  }
-
-  .badge-user {
-    background-color: ${C.tealLt};
-    color: ${C.teal};
-  }
-
-  /* Two column layout */
+  /* ── Two-column layout ── */
   .two-col {
     display: flex;
     gap: 5mm;
     margin-bottom: 3mm;
   }
 
-  .col {
-    flex: 1;
+  .col { flex: 1; }
+
+  /* ── Timeline sparkline ── */
+  .sparkline-wrap {
+    margin: 2mm 0 4mm;
   }
 
-  /* Sparkline */
   .sparkline-container {
     width: 100%;
-    height: 16mm;
+    height: 18mm;
     background-color: ${C.bg};
     border: 0.5pt solid ${C.rule};
-    padding: 1mm;
-    margin: 2mm 0;
+    padding: 1.5mm 1.5mm 0;
     display: flex;
     align-items: flex-end;
     gap: 1px;
+    border-radius: 2px;
   }
 
   .spark-bar {
     flex: 1;
     background-color: ${C.teal};
-    min-height: 2px;
+    min-height: 3px;
+    border-radius: 1px 1px 0 0;
   }
 
-  /* Callout */
+  .sparkline-label-row {
+    display: flex;
+    justify-content: space-between;
+    margin-top: 1mm;
+  }
+
+  .sparkline-label {
+    font-size: 6pt;
+    color: ${C.light};
+  }
+
+  /* ── Vertical bar chart (for species/location charts) ── */
+  .vchart-wrap {
+    display: flex;
+    align-items: flex-end;
+    gap: 2mm;
+    height: 32mm;
+    padding: 0 1mm;
+    margin: 2mm 0 5mm;
+    border-bottom: 1pt solid ${C.rule};
+  }
+
+  .vchart-col {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 1mm;
+  }
+
+  .vchart-val {
+    font-size: 6.5pt;
+    font-weight: bold;
+    color: ${C.forest};
+  }
+
+  .vchart-bar {
+    width: 100%;
+    border-radius: 2px 2px 0 0;
+  }
+
+  .vchart-label {
+    font-size: 5.5pt;
+    color: ${C.mid};
+    text-align: center;
+    word-break: break-word;
+    line-height: 1.2;
+    max-width: 24mm;
+    margin-top: 1mm;
+  }
+
+  /* ── Callout ── */
   .callout {
     border: 1pt solid ${C.amber};
     background-color: ${C.amberLt};
     border-left: 4pt solid ${C.amber};
     padding: 3mm 4mm;
     margin: 4mm 0;
+    border-radius: 2px;
   }
 
   .callout-label {
-    font-size: 7pt;
+    font-size: 6.5pt;
     font-weight: bold;
     letter-spacing: 2px;
     text-transform: uppercase;
@@ -591,71 +642,82 @@ const BASE_CSS = `
     line-height: 1.5;
   }
 
-  /* Utility classes */
   .mono {
     font-family: 'Courier New', Courier, monospace;
+    font-size: 8pt;
   }
 `;
 
 /* ════════════════════════════════════════════════════════════════
-   PAGE SHELL FUNCTIONS
+   COMPONENT BUILDERS
 ════════════════════════════════════════════════════════════════ */
 
-const pageShell = (reportTitle: string, sectionName: string, pageNum: number, content: string) => `
-<div class="page">
-  <div class="page-header">
-    <span class="page-header-left">SnapShroom Admin Portal</span>
-    <span class="page-header-right">${reportTitle}</span>
+/** Cover page — text-only logo, no emoji (unreliable in WebKit PDF) */
+const coverPage = (
+  title: string,
+  subtitle: string,
+  generatedAt: string,
+  preparedBy: string,
+) => `
+<div class="cover">
+  <div class="cover-top-accent"></div>
+  <div class="cover-side-accent"></div>
+  <div class="cover-body">
+    <div class="cover-wordmark">SNAPSHROOM</div>
+    <div class="cover-eyebrow">Admin Portal &middot; Official Report</div>
+    <div class="cover-title">${title}</div>
+    <div class="cover-subtitle">${subtitle}</div>
+    <div class="cover-rule"></div>
+    <div class="cover-meta">
+      <div class="cover-meta-item">
+        <div class="cover-meta-label">Report Date</div>
+        <div class="cover-meta-value">${generatedAt}</div>
+      </div>
+      <div class="cover-meta-item">
+        <div class="cover-meta-label">Prepared By</div>
+        <div class="cover-meta-value">${preparedBy}</div>
+      </div>
+      <div class="cover-meta-item">
+        <div class="cover-meta-label">System</div>
+        <div class="cover-meta-value">SnapShroom v1.0</div>
+      </div>
+      <div class="cover-meta-item">
+        <div class="cover-meta-label">Report ID</div>
+        <div class="cover-meta-value">SSR-${Date.now().toString(36).toUpperCase()}</div>
+      </div>
+    </div>
+    <div class="cover-confidential">Confidential &mdash; Internal Use Only</div>
   </div>
+</div>`;
 
+/**
+ * Page shell — NO page-header bar (that was mimicking the website nav).
+ * Only a minimal footer with brand name, section name, and page number.
+ */
+const pageShell = (
+  sectionName: string,
+  pageNum: number,
+  content: string,
+) => `
+<div class="page">
   ${content}
-
   <div class="page-footer">
-    <span>CONFIDENTIAL — Internal Use Only</span>
+    <span class="page-footer-brand">SnapShroom</span>
     <span>${sectionName}</span>
     <span>Page ${pageNum}</span>
   </div>
-  <div class="conf-strip">Confidential · SnapShroom Internal Report · Do Not Distribute</div>
 </div>`;
 
-const coverPage = (title: string, subtitle: string, generatedAt: string, preparedBy: string) => `
-<div class="cover">
-  <div class="cover-accent-bar"></div>
-  <div class="cover-top-bar"></div>
-  <div class="cover-logo">🍄 SnapShroom</div>
-  <div class="cover-eyebrow">Admin Portal · Official Report</div>
-  <div class="cover-title">${title}</div>
-  <div class="cover-subtitle">${subtitle}</div>
-  <div class="cover-divider"></div>
-  <table class="cover-meta-table">
-    <tr>
-      <td class="cover-meta-label">Report Date</td>
-      <td class="cover-meta-label">Prepared By</td>
-    </tr>
-    <tr>
-      <td class="cover-meta-value">${generatedAt}</td>
-      <td class="cover-meta-value">${preparedBy}</td>
-    </tr>
-    <tr>
-      <td class="cover-meta-label">System</td>
-      <td class="cover-meta-label">Report ID</td>
-    </tr>
-    <tr>
-      <td class="cover-meta-value">SnapShroom v1.0.0</td>
-      <td class="cover-meta-value">SSR-${Date.now().toString(36).toUpperCase()}</td>
-    </tr>
-  </table>
-  <div class="cover-classification">Confidential — Internal Use Only</div>
-</div>`;
-
-const tocPage = (reportTitle: string, items: { num: string; label: string }[]) => {
-  const rows = items.map(it => `
+const tocPage = (items: { num: string; label: string }[]) => {
+  const rows = items
+    .map(it => `
     <tr>
       <td class="toc-num">${it.num}</td>
       <td class="toc-label">${it.label}</td>
-    </tr>`).join('');
+    </tr>`)
+    .join('');
 
-  return pageShell(reportTitle, 'Table of Contents', 1, `
+  return pageShell('Table of Contents', 1, `
     <div class="toc-title">Table of Contents</div>
     <table class="toc-table">${rows}</table>
   `);
@@ -668,15 +730,20 @@ const sectionHeading = (num: string, title: string) => `
   </div>
   <div class="section-rule"></div>`;
 
-const kpiGrid = (cards: { value: string | number; label: string; delta?: string; cls?: string }[]) => `
+const kpiGrid = (
+  cards: { value: string | number; label: string; delta?: string; cls?: string }[],
+) => `
   <div class="kpi-grid">
-    ${cards.map(c => `
+    ${cards
+      .map(
+        c => `
       <div class="kpi-card${c.cls ? ' ' + c.cls : ''}">
         <span class="kpi-value">${c.value}</span>
         <span class="kpi-label">${c.label}</span>
         ${c.delta ? `<span class="kpi-delta">${c.delta}</span>` : ''}
-      </div>
-    `).join('')}
+      </div>`,
+      )
+      .join('')}
   </div>`;
 
 const distBar = (label: string, value: number, total: number, color: string) => `
@@ -685,12 +752,20 @@ const distBar = (label: string, value: number, total: number, color: string) => 
     <div class="dist-track">
       <div class="dist-fill" style="width:${barW(value, total)}%;background-color:${color};"></div>
     </div>
-    <span class="dist-value">${value.toLocaleString()} (${pct(value, total)})</span>
+    <span class="dist-value">${value.toLocaleString()} &nbsp;(${pct(value, total)})</span>
   </div>`;
 
-const rankedList = (items: { name: string; count: number }[], total: number, color: string, limit = 8) => {
+const rankedList = (
+  items: { name: string; count: number }[],
+  total: number,
+  color: string,
+  limit = 8,
+) => {
   const max = items[0]?.count ?? 1;
-  return items.slice(0, limit).map((item, i) => `
+  return items
+    .slice(0, limit)
+    .map(
+      (item, i) => `
     <div class="rank-item">
       <span class="rank-medal">${medal(i)}</span>
       <span class="rank-name">${item.name}</span>
@@ -698,23 +773,67 @@ const rankedList = (items: { name: string; count: number }[], total: number, col
         <div class="rank-bar-fill" style="width:${barW(item.count, max)}%;background-color:${color};"></div>
       </div>
       <span class="rank-count">${item.count.toLocaleString()}</span>
+      <span class="rank-unit">scans</span>
       <span class="rank-pct">${pct(item.count, total)}</span>
-    </div>
-  `).join('');
+    </div>`,
+    )
+    .join('');
 };
 
+/** Vertical bar chart rendered in pure HTML/CSS — no canvas needed */
+const verticalBarChart = (
+  items: { label: string; value: number }[],
+  color: string,
+  limit = 7,
+) => {
+  const slice = items.slice(0, limit);
+  const max = Math.max(...slice.map(d => d.value), 1);
+  const chartH = 28; // mm — the bar area height (label row is below)
+  return `
+    <div class="vchart-wrap">
+      ${slice
+        .map(d => {
+          const heightPct = Math.max(4, (d.value / max) * 100);
+          return `
+        <div class="vchart-col">
+          <span class="vchart-val">${d.value}</span>
+          <div class="vchart-bar" style="height:${heightPct}%;background-color:${color};"></div>
+        </div>`;
+        })
+        .join('')}
+    </div>
+    <div style="display:flex;gap:2mm;padding:0 1mm;margin-bottom:4mm;">
+      ${slice
+        .map(
+          d =>
+            `<div style="flex:1;font-size:5.5pt;color:${C.mid};text-align:center;word-break:break-word;line-height:1.2;">${d.label}</div>`,
+        )
+        .join('')}
+    </div>`;
+};
+
+/** Timeline sparkline with first/last date labels */
 const sparkline = (data: { date: string; scans: number }[], limit = 28) => {
   const slice = data.slice(-limit);
   const max = Math.max(...slice.map(d => d.scans), 1);
-  
+  const first = slice[0]?.date ?? '';
+  const last = slice[slice.length - 1]?.date ?? '';
+
   return `
-    <div class="sparkline-container">
-      ${slice.map(d => {
-        const height = Math.max(4, (d.scans / max) * 100);
-        return `<div class="spark-bar" style="height:${height}%;"></div>`;
-      }).join('')}
-    </div>
-  `;
+    <div class="sparkline-wrap">
+      <div class="sparkline-container">
+        ${slice
+          .map(d => {
+            const h = Math.max(3, (d.scans / max) * 100);
+            return `<div class="spark-bar" style="height:${h}%;"></div>`;
+          })
+          .join('')}
+      </div>
+      <div class="sparkline-label-row">
+        <span class="sparkline-label">${first}</span>
+        <span class="sparkline-label">${last}</span>
+      </div>
+    </div>`;
 };
 
 /* ════════════════════════════════════════════════════════════════
@@ -756,14 +875,18 @@ interface User {
   last_login?: string;
 }
 
-/* ─── Executive summaries ─── */
+/* ─── Exec summaries ─── */
 const execSummaryAnalytics = (a: Analytics) => {
-  const activeRate = a.users.total_users > 0
-    ? ((a.users.active_users / a.users.total_users) * 100).toFixed(1) : '0';
+  const activeRate =
+    a.users.total_users > 0
+      ? ((a.users.active_users / a.users.total_users) * 100).toFixed(1)
+      : '0';
   const topMush = a.mushrooms.most_scanned_mushrooms[0]?.name ?? 'N/A';
   const topLoc = a.mushrooms.top_locations[0]?.location ?? 'N/A';
-  const edibleShare = a.mushrooms.total_scans > 0
-    ? ((a.mushrooms.edible_vs_toxic.edible / a.mushrooms.total_scans) * 100).toFixed(1) : '0';
+  const edibleShare =
+    a.mushrooms.total_scans > 0
+      ? ((a.mushrooms.edible_vs_toxic.edible / a.mushrooms.total_scans) * 100).toFixed(1)
+      : '0';
 
   return `This report presents a comprehensive analysis of platform activity for the SnapShroom
 mushroom identification system. As of the reporting date, the platform has <strong>${a.users.total_users}
@@ -781,31 +904,43 @@ const execSummaryUsers = (users: User[]) => {
   const inactive = users.filter(u => !u.is_active).length;
   const admins = users.filter(u => u.role === 'admin').length;
   const activeRate = users.length > 0 ? ((active / users.length) * 100).toFixed(1) : '0';
-  const newest = [...users].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())[0];
+  const newest = [...users].sort(
+    (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime(),
+  )[0];
 
   return `This report provides a complete directory of all <strong>${users.length}
 registered SnapShroom accounts</strong>. Of these, <strong>${active} accounts are active
 (${activeRate}%)</strong> and <strong>${inactive} are currently deactivated</strong>.
 The platform has <strong>${admins} administrator account${admins !== 1 ? 's' : ''}</strong>.
-${newest ? `The most recently registered account belongs to <em>${newest.name}</em>,
-created on ${fmtDate(newest.created_at)}.` : ''}`;
+${
+  newest
+    ? `The most recently registered account belongs to <em>${newest.name}</em>,
+created on ${fmtDate(newest.created_at)}.`
+    : ''
+}`;
 };
 
 /* ════════════════════════════════════════════════════════════════
-   BUILD ANALYTICS REPORT
+   BUILD ANALYTICS REPORT  (Full Analytics export button)
 ════════════════════════════════════════════════════════════════ */
 
 export const buildAnalyticsReport = (analytics: Analytics, adminName: string): string => {
   const now = new Date().toLocaleString('en-US', {
-    year: 'numeric', month: 'long', day: 'numeric',
-    hour: '2-digit', minute: '2-digit',
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
   });
   const title = 'Platform Analytics Report';
-  const userActPct = analytics.users.total_users > 0
-    ? ((analytics.users.active_users / analytics.users.total_users) * 100).toFixed(1) : '0';
 
-  // Page 2: Executive Summary + User KPIs
-  const page2 = pageShell(title, 'Executive Summary & User Overview', 2, `
+  const userActPct =
+    analytics.users.total_users > 0
+      ? ((analytics.users.active_users / analytics.users.total_users) * 100).toFixed(1)
+      : '0';
+
+  /* ── Page 2: Executive Summary + User KPIs ── */
+  const page2 = pageShell('Executive Summary & User Analytics', 2, `
     ${sectionHeading('01', 'Executive Summary')}
     <div class="exec-box">
       <div class="exec-label">Key Findings</div>
@@ -815,105 +950,128 @@ export const buildAnalyticsReport = (analytics: Analytics, adminName: string): s
     ${sectionHeading('02', 'User Analytics')}
 
     ${kpiGrid([
-      { value: analytics.users.total_users, label: 'Total Users', cls: 'teal' },
-      { value: analytics.users.active_users, label: 'Active', cls: 'teal', delta: `${userActPct}%` },
-      { value: analytics.users.inactive_users, label: 'Inactive', cls: 'red' },
-      { value: analytics.users.admin_count, label: 'Admins' },
-      { value: analytics.users.recent_registrations_30d, label: 'New (30d)' },
-      { value: analytics.users.recent_logins_7d, label: 'Logins (7d)' },
+      { value: analytics.users.total_users,           label: 'Total Users',       cls: 'teal' },
+      { value: analytics.users.active_users,           label: 'Active',            cls: 'teal', delta: `${userActPct}%` },
+      { value: analytics.users.inactive_users,         label: 'Inactive',          cls: 'red' },
+      { value: analytics.users.admin_count,            label: 'Admins' },
+      { value: analytics.users.recent_registrations_30d, label: 'New Users (30d)' },
+      { value: analytics.users.recent_logins_7d,      label: 'Logins (7d)' },
     ])}
 
     <div class="subsection-title">Account Status Distribution</div>
-    ${distBar('Active Accounts', analytics.users.active_users, analytics.users.total_users, C.teal)}
+    ${distBar('Active Accounts',   analytics.users.active_users,   analytics.users.total_users, C.teal)}
     ${distBar('Inactive Accounts', analytics.users.inactive_users, analytics.users.total_users, C.red)}
-    ${distBar('Admin Accounts', analytics.users.admin_count, analytics.users.total_users, C.sage)}
+    ${distBar('Admin Accounts',    analytics.users.admin_count,    analytics.users.total_users, C.sage)}
   `);
 
-  // Page 3: Mushroom Scan Analytics
-  const edibleTotal = analytics.mushrooms.edible_vs_toxic.edible +
-    analytics.mushrooms.edible_vs_toxic.toxic +
-    analytics.mushrooms.edible_vs_toxic.unknown;
+  /* ── Page 3: Mushroom Scan Analytics ── */
 
-  const page3 = pageShell(title, 'Mushroom Scan Analytics', 3, `
+  const page3 = pageShell('Mushroom Scan Analytics', 3, `
     ${sectionHeading('03', 'Mushroom Scan Analytics')}
 
     ${kpiGrid([
-      { value: analytics.mushrooms.total_scans, label: 'Total Scans' },
-      { value: analytics.mushrooms.scans_last_30d, label: 'Last 30 Days', cls: 'teal' },
-      { value: `${analytics.mushrooms.detection_success_rate}%`,
-        label: 'Detection Success',
+      { value: analytics.mushrooms.total_scans,            label: 'Total Scans',       cls: 'mush' },
+      { value: analytics.mushrooms.scans_last_30d,         label: 'Last 30 Days',      cls: 'teal' },
+      { value: `${analytics.mushrooms.detection_success_rate}%`, label: 'Detection Success',
         cls: analytics.mushrooms.detection_success_rate >= 80 ? 'teal' : 'amber' },
     ])}
 
-    <div class="two-col">
-      <div class="col">
-        <div class="subsection-title">Edibility Classification</div>
-        ${distBar('Edible', analytics.mushrooms.edible_vs_toxic.edible, edibleTotal, '#27AE60')}
-        ${distBar('Toxic', analytics.mushrooms.edible_vs_toxic.toxic, edibleTotal, C.red)}
-        ${distBar('Unknown', analytics.mushrooms.edible_vs_toxic.unknown, edibleTotal, C.light)}
-      </div>
-      <div class="col">
-        <div class="subsection-title">At a Glance</div>
-        <table class="data-table">
-          <tr><td>Edible identified</td><td class="right">${analytics.mushrooms.edible_vs_toxic.edible}</td></tr>
-          <tr><td>Toxic identified</td><td class="right">${analytics.mushrooms.edible_vs_toxic.toxic}</td></tr>
-          <tr><td>Unclassified</td><td class="right">${analytics.mushrooms.edible_vs_toxic.unknown}</td></tr>
-          <tr class="total"><td>Total classified</td><td class="right">${edibleTotal}</td></tr>
-        </table>
-      </div>
-    </div>
+    
 
     <div class="subsection-title">Top Identified Species</div>
-    ${analytics.mushrooms.most_scanned_mushrooms.length > 0
-      ? rankedList(analytics.mushrooms.most_scanned_mushrooms, analytics.mushrooms.total_scans, C.sage)
-      : '<p style="color:#999;padding:3mm 0;">No species data available.</p>'}
+    ${
+      analytics.mushrooms.most_scanned_mushrooms.length > 0
+        ? rankedList(
+            analytics.mushrooms.most_scanned_mushrooms,
+            analytics.mushrooms.total_scans,
+            C.mushroom,
+          )
+        : '<p style="color:#999;padding:3mm 0;font-size:8.5pt;">No species data available.</p>'
+    }
+
+    ${
+      analytics.mushrooms.most_scanned_mushrooms.length > 0
+        ? `<div class="subsection-title">Species Scan Volume Chart</div>
+           ${verticalBarChart(
+             analytics.mushrooms.most_scanned_mushrooms.map(m => ({
+               label: m.name,
+               value: m.count,
+             })),
+             C.mushroom,
+           )}`
+        : ''
+    }
   `);
 
-  // Page 4: Locations + Timeline
+  /* ── Page 4: Locations + Timeline ── */
   const timelineData = analytics.timeline ?? [];
   const totalTimelineScans = timelineData.reduce((s, t) => s + t.scans, 0);
-  const avgDaily = timelineData.length > 0 ? (totalTimelineScans / timelineData.length).toFixed(1) : '0';
-  const peakDay = timelineData.reduce((best, t) => t.scans > best.scans ? t : best, { date: 'N/A', scans: 0 });
+  const avgDaily =
+    timelineData.length > 0 ? (totalTimelineScans / timelineData.length).toFixed(1) : '0';
+  const peakDay = timelineData.reduce(
+    (best, t) => (t.scans > best.scans ? t : best),
+    { date: 'N/A', scans: 0 },
+  );
 
-  const page4 = pageShell(title, 'Locations & Scan Timeline', 4, `
+  const page4 = pageShell('Locations & Scan Timeline', 4, `
     ${sectionHeading('04', 'Top Scan Locations')}
 
-    ${analytics.mushrooms.top_locations.length > 0
-      ? rankedList(
-          analytics.mushrooms.top_locations.map(l => ({ name: l.location, count: l.count })),
-          analytics.mushrooms.total_scans, C.teal
-        )
-      : '<p style="color:#999;padding:3mm 0;">No location data available.</p>'}
+    ${
+      analytics.mushrooms.top_locations.length > 0
+        ? `${rankedList(
+            analytics.mushrooms.top_locations.map(l => ({ name: l.location, count: l.count })),
+            analytics.mushrooms.total_scans,
+            C.teal,
+          )}
+          <div class="subsection-title">Location Scan Volume Chart</div>
+          ${verticalBarChart(
+            analytics.mushrooms.top_locations.map(l => ({
+              label: l.location,
+              value: l.count,
+            })),
+            C.teal,
+          )}`
+        : '<p style="color:#999;padding:3mm 0;font-size:8.5pt;">No location data available.</p>'
+    }
 
-    ${timelineData.length > 0 ? `
+    ${
+      timelineData.length > 0
+        ? `
       ${sectionHeading('05', 'Scan Activity Timeline')}
 
       ${kpiGrid([
         { value: totalTimelineScans.toLocaleString(), label: 'Total (Period)', cls: 'teal' },
-        { value: avgDaily, label: 'Avg / Day' },
-        { value: peakDay.scans, label: 'Peak Day', delta: peakDay.date },
-        { value: timelineData.length, label: 'Days Tracked' },
+        { value: avgDaily,                            label: 'Avg Scans / Day' },
+        { value: peakDay.scans,                       label: 'Peak Day',  delta: peakDay.date },
+        { value: timelineData.length,                 label: 'Days Tracked' },
       ])}
 
-      <div class="subsection-title">Daily Activity (last ${Math.min(timelineData.length, 28)} days)</div>
-      ${sparkline(timelineData)}
-    ` : ''}
+      <div class="subsection-title">Daily Scan Activity (last ${Math.min(timelineData.length, 28)} days)</div>
+      ${sparkline(timelineData)}`
+        : ''
+    }
   `);
 
   return `<!DOCTYPE html>
 <html>
 <head>
   <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>SnapShroom Analytics Report</title>
   <style>${BASE_CSS}</style>
 </head>
 <body>
-  ${coverPage(title, 'Comprehensive platform usage metrics, user statistics, and scan activity analysis.', now, adminName)}
-  ${tocPage(title, [
+  ${coverPage(
+    title,
+    'Comprehensive platform usage metrics, user statistics, species identification data, and scan activity analysis.',
+    now,
+    adminName,
+  )}
+  ${tocPage([
     { num: '01', label: 'Executive Summary' },
     { num: '02', label: 'User Analytics' },
-    { num: '03', label: 'Mushroom Scan Analytics' },
-    { num: '04', label: 'Top Scan Locations' },
+    { num: '03', label: 'Mushroom Scan Analytics & Species Chart' },
+    { num: '04', label: 'Top Scan Locations & Location Chart' },
     { num: '05', label: 'Scan Activity Timeline' },
   ])}
   ${page2}
@@ -929,8 +1087,11 @@ export const buildAnalyticsReport = (analytics: Analytics, adminName: string): s
 
 export const buildUsersReport = (users: User[], adminName: string): string => {
   const now = new Date().toLocaleString('en-US', {
-    year: 'numeric', month: 'long', day: 'numeric',
-    hour: '2-digit', minute: '2-digit',
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
   });
   const title = 'User Directory Report';
 
@@ -938,7 +1099,7 @@ export const buildUsersReport = (users: User[], adminName: string): string => {
   const inactive = users.filter(u => !u.is_active).length;
   const admins = users.filter(u => u.role === 'admin').length;
 
-  const page2 = pageShell(title, 'User Summary', 2, `
+  const page2 = pageShell('User Summary', 2, `
     ${sectionHeading('01', 'Executive Summary')}
     <div class="exec-box">
       <div class="exec-label">Key Findings</div>
@@ -949,15 +1110,15 @@ export const buildUsersReport = (users: User[], adminName: string): string => {
 
     ${kpiGrid([
       { value: users.length, label: 'Total Accounts', cls: 'teal' },
-      { value: active, label: 'Active', cls: 'teal', delta: pct(active, users.length) },
-      { value: inactive, label: 'Inactive', cls: 'red', delta: pct(inactive, users.length) },
-      { value: admins, label: 'Admins', delta: pct(admins, users.length) },
+      { value: active,   label: 'Active',   cls: 'teal', delta: pct(active,   users.length) },
+      { value: inactive, label: 'Inactive', cls: 'red',  delta: pct(inactive, users.length) },
+      { value: admins,   label: 'Admins',               delta: pct(admins,   users.length) },
     ])}
 
     <div class="subsection-title">Status Distribution</div>
-    ${distBar('Active', active, users.length, C.teal)}
+    ${distBar('Active',   active,   users.length, C.teal)}
     ${distBar('Inactive', inactive, users.length, C.red)}
-    ${distBar('Admins', admins, users.length, C.sage)}
+    ${distBar('Admins',   admins,   users.length, C.sage)}
   `);
 
   const sorted = [...users].sort((a, b) => a.name.localeCompare(b.name));
@@ -967,41 +1128,47 @@ export const buildUsersReport = (users: User[], adminName: string): string => {
     chunks.push(sorted.slice(i, i + chunkSize));
   }
 
-  const dirPages = chunks.map((chunk, ci) => {
-    const pageNum = ci + 3;
-    const rangeLabel = `${ci * chunkSize + 1}–${Math.min((ci + 1) * chunkSize, sorted.length)} of ${sorted.length}`;
+  const dirPages = chunks
+    .map((chunk, ci) => {
+      const pageNum = ci + 3;
+      const rangeLabel = `${ci * chunkSize + 1}–${Math.min((ci + 1) * chunkSize, sorted.length)} of ${sorted.length}`;
 
-    return pageShell(title, `User Directory (${rangeLabel})`, pageNum, `
-      ${ci === 0 ? sectionHeading('03', 'Complete User Directory') : ''}
-      <table class="data-table">
-        <thead>
-          <tr>
-            <th>#</th>
-            <th>Name</th>
-            <th>Username</th>
-            <th>Email</th>
-            <th>Role</th>
-            <th>Status</th>
-            <th>Joined</th>
-            <th>Last Login</th>
-          </tr>
-        </thead>
-        <tbody>
-          ${chunk.map((u, i) => `
-          <tr>
-            <td>${ci * chunkSize + i + 1}</td>
-            <td><strong>${u.name}</strong></td>
-            <td class="mono">@${u.username}</td>
-            <td class="mono">${u.email}</td>
-            <td><span class="badge badge-${u.role}">${u.role}</span></td>
-            <td><span class="badge badge-${u.is_active ? 'active' : 'inactive'}">${u.is_active ? 'Active' : 'Inactive'}</span></td>
-            <td>${fmtDate(u.created_at)}</td>
-            <td>${u.last_login ? fmtDate(u.last_login) : '—'}</td>
-          </tr>`).join('')}
-        </tbody>
-      </table>
-    `);
-  }).join('');
+      return pageShell(`User Directory (${rangeLabel})`, pageNum, `
+        ${ci === 0 ? sectionHeading('03', 'Complete User Directory') : ''}
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>Name</th>
+              <th>Username</th>
+              <th>Email</th>
+              <th>Role</th>
+              <th>Status</th>
+              <th>Joined</th>
+              <th>Last Login</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${chunk
+              .map(
+                (u, i) => `
+            <tr>
+              <td>${ci * chunkSize + i + 1}</td>
+              <td><strong>${u.name}</strong></td>
+              <td class="mono">@${u.username}</td>
+              <td class="mono">${u.email}</td>
+              <td><span class="badge badge-${u.role}">${u.role}</span></td>
+              <td><span class="badge badge-${u.is_active ? 'active' : 'inactive'}">${u.is_active ? 'Active' : 'Inactive'}</span></td>
+              <td>${fmtDate(u.created_at)}</td>
+              <td>${u.last_login ? fmtDate(u.last_login) : '&mdash;'}</td>
+            </tr>`,
+              )
+              .join('')}
+          </tbody>
+        </table>
+      `);
+    })
+    .join('');
 
   return `<!DOCTYPE html>
 <html>
@@ -1011,8 +1178,13 @@ export const buildUsersReport = (users: User[], adminName: string): string => {
   <style>${BASE_CSS}</style>
 </head>
 <body>
-  ${coverPage(title, 'Complete account directory with role assignments and status classifications.', now, adminName)}
-  ${tocPage(title, [
+  ${coverPage(
+    title,
+    'Complete account directory with role assignments, status classifications, and registration history.',
+    now,
+    adminName,
+  )}
+  ${tocPage([
     { num: '01', label: 'Executive Summary' },
     { num: '02', label: 'Account Overview' },
     { num: '03', label: 'User Directory' },
@@ -1029,19 +1201,22 @@ export const buildUsersReport = (users: User[], adminName: string): string => {
 
 export const buildOverviewReport = (analytics: Analytics, adminName: string): string => {
   const now = new Date().toLocaleString('en-US', {
-    year: 'numeric', month: 'long', day: 'numeric',
-    hour: '2-digit', minute: '2-digit',
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
   });
   const title = 'Dashboard Overview Report';
 
-  const userActPct = analytics.users.total_users > 0
-    ? ((analytics.users.active_users / analytics.users.total_users) * 100).toFixed(1) : '0';
+  const userActPct =
+    analytics.users.total_users > 0
+      ? ((analytics.users.active_users / analytics.users.total_users) * 100).toFixed(1)
+      : '0';
 
   const timelineData = analytics.timeline ?? [];
-  const totalTLScans = timelineData.reduce((s, t) => s + t.scans, 0);
-  const avgDaily = timelineData.length > 0 ? (totalTLScans / timelineData.length).toFixed(1) : '0';
 
-  const page2 = pageShell(title, 'Platform Overview', 2, `
+  const page2 = pageShell('Platform Overview', 2, `
     ${sectionHeading('01', 'Executive Summary')}
     <div class="exec-box">
       <div class="exec-label">Platform Status</div>
@@ -1051,39 +1226,37 @@ export const buildOverviewReport = (analytics: Analytics, adminName: string): st
     ${sectionHeading('02', 'Key Performance Indicators')}
 
     ${kpiGrid([
-      { value: analytics.users.total_users, label: 'Total Users', cls: 'teal' },
-      { value: analytics.users.active_users, label: 'Active Users', cls: 'teal', delta: `${userActPct}%` },
-      { value: analytics.mushrooms.total_scans, label: 'Total Scans' },
-      { value: analytics.mushrooms.scans_last_30d, label: 'Scans (30d)' },
-      { value: `${analytics.mushrooms.detection_success_rate}%`, label: 'Success Rate',
+      { value: analytics.users.total_users,                       label: 'Total Users',    cls: 'teal' },
+      { value: analytics.users.active_users,                      label: 'Active Users',   cls: 'teal', delta: `${userActPct}%` },
+      { value: analytics.mushrooms.total_scans,                   label: 'Total Scans',    cls: 'mush' },
+      { value: analytics.mushrooms.scans_last_30d,                label: 'Scans (30d)' },
+      { value: `${analytics.mushrooms.detection_success_rate}%`,  label: 'Success Rate',
         cls: analytics.mushrooms.detection_success_rate >= 80 ? 'teal' : 'amber' },
-      { value: analytics.users.admin_count, label: 'Admins' },
+      { value: analytics.users.admin_count,                       label: 'Admins' },
     ])}
 
     <div class="two-col">
       <div class="col">
         <div class="subsection-title">User Status</div>
-        ${distBar('Active', analytics.users.active_users, analytics.users.total_users, C.teal)}
+        ${distBar('Active',   analytics.users.active_users,   analytics.users.total_users, C.teal)}
         ${distBar('Inactive', analytics.users.inactive_users, analytics.users.total_users, C.red)}
-        ${distBar('Admins', analytics.users.admin_count, analytics.users.total_users, C.sage)}
-      </div>
-      <div class="col">
-        <div class="subsection-title">Scan Edibility</div>
-        ${distBar('Edible', analytics.mushrooms.edible_vs_toxic.edible, analytics.mushrooms.total_scans, '#27AE60')}
-        ${distBar('Toxic', analytics.mushrooms.edible_vs_toxic.toxic, analytics.mushrooms.total_scans, C.red)}
-        ${distBar('Unknown', analytics.mushrooms.edible_vs_toxic.unknown, analytics.mushrooms.total_scans, C.light)}
+        ${distBar('Admins',   analytics.users.admin_count,    analytics.users.total_users, C.sage)}
       </div>
     </div>
 
-    ${timelineData.length > 0 ? `
-      <div class="subsection-title">Scan Activity Trend</div>
-      ${sparkline(timelineData)}
-    ` : ''}
+    ${
+      timelineData.length > 0
+        ? `<div class="subsection-title">Scan Activity Trend (last ${Math.min(timelineData.length, 28)} days)</div>
+           ${sparkline(timelineData)}`
+        : ''
+    }
 
-    ${analytics.mushrooms.most_scanned_mushrooms.length > 0 ? `
-      <div class="subsection-title">Top 5 Species</div>
-      ${rankedList(analytics.mushrooms.most_scanned_mushrooms, analytics.mushrooms.total_scans, C.sage, 5)}
-    ` : ''}
+    ${
+      analytics.mushrooms.most_scanned_mushrooms.length > 0
+        ? `<div class="subsection-title">Top 5 Species</div>
+           ${rankedList(analytics.mushrooms.most_scanned_mushrooms, analytics.mushrooms.total_scans, C.mushroom, 5)}`
+        : ''
+    }
   `);
 
   return `<!DOCTYPE html>
@@ -1094,8 +1267,13 @@ export const buildOverviewReport = (analytics: Analytics, adminName: string): st
   <style>${BASE_CSS}</style>
 </head>
 <body>
-  ${coverPage(title, 'High-level platform health snapshot including user status and scan performance.', now, adminName)}
-  ${tocPage(title, [
+  ${coverPage(
+    title,
+    'High-level platform health snapshot including user status, scan performance, and top species.',
+    now,
+    adminName,
+  )}
+  ${tocPage([
     { num: '01', label: 'Executive Summary' },
     { num: '02', label: 'Key Performance Indicators' },
     { num: '03', label: 'User Status & Scan Distribution' },
