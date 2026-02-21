@@ -231,8 +231,8 @@ const exportPDF = async (html: string, filename: string) => {
       orientation: 'portrait',
     });
 
-    // Dynamically import file system to avoid bundling it for web
-    const FileSystem = (await import('expo-file-system')) as typeof import('expo-file-system');
+    // Dynamically import legacy file system API to preserve `getInfoAsync`
+    const FileSystem = (await import('expo-file-system/legacy')) as typeof import('expo-file-system/legacy');
     const fileInfo = await FileSystem.getInfoAsync(uri);
     if (!fileInfo.exists) throw new Error('PDF file was not created');
 
