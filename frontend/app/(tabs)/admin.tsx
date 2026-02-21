@@ -333,6 +333,8 @@ export default function AdminDashboard() {
   const [refreshing, setRefreshing]         = useState(false);
   const [analytics, setAnalytics]           = useState<Analytics | null>(null);
   const [users, setUsers]                   = useState<User[]>([]);
+  const [isConfirmingRole, setIsConfirmingRole] = useState(false);
+  const [pendingRoleChange, setPendingRoleChange] = useState<{ userId: string; newRole: string; actionLabel: string } | null>(null);
 
   useEffect(() => {
     if (!user || user.role !== 'admin') {
@@ -411,23 +413,54 @@ export default function AdminDashboard() {
     const newIsAdmin  = currentRole === 'admin' ? 0 : 1;
     const newRole     = newIsAdmin === 1 ? 'admin' : 'user';
     const actionLabel = newIsAdmin === 1 ? 'Make Admin' : 'Make User';
-    Alert.alert('Confirm Role Change', `${actionLabel}? This will change the role to ${newRole}.`, [
-      { text: 'Cancel', style: 'cancel' },
-      {
-        text: actionLabel,
-        onPress: async () => {
-          try {
-            const res = await api.put(`/admin/users/${userId}/role`, { is_admin: newIsAdmin });
-            if (res.data.success) {
-              Alert.alert('Success', res.data.message);
-              await loadUsers();
+
+    if (Platform.OS === 'web') {
+      // On web, use custom modal instead of window.confirm
+      setPendingRoleChange({ userId, newRole: newRole, actionLabel });
+      setIsConfirmingRole(true);
+    } else {
+      // On native, use Alert.alert
+      Alert.alert('Confirm Role Change', `${actionLabel}? This will change the role to ${newRole}.`, [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: actionLabel,
+          onPress: async () => {
+            try {
+              const res = await api.put(`/admin/users/${userId}/role`, { is_admin: newIsAdmin });
+              if (res.data.success) {
+                Alert.alert('Success', res.data.message);
+                await loadUsers();
+              }
+            } catch (error: any) {
+              Alert.alert('Error', error.response?.data?.message || 'Failed to change role');
             }
-          } catch (error: any) {
-            Alert.alert('Error', error.response?.data?.message || 'Failed to change role');
-          }
+          },
         },
-      },
-    ]);
+      ]);
+    }
+  };
+
+  const handleConfirmRoleChange = async () => {
+    if (!pendingRoleChange) return;
+    setIsConfirmingRole(false);
+    const { userId, newRole } = pendingRoleChange;
+    const newIsAdmin = newRole === 'admin' ? 1 : 0;
+
+    try {
+      const res = await api.put(`/admin/users/${userId}/role`, { is_admin: newIsAdmin });
+      if (res.data.success) {
+        Alert.alert('Success', res.data.message);
+        await loadUsers();
+      }
+    } catch (error: any) {
+      Alert.alert('Error', error.response?.data?.message || 'Failed to change role');
+    }
+    setPendingRoleChange(null);
+  };
+
+  const handleCancelRoleChange = () => {
+    setIsConfirmingRole(false);
+    setPendingRoleChange(null);
   };
 
   if (!user || user.role !== 'admin') {
@@ -1030,6 +1063,34 @@ export default function AdminDashboard() {
         {currentSection === 'analytics' && renderAnalytics()}
       </ScrollView>
 
+      {/* Custom Role Change Confirmation Modal */}
+      {isConfirmingRole && pendingRoleChange && (
+        <View style={s.modalOverlay}>
+          <View style={s.modalContent}>
+            <Text style={s.modalTitle}>Confirm Role Change</Text>
+            <Text style={s.modalMessage}>
+              {pendingRoleChange.actionLabel}? This will change the role to {pendingRoleChange.newRole}.
+            </Text>
+            <View style={s.modalButtonRow}>
+              <TouchableOpacity
+                style={[s.modalBtn, s.modalBtnCancel]}
+                onPress={handleCancelRoleChange}
+                activeOpacity={0.8}
+              >
+                <Text style={s.modalBtnCancelText}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[s.modalBtn, s.modalBtnConfirm]}
+                onPress={handleConfirmRoleChange}
+                activeOpacity={0.8}
+              >
+                <Text style={s.modalBtnConfirmText}>{pendingRoleChange.actionLabel}</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      )}
+
     </ThemedView>
   );
 }
@@ -1263,4 +1324,47 @@ const s = StyleSheet.create({
   mb16: { marginBottom: 16 },
   mb20: { marginBottom: 20 },
   mb24: { marginBottom: 24 },
+
+  // Modal styles
+  modalOverlay: {
+    position: 'absolute',
+    top: 0, left: 0, right: 0, bottom: 0,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    alignItems: 'center', justifyContent: 'center',
+    zIndex: 1000,
+  },
+  modalContent: {
+    backgroundColor: COLORS.white,
+    borderRadius: 18, padding: 24,
+    width: '85%', maxWidth: 400,
+    shadowColor: COLORS.forest,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2, shadowRadius: 12, elevation: 8,
+    borderWidth: 1, borderColor: COLORS.border,
+  },
+  modalTitle: {
+    fontSize: 18, fontWeight: '800', color: COLORS.textDark, marginBottom: 12,
+  },
+  modalMessage: {
+    fontSize: 15, color: COLORS.textMid, lineHeight: 22, marginBottom: 20,
+  },
+  modalButtonRow: {
+    flexDirection: 'row', gap: 10, alignItems: 'center',
+  },
+  modalBtn: {
+    flex: 1, paddingHorizontal: 16, paddingVertical: 12,
+    borderRadius: 12, alignItems: 'center',
+  },
+  modalBtnCancel: {
+    backgroundColor: COLORS.parchment, borderWidth: 1, borderColor: COLORS.border,
+  },
+  modalBtnCancelText: {
+    fontSize: 14, fontWeight: '700', color: COLORS.textMid,
+  },
+  modalBtnConfirm: {
+    backgroundColor: COLORS.moss,
+  },
+  modalBtnConfirmText: {
+    fontSize: 14, fontWeight: '700', color: COLORS.cream,
+  },
 });

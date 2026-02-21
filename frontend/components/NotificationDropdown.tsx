@@ -24,7 +24,7 @@ interface Notification {
   title: string;
   message: string;
   is_read: boolean;
-  created_at: string;
+  created_at: any; // may be ISO string, timestamp, or mongo extended JSON
 }
 
 interface NotificationDropdownProps {
@@ -74,6 +74,13 @@ export default function NotificationDropdown({
     try {
       const response = await api.get('/notifications');
       if (response.data.success) {
+        // Log sample of incoming created_at values on web for debugging
+        if (typeof window !== 'undefined' && window?.console?.log) {
+          try {
+            console.log('NotificationDropdown payload (sample):', response.data.notifications.slice(0,5).map((n:any)=>({ id: n.id || n._id, created_at: n.created_at })));
+          } catch (e) { console.log('NotificationDropdown logging failed', e); }
+        }
+
         // Get only the 5 most recent notifications
         setNotifications(response.data.notifications.slice(0, 5));
       }
@@ -140,10 +147,36 @@ export default function NotificationDropdown({
     }
   };
 
-  const formatTime = (dateString: string) => {
-    const date = new Date(dateString);
+  const formatTime = (input: any) => {
+    if (!input) return '';
+    let d: any = input;
+    let dateObj: Date | null = null;
+    try {
+      if (typeof d === 'object') {
+        if (d.$date) {
+          if (typeof d.$date === 'string') dateObj = new Date(d.$date);
+          else if (d.$date.$numberLong) dateObj = new Date(Number(d.$date.$numberLong));
+        } else if (d.$numberLong) {
+          dateObj = new Date(Number(d.$numberLong));
+        }
+      } else if (typeof d === 'number') {
+        dateObj = d > 1e12 ? new Date(d) : new Date(d * 1000);
+      } else if (typeof d === 'string') {
+        const digitsOnly = /^\d+$/;
+        if (digitsOnly.test(d)) {
+          dateObj = d.length === 13 ? new Date(Number(d)) : new Date(Number(d) * 1000);
+        } else {
+          dateObj = new Date(d);
+        }
+      }
+    } catch (err) {
+      dateObj = null;
+    }
+
+    if (!dateObj || isNaN(dateObj.getTime())) return '';
+
     const now = new Date();
-    const diffMs = now.getTime() - date.getTime();
+    const diffMs = now.getTime() - dateObj.getTime();
     const diffMins = Math.floor(diffMs / 60000);
     const diffHours = Math.floor(diffMins / 60);
     const diffDays = Math.floor(diffHours / 24);
@@ -152,7 +185,7 @@ export default function NotificationDropdown({
     if (diffMins < 60) return `${diffMins}m ago`;
     if (diffHours < 24) return `${diffHours}h ago`;
     if (diffDays < 7) return `${diffDays}d ago`;
-    return date.toLocaleDateString();
+    return dateObj.toLocaleString();
   };
 
   const renderNotification = ({ item }: { item: Notification }) => (
@@ -229,10 +262,7 @@ export default function NotificationDropdown({
                     />
 
                     {/* Footer */}
-                    <TouchableOpacity style={styles.viewAllButton} onPress={handleViewAll}>
-                      <Text style={styles.viewAllText}>View All Notifications</Text>
-                      <Ionicons name="arrow-forward" size={16} color="#7BA05B" />
-                    </TouchableOpacity>
+                  
                   </>
                 )}
               </View>

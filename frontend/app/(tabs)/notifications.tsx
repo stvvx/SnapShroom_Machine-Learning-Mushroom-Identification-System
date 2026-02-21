@@ -11,8 +11,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { ThemedView } from '@/components/themed-view';
 import { ThemedText } from '@/components/themed-text';
-import { useAuth } from '@/contexts/AuthContext';
-import api from '@/utils/api';
+import { useAuth, api } from '@/contexts/AuthContext';
 import HamburgerMenu from '@/components/HamburgerMenu';
 
 interface Notification {
@@ -21,7 +20,7 @@ interface Notification {
   message: string;
   type: 'success' | 'error' | 'warning' | 'info';
   is_read: boolean;
-  created_at: string;
+  created_at: any; // server may send ISO string, timestamp, or extended JSON
   metadata?: Record<string, any>;
 }
 
@@ -39,6 +38,15 @@ export default function NotificationsScreen() {
       const response = await api.get(`/notifications?unread_only=${unreadOnly}`);
       
       if (response.data.success) {
+        // Log incoming date values on web for debugging
+        if (typeof window !== 'undefined' && window?.console?.log) {
+          try {
+            console.log('Notifications payload (sample):', response.data.notifications.slice(0,5).map(n => ({ id: n.id, created_at: n.created_at })) );
+          } catch (e) {
+            console.log('Notifications payload logging failed', e);
+          }
+        }
+
         setNotifications(response.data.notifications);
         setUnreadCount(response.data.unread_count);
       }
@@ -119,17 +127,55 @@ export default function NotificationsScreen() {
     }
   };
 
-  const formatDate = (dateString: string) => {
-    const date = new Date(dateString);
+  const formatDate = (dateString: any) => {
+    // Be defensive: accept ISO strings, numeric timestamps (s or ms),
+    // or Mongo extended JSON like {$date: '...'} / {$date: {$numberLong: '...'}}
+    let d: any = dateString;
+    if (!d) return '';
+
+    let dateObj: Date | null = null;
+
+    try {
+      if (typeof d === 'object') {
+        // Mongo extended JSON
+        if (d.$date) {
+          if (typeof d.$date === 'string') dateObj = new Date(d.$date);
+          else if (d.$date.$numberLong) dateObj = new Date(Number(d.$date.$numberLong));
+        } else if (d.$numberLong) {
+          dateObj = new Date(Number(d.$numberLong));
+        }
+      } else if (typeof d === 'number') {
+        // assume milliseconds unless clearly seconds
+        dateObj = d > 1e12 ? new Date(d) : new Date(d * 1000);
+      } else if (typeof d === 'string') {
+        const digitsOnly = /^\d+$/;
+        if (digitsOnly.test(d)) {
+          // numeric string
+          if (d.length === 13) dateObj = new Date(Number(d));
+          else dateObj = new Date(Number(d) * 1000);
+        } else {
+          dateObj = new Date(d);
+        }
+      }
+    } catch (err) {
+      dateObj = null;
+    }
+
+    if (!dateObj || isNaN(dateObj.getTime())) return '';
+
     const now = new Date();
-    const diff = now.getTime() - date.getTime();
+    const diff = now.getTime() - dateObj.getTime();
+    const minutes = Math.floor(diff / (1000 * 60));
     const hours = Math.floor(diff / (1000 * 60 * 60));
     const days = Math.floor(hours / 24);
 
-    if (hours < 1) return 'Just now';
+    if (minutes < 1) return 'Just now';
+    if (hours < 1) return `${minutes}m ago`;
     if (hours < 24) return `${hours}h ago`;
     if (days < 7) return `${days}d ago`;
-    return date.toLocaleDateString();
+
+    // Fallback to a readable local date/time
+    return dateObj.toLocaleString();
   };
 
   if (!user) {
@@ -218,7 +264,13 @@ export default function NotificationsScreen() {
                     {!notification.is_read && <View style={styles.unreadDot} />}
                   </View>
                   <Text style={styles.notificationMessage}>{notification.message}</Text>
-                  <Text style={styles.notificationTime}>{formatDate(notification.created_at)}</Text>
+                          {(() => {
+                            const formatted = formatDate(notification.created_at);
+                            const fallback = (notification.created_at && String(notification.created_at)) || 'Unknown date';
+                            return (
+                              <Text style={styles.notificationTime}>{formatted || fallback}</Text>
+                            );
+                          })()}
                 </View>
                 <View style={styles.notificationActions}>
                   {!notification.is_read && (

@@ -12,8 +12,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { ThemedView } from '@/components/themed-view';
 import { ThemedText } from '@/components/themed-text';
-import { useAuth } from '@/contexts/AuthContext';
-import api from '@/utils/api';
+import { useAuth, api } from '@/contexts/AuthContext';
 
 interface Notification {
   id: string;
