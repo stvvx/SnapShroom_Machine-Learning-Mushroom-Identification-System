@@ -16,11 +16,13 @@ function generateMapHtml(mushrooms: any[], farmLocations: any[] = []) {
   // Generates a simple Google Map with markers for mushrooms and farms
   const centerLat = 12.8797;
   const centerLng = 121.7740;
+  // Helper to escape single quotes for JS string literals
+  const escapeJS = (str: string) => String(str).replace(/'/g, "\\'");
   const mushroomMarkers = mushrooms.map((m: any) =>
-    `new google.maps.Marker({position: {lat: ${m.lat}, lng: ${m.lng}}, map, title: '${m.name}', icon: { url: '${m.edible ? "http://maps.google.com/mapfiles/ms/icons/green-dot.png" : "http://maps.google.com/mapfiles/ms/icons/red-dot.png"}' }});`
+    `new google.maps.Marker({position: {lat: ${m.lat}, lng: ${m.lng}}, map, title: '${escapeJS(m.name)}', icon: { url: '${m.edible ? "http://maps.google.com/mapfiles/ms/icons/green-dot.png" : "http://maps.google.com/mapfiles/ms/icons/red-dot.png"}' }});`
   ).join('\n');
   const farmMarkers = farmLocations.map((f: any) =>
-    `new google.maps.Marker({position: {lat: ${f.lat}, lng: ${f.lng}}, map, title: '${f.name}', icon: { url: 'http://maps.google.com/mapfiles/ms/icons/blue-dot.png' }});`
+    `new google.maps.Marker({position: {lat: ${f.lat}, lng: ${f.lng}}, map, title: '${escapeJS(f.name)}', icon: { url: 'http://maps.google.com/mapfiles/ms/icons/blue-dot.png' }});`
   ).join('\n');
   return `<!DOCTYPE html>
   <html><head><meta name='viewport' content='width=device-width, initial-scale=1.0'>

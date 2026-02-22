@@ -413,6 +413,11 @@ export default function MapScreen() {
     );
   }
 
+  // Filter out invalid mushroom locations (missing or non-numeric lat/lng)
+  const validMushroomLocations = mushroomLocations.filter(
+    m => typeof m.lat === 'number' && !isNaN(m.lat) && typeof m.lng === 'number' && !isNaN(m.lng)
+  );
+
   return (
     <ThemedView style={styles.container}>
       {/* Header */}
@@ -484,7 +489,7 @@ export default function MapScreen() {
               </View>
 
               <GoogleMap 
-                mushrooms={showMushrooms ? mushroomLocations : []}
+                mushrooms={showMushrooms ? validMushroomLocations : []}
                 farmLocations={showFarms ? farmLocations : []}
                 selectedMushroom={selectedMushroom}
                 onSelectMushroom={setSelectedMushroom}
