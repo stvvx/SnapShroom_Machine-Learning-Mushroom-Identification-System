@@ -218,13 +218,26 @@ class CustomMushroomPredictor:
             if isinstance(checkpoint, dict) and 'model_state_dict' in checkpoint:
                 # Checkpoint saved with metadata
                 logger.info("Loading model from checkpoint with metadata")
-                self.classifier.load_state_dict(checkpoint['model_state_dict'])
+                state_dict = checkpoint['model_state_dict']
                 if 'best_accuracy' in checkpoint:
                     logger.info(f"Model best accuracy: {checkpoint['best_accuracy']:.2%}")
             else:
                 # Checkpoint is just the state dict
                 logger.info("Loading model from plain state dict")
-                self.classifier.load_state_dict(checkpoint)
+                state_dict = checkpoint
+            
+            # Handle key prefix mismatch: convert 'model.' to 'backbone.'
+            # This allows loading models saved with different class attribute names
+            fixed_state_dict = {}
+            for key, value in state_dict.items():
+                if key.startswith('model.'):
+                    new_key = key.replace('model.', 'backbone.', 1)
+                    fixed_state_dict[new_key] = value
+                    logger.debug(f"Renamed key: {key} -> {new_key}")
+                else:
+                    fixed_state_dict[key] = value
+            
+            self.classifier.load_state_dict(fixed_state_dict)
             
             self.classifier.to(self.device)
             self.classifier.eval()
