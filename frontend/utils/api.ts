@@ -37,6 +37,8 @@ console.log('🔗 API_BASE_URL:', API_BASE_URL);
 
 export interface MushroomAnalysisRequest {
   image_base64: string;
+  user_email?: string;           // ⭐ Email for sending prediction results
+  user_name?: string;            // ⭐ User name for email
   location?: {
     region: string;
     province: string;
@@ -59,6 +61,7 @@ export interface MushroomAnalysisResponse {
   risk_assessment: any;
   recommendations: string[];
   safety_actions: string[];
+  cloudinary_url?: string;  // Added for persistent image storage
 }
 
 

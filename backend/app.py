@@ -7,6 +7,7 @@ from flask import Flask, jsonify, request
 from flask_cors import CORS
 from flask_pymongo import PyMongo
 from flask_jwt_extended import JWTManager
+from flask_mail import Mail
 
 import sys
 
@@ -28,6 +29,7 @@ from config import get_config
 # ==================================================
 mongo = PyMongo()
 jwt = JWTManager()
+mail = Mail()
 
 
 def create_app(config_name="development"):
@@ -49,6 +51,17 @@ def create_app(config_name="development"):
     app.config["SECRET_KEY"] = os.getenv(
         "SECRET_KEY", app.config.get("SECRET_KEY")
     )
+
+    # ==================================================
+    # EMAIL CONFIGURATION (Mailtrap)
+    # ==================================================
+    app.config['MAIL_SERVER'] = os.getenv('MAIL_SERVER', 'sandbox.smtp.mailtrap.io')
+    app.config['MAIL_PORT'] = int(os.getenv('MAIL_PORT', 2525))
+    app.config['MAIL_USERNAME'] = os.getenv('MAIL_USERNAME', 'a1dd469610546c')
+    app.config['MAIL_PASSWORD'] = os.getenv('MAIL_PASSWORD', '51dd58d7a290f5')
+    app.config['MAIL_USE_TLS'] = os.getenv('MAIL_USE_TLS', 'True').lower() == 'true'
+    app.config['MAIL_USE_SSL'] = os.getenv('MAIL_USE_SSL', 'False').lower() == 'true'
+    app.config['MAIL_DEFAULT_SENDER'] = os.getenv('MAIL_DEFAULT_SENDER', 'noreply@snapshroom.app')
 
     # ==================================================
     # CORS (FIXED)
@@ -98,6 +111,7 @@ def create_app(config_name="development"):
     # ==================================================
     mongo.init_app(app)
     jwt.init_app(app)
+    mail.init_app(app)
 
     # 🔥 expose mongo globally
     app.mongo = mongo

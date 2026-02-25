@@ -3,12 +3,14 @@ from services.toxicity_detector import toxicity_detector
 from services.species_classifier import species_classifier
 from services.habitat_analyzer import habitat_analyzer
 from services.risk_engine import risk_engine
+from services.email_service import send_prediction_email, send_alert_email
 from PIL import Image
 import io
 import base64
 from flask import current_app
 import os
 from utils.json_encoder import safe_jsonify, make_json_serializable
+import cloudinary.uploader
 
 toxicity_bp = Blueprint("toxicity", __name__)
 
@@ -105,20 +107,26 @@ def comprehensive_prediction():
         
         # Handle image upload
         image = None
+        image_base64_clean = None
         if 'image' in request.files:
             print("Processing file upload")
             image_file = request.files['image']
-            image = Image.open(image_file.stream)
+            image_data = image_file.read()
+            image = Image.open(io.BytesIO(image_data))
+            # Convert to base64 for Cloudinary
+            image_base64_clean = base64.b64encode(image_data).decode('utf-8')
         elif request.json and 'image_base64' in request.json:
             print("Processing base64 image")
             try:
                 image_base64 = request.json['image_base64']
                 # Remove data URI prefix if present
                 if ',' in image_base64:
-                    image_base64 = image_base64.split(',')[1]
+                    image_base64_clean = image_base64.split(',')[1]
+                else:
+                    image_base64_clean = image_base64
                 
-                print(f"Decoding base64 image (length: {len(image_base64)})")
-                image_data = base64.b64decode(image_base64)
+                print(f"Decoding base64 image (length: {len(image_base64_clean)})")
+                image_data = base64.b64decode(image_base64_clean)
                 print(f"Decoded image size: {len(image_data)} bytes")
                 image = Image.open(io.BytesIO(image_data))
                 print(f"Image opened: {image.size}, mode: {image.mode}")
@@ -131,6 +139,29 @@ def comprehensive_prediction():
         
         if image is None:
             return jsonify({"error": "Failed to load image"}), 400
+
+        # Upload image to Cloudinary for persistent storage
+        cloudinary_url = None
+        try:
+            print("Uploading image to Cloudinary...")
+            # Detect image format
+            image_format = image.format if image.format else 'JPEG'
+            mime_type = f"image/{image_format.lower()}"
+            
+            # Use data URI format which Cloudinary accepts
+            data_uri = f"data:{mime_type};base64,{image_base64_clean}"
+            upload_result = cloudinary.uploader.upload(
+                data_uri,
+                folder="mushroom_predictions",
+                resource_type="image"
+            )
+            cloudinary_url = upload_result.get('secure_url')
+            print(f"✅ Image uploaded to Cloudinary: {cloudinary_url}")
+        except Exception as e:
+            print(f"❌ Warning: Cloudinary upload failed: {str(e)}")
+            import traceback
+            traceback.print_exc()
+            # Continue with analysis even if Cloudinary upload fails
 
         # Get optional context data
         context = request.json or {}
@@ -176,8 +207,44 @@ def comprehensive_prediction():
             },
             "risk_assessment": risk_assessment,
             "recommendations": risk_assessment.get("recommendations", []),
-            "safety_actions": risk_assessment.get("safety_actions", [])
+            "safety_actions": risk_assessment.get("safety_actions", []),
+            "cloudinary_url": cloudinary_url  # Add Cloudinary URL to response
         }
+
+        # Send email with prediction results
+        user_email = context.get('user_email')
+        user_name = context.get('user_name', 'User')
+        
+        print(f"DEBUG: User email from context: {user_email}")
+        print(f"DEBUG: User name from context: {user_name}")
+        print(f"DEBUG: Full context data: {context}")
+        
+        if user_email:
+            try:
+                print(f"DEBUG: Attempting to send email to {user_email}")
+                # Send the prediction email
+                email_sent = send_prediction_email(user_email, user_name, response)
+                print(f"DEBUG: Email send result: {email_sent}")
+                
+                # If high risk, send an alert email
+                risk_level = risk_assessment.get("overall_risk_level", "").lower()
+                print(f"DEBUG: Risk level: {risk_level}")
+                if risk_level in ["high", "critical", "extreme"]:
+                    alert_message = risk_assessment.get("detailed_risk_analysis", 
+                                                        "This mushroom has been flagged as potentially dangerous.")
+                    send_alert_email(user_email, user_name, "high_risk_detection", alert_message)
+                
+                response["email_sent"] = email_sent
+            except Exception as e:
+                print(f"Email sending error: {str(e)}")
+                import traceback
+                traceback.print_exc()
+                response["email_sent"] = False
+                response["email_error"] = str(e)
+        else:
+            print(f"DEBUG: No email in context. Context keys: {list(context.keys()) if context else 'empty'}")
+            response["email_sent"] = False
+            response["note"] = "No email provided. Results not sent."
 
         # Convert to JSON-serializable format (handles pandas/numpy types)
         return safe_jsonify(response)

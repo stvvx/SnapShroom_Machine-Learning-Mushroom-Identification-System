@@ -1,5 +1,4 @@
 import { Tabs } from 'expo-router';
-import { AuthProvider } from '@/contexts/AuthContext';
 import React from 'react';
 import { Ionicons } from '@expo/vector-icons';
 import { ActivityIndicator, View } from 'react-native';
@@ -32,15 +31,14 @@ export default function TabLayout() {
   const isAdmin = user?.role === 'admin';
 
   return (
-    <AuthProvider>
-      <Tabs
-        screenOptions={{
-          headerShown: false,
-          tabBarActiveTintColor: tint,
-          tabBarInactiveTintColor: '#A8B89D',
-          tabBarStyle: { display: 'none' }, // Hide bottom tab bar - using hamburger menu instead
-        }}
-      >
+    <Tabs
+      screenOptions={{
+        headerShown: false,
+        tabBarActiveTintColor: tint,
+        tabBarInactiveTintColor: '#A8B89D',
+        tabBarStyle: { display: 'none' }, // Hide bottom tab bar - using hamburger menu instead
+      }}
+    >
         {/* USER HOME - Show only for non-admin users */}
         <Tabs.Screen
           name="index"
@@ -115,7 +113,6 @@ export default function TabLayout() {
             href: isAdmin ? undefined : false,
           }}
         />
-      </Tabs>
-    </AuthProvider>
+    </Tabs>
   );
 }

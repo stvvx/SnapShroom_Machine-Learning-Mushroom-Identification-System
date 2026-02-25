@@ -18,6 +18,7 @@ print("[ROUTE] 2. Imported Flask...", file=sys.stderr, flush=True)
 
 from custom_predict import create_predictor
 from services.notification_service import NotificationService
+from services.email_service import send_prediction_email, send_alert_email
 
 print("[ROUTE] 3. Importing create_predictor...", file=sys.stderr, flush=True)
 
@@ -168,6 +169,83 @@ def predict_mushroom():
         else:
             logger.error(f"❌ Prediction failed: {result.get('error')}")
         
+        # Send email with prediction results (if user email provided)
+        user_email = data.get('user_email')
+        user_name = data.get('user_name', 'User')
+
+        logger.info(f"DEBUG: User email from context: {user_email}")
+        logger.info(f"DEBUG: User name from context: {user_name}")
+
+        if user_email:
+            try:
+                classification = result.get('classification') or {}
+                toxicity_level = (classification.get('toxicity_level') or '').lower()
+
+                if toxicity_level in ['dangerous', 'toxic', 'poisonous', 'deadly']:
+                    toxicity_status = 'POISONOUS'
+                    risk_level = 'high'
+                    recommendations = [
+                        'Do NOT consume this mushroom',
+                        'Seek expert identification if uncertain',
+                        'Contact poison control if ingested'
+                    ]
+                    safety_actions = [
+                        'IMMEDIATELY AVOID consumption',
+                        'Seek medical help if ingested'
+                    ]
+                elif toxicity_level in ['safe', 'edible', 'non_toxic']:
+                    toxicity_status = 'EDIBLE'
+                    risk_level = 'low'
+                    recommendations = [
+                        'Verify identification with a local expert',
+                        'Consider habitat and season before consuming',
+                        'Cook properly if edible'
+                    ]
+                    safety_actions = ['Safe if properly identified and cooked']
+                else:
+                    toxicity_status = 'Unknown'
+                    risk_level = 'unknown'
+                    recommendations = ['Use caution and seek expert identification']
+                    safety_actions = ['Do not consume unless verified by expert']
+
+                email_payload = {
+                    "image_analysis": {
+                        "species": {
+                            "species_name": classification.get('label', 'Unknown'),
+                            "confidence": classification.get('confidence', 0)
+                        },
+                        "toxicity": {
+                            "toxicity_status": toxicity_status
+                        }
+                    },
+                    "risk_assessment": {
+                        "overall_risk_level": risk_level
+                    },
+                    "recommendations": recommendations,
+                    "safety_actions": safety_actions
+                }
+
+                logger.info(f"DEBUG: Attempting to send email to {user_email}")
+                email_sent = send_prediction_email(user_email, user_name, email_payload)
+                result["email_sent"] = email_sent
+
+                if risk_level in ['high', 'critical', 'extreme']:
+                    send_alert_email(
+                        user_email,
+                        user_name,
+                        "high_risk_detection",
+                        "This mushroom has been flagged as potentially dangerous."
+                    )
+
+                logger.info(f"DEBUG: Email send result: {email_sent}")
+            except Exception as email_error:
+                logger.exception(f"Email sending error: {str(email_error)}")
+                result["email_sent"] = False
+                result["email_error"] = str(email_error)
+        else:
+            result["email_sent"] = False
+            result["note"] = "No email provided. Results not sent."
+
         return jsonify(result), 200
     
     except Exception as e:

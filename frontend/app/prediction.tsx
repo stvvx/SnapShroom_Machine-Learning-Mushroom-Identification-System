@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useContext } from 'react';
 import {
   View,
   Text,
@@ -17,6 +17,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { analyzeMushroom, searchSpecies } from '@/utils/api';
 import { generateMushroomLocationMap } from '@/utils/map-generator';
 import { getMushroomLocations } from '@/utils/mushroom-locations';
+import { AuthContext } from '@/contexts/AuthContext';
 
 // Conditionally import WebView only for native platforms
 let WebView: any = null;
@@ -85,6 +86,9 @@ interface BackendResult {
   classification?: BackendClassification;
   success?: boolean;
   message?: string;
+  cloudinary_url?: string;  // Add this
+  email_sent?: boolean;
+  email_error?: string;
   [key: string]: any;
 }
 
@@ -104,6 +108,7 @@ const Divider = () => <View style={styles.divider} />;
 export default function PredictionScreen() {
   const { imageUri, imageBase64, cloudinaryUrl } = useLocalSearchParams();
   const router = useRouter();
+  const { user } = useContext(AuthContext) as { user: { email: string; name?: string; username?: string } | null } || {};
   const [isAnalyzing, setIsAnalyzing] = useState(true);
   const [result, setResult] = useState<PredictionResult | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -111,6 +116,8 @@ export default function PredictionScreen() {
   const [showMap, setShowMap] = useState(false);
   const [mapHtml, setMapHtml] = useState<string>('');
   const [detectionStatus, setDetectionStatus] = useState<DetectionStatus | null>(null);
+  const [cloudinaryImageUrl, setCloudinaryImageUrl] = useState<string | null>(null);
+  const [backendResponse, setBackendResponse] = useState<BackendResult | null>(null);
   
   // Ensure URLs are strings (useLocalSearchParams can return string or string[])
   const normalizeUrl = (url: string | string[] | undefined): string | undefined => {
@@ -122,8 +129,17 @@ export default function PredictionScreen() {
   const normalizedImageBase64 = normalizeUrl(imageBase64 as any);
   const normalizedCloudinaryUrl = normalizeUrl(cloudinaryUrl as any);
 
-  // Use cloudinaryUrl if available (persistent), otherwise fall back to imageUri
-  const displayImageUrl = normalizedCloudinaryUrl || normalizedImageUri;
+  // Use cloudinaryUrl from backend response (if available), otherwise fall back to param or imageUri
+  const displayImageUrl = cloudinaryImageUrl || normalizedCloudinaryUrl || normalizedImageUri;
+
+  // Debug image URLs
+  useEffect(() => {
+    console.log('🔍 Image URL Debug:');
+    console.log('  - cloudinaryImageUrl (from backend):', cloudinaryImageUrl);
+    console.log('  - normalizedCloudinaryUrl (from params):', normalizedCloudinaryUrl);
+    console.log('  - normalizedImageUri:', normalizedImageUri);
+    console.log('  - final displayImageUrl:', displayImageUrl);
+  }, [cloudinaryImageUrl, normalizedCloudinaryUrl, normalizedImageUri, displayImageUrl]);
 
   // Analyze image once loaded
   useEffect(() => {
@@ -146,64 +162,63 @@ export default function PredictionScreen() {
     }
   }, [mushroomData]);
 
-const fetchMushroomFromDatabase = async (detectedSpeciesName: string) => {
-  try {
-    console.log('🔍 Fetching mushroom data from database:', detectedSpeciesName);
+  const fetchMushroomFromDatabase = async (detectedSpeciesName: string) => {
+    try {
+      console.log('🔍 Fetching mushroom data from database:', detectedSpeciesName);
 
-    // Normalize species name for DB search
-    let searchQuery = detectedSpeciesName
-      .replace(/\s*Mushroom\s*/gi, '')    // remove "Mushroom"
-      .replace(/\bJack O Lantern\b/i, "Jack O' Lantern")  // fix apostrophe
-      .trim();
+      // Normalize species name for DB search
+      let searchQuery = detectedSpeciesName
+        .replace(/\s*Mushroom\s*/gi, '')    // remove "Mushroom"
+        .replace(/\bJack O Lantern\b/i, "Jack O' Lantern")  // fix apostrophe
+        .trim();
 
-    let results = await searchSpecies(searchQuery);
+      let results = await searchSpecies(searchQuery);
 
-    if ((!results || results.length === 0) && searchQuery !== detectedSpeciesName) {
-      console.log('🔍 Retry original name as fallback:', detectedSpeciesName);
-      results = await searchSpecies(detectedSpeciesName);
-    }
+      if ((!results || results.length === 0) && searchQuery !== detectedSpeciesName) {
+        console.log('🔍 Retry original name as fallback:', detectedSpeciesName);
+        results = await searchSpecies(detectedSpeciesName);
+      }
 
-    console.log('📊 Search results:', results?.length || 0, 'matches found');
+      console.log('📊 Search results:', results?.length || 0, 'matches found');
 
-    if (results && results.length > 0) {
-      const species = results[0];
-      const transformedData: MushroomData = {
-        mushroom_id: species._id || '',
-        english_name: species.english_name || '',
-        local_name: species.local_name || '',
-        scientific_name: species.scientific_name || '',
-        edible: species.edible ? 'TRUE' : 'FALSE',
-        poisonous: !species.edible ? 'TRUE' : 'FALSE',
-        location_region: species.location || '',
-        location_province: species.province || '',
-        habitat: species.habitat || '',
-        cap_color: '',
-        cap_size_cm: '',
-        gills_present: species.gills_present ? 'TRUE' : 'FALSE',
-        gills_color: species.gills_color || 'none',
-        stem_color: species.stem_color || '',
-        stem_length_cm: species.stem_length || '',
-        size_reference: species.size_reference || '',
-        spore_print_color: species.spore_print_color || '',
-        texture: species.texture || '',
-        season_month: species.season || '',
-        cultivated: species.cultivated ? 'TRUE' : 'FALSE',
-        wild: species.wild ? 'TRUE' : 'FALSE',
-        notes: species.description || species.notes || ''
-      };
+      if (results && results.length > 0) {
+        const species = results[0];
+        const transformedData: MushroomData = {
+          mushroom_id: species._id || '',
+          english_name: species.english_name || '',
+          local_name: species.local_name || '',
+          scientific_name: species.scientific_name || '',
+          edible: species.edible ? 'TRUE' : 'FALSE',
+          poisonous: !species.edible ? 'TRUE' : 'FALSE',
+          location_region: species.location || '',
+          location_province: species.province || '',
+          habitat: species.habitat || '',
+          cap_color: '',
+          cap_size_cm: '',
+          gills_present: species.gills_present ? 'TRUE' : 'FALSE',
+          gills_color: species.gills_color || 'none',
+          stem_color: species.stem_color || '',
+          stem_length_cm: species.stem_length || '',
+          size_reference: species.size_reference || '',
+          spore_print_color: species.spore_print_color || '',
+          texture: species.texture || '',
+          season_month: species.season || '',
+          cultivated: species.cultivated ? 'TRUE' : 'FALSE',
+          wild: species.wild ? 'TRUE' : 'FALSE',
+          notes: species.description || species.notes || ''
+        };
 
-      setMushroomData(transformedData);
-      console.log('✅ Fetched mushroom from database:', transformedData.english_name);
-    } else {
-      console.log('⚠️ No database match found for:', detectedSpeciesName);
+        setMushroomData(transformedData);
+        console.log('✅ Fetched mushroom from database:', transformedData.english_name);
+      } else {
+        console.log('⚠️ No database match found for:', detectedSpeciesName);
+        setMushroomData(null);
+      }
+    } catch (error) {
+      console.error('❌ Error fetching mushroom data:', error);
       setMushroomData(null);
     }
-  } catch (error) {
-    console.error('❌ Error fetching mushroom data:', error);
-    setMushroomData(null);
-  }
-};
-
+  };
 
   const generateMap = () => {
     if (!mushroomData) return;
@@ -238,12 +253,14 @@ const fetchMushroomFromDatabase = async (detectedSpeciesName: string) => {
 
       console.log('Sending image for analysis...');
       console.log('Image size:', cleanBase64.length, 'characters');
+      console.log('📧 User Email:', user?.email);
+      console.log('👤 User Name:', user?.name || user?.username);
 
       // Send image to backend for analysis
       const backendResult: BackendResult = await analyzeMushroom({
         image_base64: cleanBase64,
-        image_url: normalizedCloudinaryUrl,  // Include Cloudinary URL for database storage
-        cloudinary_url: normalizedCloudinaryUrl,  // Alternative key
+        user_email: user?.email,
+        user_name: user?.name || user?.username,
         location: {
           region: "Region 4A",
           province: "Laguna"
@@ -256,10 +273,31 @@ const fetchMushroomFromDatabase = async (detectedSpeciesName: string) => {
       });
 
       console.log('Analysis result received:', backendResult);
+      
+      // Store the full backend response
+      setBackendResponse(backendResult);
+
+      // Extract and save Cloudinary URL from backend response
+      if (backendResult?.cloudinary_url) {
+        console.log('☁️ Cloudinary URL received from backend:', backendResult.cloudinary_url);
+        setCloudinaryImageUrl(backendResult.cloudinary_url);
+      } else {
+        console.log('⚠️ No Cloudinary URL in backend response');
+      }
+
+      // Log email status
+      if (backendResult?.email_sent !== undefined) {
+        console.log('📧 Email Status:', backendResult.email_sent ? '✅ SENT' : '❌ NOT SENT');
+        if (backendResult?.email_error) {
+          console.log('📧 Email Error:', backendResult.email_error);
+        }
+      } else {
+        console.log('📧 Email info not in response - user email may not have been provided');
+      }
 
       // Check if mushroom was detected
       const detection = backendResult?.detection;
-      const mushroomDetected = detection?.found !== false; // Default to true if not specified
+      const mushroomDetected = detection?.found !== false;
       const detectionMessage = backendResult?.message;
 
       if (!mushroomDetected) {
@@ -545,51 +583,50 @@ const fetchMushroomFromDatabase = async (detectedSpeciesName: string) => {
   };
 
   const renderDatabaseSection = () => {
-  if (!mushroomData) return null;
+    if (!mushroomData) return null;
 
-  return (
-    <View style={styles.section}>
-      <View style={styles.sectionHeader}>
-        <Ionicons name="server" size={24} color="#1976D2" />
-        <Text style={styles.sectionTitle}>Mushroom Database Record</Text>
+    return (
+      <View style={styles.section}>
+        <View style={styles.sectionHeader}>
+          <Ionicons name="server" size={24} color="#1976D2" />
+          <Text style={styles.sectionTitle}>Mushroom Database Record</Text>
+        </View>
+
+        <View style={styles.databaseCard}>
+          <InfoRow label="English Name" value={mushroomData.english_name} />
+          <InfoRow label="Local Name" value={mushroomData.local_name} />
+          <InfoRow label="Scientific Name" value={mushroomData.scientific_name} />
+
+          <Divider />
+
+          <InfoRow label="Edible" value={mushroomData.edible} />
+          <InfoRow label="Poisonous" value={mushroomData.poisonous} />
+
+          <Divider />
+
+          <InfoRow label="Habitat" value={mushroomData.habitat} />
+          <InfoRow label="Region" value={mushroomData.location_region} />
+          <InfoRow label="Province" value={mushroomData.location_province} />
+          <InfoRow label="Season" value={mushroomData.season_month} />
+
+          <Divider />
+
+          <InfoRow label="Stem Color" value={mushroomData.stem_color} />
+          <InfoRow label="Stem Length (cm)" value={mushroomData.stem_length_cm} />
+          <InfoRow label="Texture" value={mushroomData.texture} />
+          <InfoRow label="Spore Print" value={mushroomData.spore_print_color} />
+
+          {mushroomData.notes && (
+            <>
+              <Divider />
+              <Text style={styles.notesLabel}>Notes</Text>
+              <Text style={styles.notesText}>{mushroomData.notes}</Text>
+            </>
+          )}
+        </View>
       </View>
-
-      <View style={styles.databaseCard}>
-        <InfoRow label="English Name" value={mushroomData.english_name} />
-        <InfoRow label="Local Name" value={mushroomData.local_name} />
-        <InfoRow label="Scientific Name" value={mushroomData.scientific_name} />
-
-        <Divider />
-
-        <InfoRow label="Edible" value={mushroomData.edible} />
-        <InfoRow label="Poisonous" value={mushroomData.poisonous} />
-
-        <Divider />
-
-        <InfoRow label="Habitat" value={mushroomData.habitat} />
-        <InfoRow label="Region" value={mushroomData.location_region} />
-        <InfoRow label="Province" value={mushroomData.location_province} />
-        <InfoRow label="Season" value={mushroomData.season_month} />
-
-        <Divider />
-
-        <InfoRow label="Stem Color" value={mushroomData.stem_color} />
-        <InfoRow label="Stem Length (cm)" value={mushroomData.stem_length_cm} />
-        <InfoRow label="Texture" value={mushroomData.texture} />
-        <InfoRow label="Spore Print" value={mushroomData.spore_print_color} />
-
-        {mushroomData.notes && (
-          <>
-            <Divider />
-            <Text style={styles.notesLabel}>Notes</Text>
-            <Text style={styles.notesText}>{mushroomData.notes}</Text>
-          </>
-        )}
-      </View>
-    </View>
-  );
-};
-
+    );
+  };
 
   const renderRecommendations = () => {
     if (!result?.recommendations?.length) return null;
@@ -682,8 +719,7 @@ const fetchMushroomFromDatabase = async (detectedSpeciesName: string) => {
             <Text style={styles.detailValue}>{mushroomData.scientific_name}</Text>
           </View>
 
-
-          {/* Size Information - REMOVED cap size, cap color, scap shape */}
+          {/* Size Information */}
           <Text style={styles.categoryTitle}>Physical Characteristics</Text>
 
           <View style={styles.detailRow}>
@@ -779,7 +815,6 @@ const fetchMushroomFromDatabase = async (detectedSpeciesName: string) => {
     );
   };
   
-
   if (isAnalyzing) {
     return (
       <View style={styles.loadingContainer}>
@@ -979,6 +1014,7 @@ const fetchMushroomFromDatabase = async (detectedSpeciesName: string) => {
                 <iframe
                   srcDoc={mapHtml}
                   style={{ width: '100%', height: '100%', border: 'none' }}
+                  title="Mushroom Location Map"
                 />
               </View>
             </View>
@@ -988,7 +1024,7 @@ const fetchMushroomFromDatabase = async (detectedSpeciesName: string) => {
     );
   }
 
-  // ── MOBILE LAYOUT (unchanged) ────────────────────────────────────────────────
+  // ── MOBILE LAYOUT ─────────────────────────────────────────────────────────────
   return (
     <>
       <ScrollView style={styles.container}>
@@ -1080,7 +1116,6 @@ const webStyles = StyleSheet.create({
     borderRightColor: '#E8EAF0',
     padding: 24,
     gap: 16,
-    // sticky via position fixed-like: on web ScrollView doesn't clip this
     position: 'sticky' as any,
     top: 0,
     alignSelf: 'flex-start',
@@ -1100,7 +1135,7 @@ const webStyles = StyleSheet.create({
   },
   squareImage: {
     width: '100%',
-    aspectRatio: 1,          // 1:1 square
+    aspectRatio: 1,
     borderRadius: 16,
   },
   imageOverlayBadge: {
@@ -1152,7 +1187,7 @@ const webStyles = StyleSheet.create({
   },
 });
 
-// ── MOBILE STYLES (original, untouched) ────────────────────────────────────────
+// ── MOBILE STYLES ─────────────────────────────────────────────────────────────
 const styles = StyleSheet.create({
   container: {
     flex: 1,
