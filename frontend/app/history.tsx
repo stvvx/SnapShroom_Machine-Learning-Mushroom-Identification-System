@@ -146,9 +146,14 @@ export default function HistoryScreen() {
 
   // ── MOBILE card renderer ──────────────────────────────────────────────────
   const renderScanCard = (scan: ScanRecord) => {
+
+    
     const edibilityColor = getEdibilityColor(scan.edibility);
     const edibilityIcon = getEdibilityIcon(scan.edibility);
 
+    // Log image_url for debugging
+    console.log('History image_url:', scan.image_url);
+    const [imageError, setImageError] = useState(false);
     return (
       <TouchableOpacity
         key={scan._id}
@@ -166,8 +171,16 @@ export default function HistoryScreen() {
         }}
       >
         <View style={styles.imageContainer}>
-          {scan.image_url ? (
-            <Image source={{ uri: scan.image_url }} style={styles.scanImage} resizeMode="cover" />
+          {scan.image_url && !imageError ? (
+            <Image
+              source={{ uri: scan.image_url }}
+              style={styles.scanImage}
+              resizeMode="cover"
+              onError={() => {
+                setImageError(true);
+                console.warn('Failed to load image:', scan.image_url);
+              }}
+            />
           ) : (
             <View style={[styles.scanImage, styles.noImagePlaceholder]}>
               <Ionicons name="image-outline" size={40} color="#CCC" />
@@ -224,6 +237,7 @@ export default function HistoryScreen() {
 
   // ── WEB grid card renderer ─────────────────────────────────────────────────
   const renderWebCard = (scan: ScanRecord) => {
+    console.log('IMAGE URL:', scan.image_url);
     const edibilityColor = getEdibilityColor(scan.edibility);
     const edibilityIcon = getEdibilityIcon(scan.edibility);
 

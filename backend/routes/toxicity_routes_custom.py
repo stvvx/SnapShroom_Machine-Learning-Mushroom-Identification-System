@@ -51,29 +51,6 @@ print("[ROUTE] 8. Finished predictor initialization", file=sys.stderr, flush=Tru
 
 @toxicity_bp.route('/predict', methods=['POST'])
 def predict_mushroom():
-    """
-    Classify mushroom from image using custom trained model.
-    
-    Request body:
-    {
-        "image_base64": "data:image/jpeg;base64,/9j/4AAQSkZJRg..."
-    }
-    
-    Response:
-    {
-        "success": true,
-        "detection": {
-            "found": true,
-            "confidence": 0.95
-        },
-        "classification": {
-            "label": "White Oyster Mushroom",
-            "confidence": 0.92,
-            "top_predictions": [...],
-            "toxicity_level": "SAFE"
-        }
-    }
-    """
     if not predictor:
         return jsonify({
             "success": False,
@@ -82,20 +59,12 @@ def predict_mushroom():
     
     try:
         data = request.get_json()
-        
         if not data:
-            return jsonify({
-                "success": False,
-                "error": "No JSON data provided"
-            }), 400
+            return jsonify({"success": False, "error": "No JSON data provided"}), 400
         
         image_base64 = data.get('image_base64')
-        
         if not image_base64:
-            return jsonify({
-                "success": False,
-                "error": "No image_base64 provided"
-            }), 400
+            return jsonify({"success": False, "error": "No image_base64 provided"}), 400
         
         logger.info("Processing mushroom classification...")
         
@@ -105,19 +74,40 @@ def predict_mushroom():
         # Save scan to database
         try:
             mongo = current_app.mongo
-            
-            # Get user ID if authenticated (optional)
             user_id = None
             try:
                 user_id = get_jwt_identity()
             except:
-                pass  # Not authenticated, proceed without user_id
+                pass  # Not authenticated
             
-            # Get location data from request if provided
             location_data = data.get('location', {})
-            
-            # Get image URL (Cloudinary URL) from request if provided
             image_url = data.get('image_url') or data.get('cloudinary_url')
+
+            # --- Cloudinary upload if no URL ---
+            if not image_url and image_base64:
+                try:
+                    import cloudinary
+                    import cloudinary.uploader
+
+                    # Make sure Cloudinary config is set in your environment
+                    if not cloudinary.config().cloud_name:
+                        raise Exception("Cloudinary not configured!")
+
+                    # Clean base64 string
+                    image_base64_clean = image_base64.split(',')[1] if ',' in image_base64 else image_base64
+                    data_uri = f"data:image/jpeg;base64,{image_base64_clean}"
+
+                    upload_result = cloudinary.uploader.upload(
+                        data_uri,
+                        folder="mushroom_predictions",
+                        resource_type="image"
+                    )
+                    image_url = upload_result.get('secure_url')
+                    logger.info(f"✅ Image uploaded to Cloudinary: {image_url}")
+                except Exception as e:
+                    import traceback
+                    logger.error(f"❌ Cloudinary upload failed: {e}\n{traceback.format_exc()}")
+                    image_url = None
             
             # Prepare scan data
             scan_data = {
@@ -127,7 +117,7 @@ def predict_mushroom():
                 "mushroom_type": result.get('classification', {}).get('label') if result.get('classification') else None,
                 "classification_confidence": result.get('classification', {}).get('confidence', 0) if result.get('classification') else None,
                 "edibility": result.get('classification', {}).get('toxicity_level', '').lower() if result.get('classification') else None,
-                "image_url": image_url,  # Store Cloudinary URL
+                "image_url": image_url,  # Use Cloudinary URL if uploaded
                 "location": {
                     "region": location_data.get('region'),
                     "province": location_data.get('province'),
@@ -136,12 +126,11 @@ def predict_mushroom():
                 "created_at": datetime.utcnow(),
                 "success": result.get("success", False)
             }
-            
-            # Insert scan record
+
             mongo.db.mushroom_scans.insert_one(scan_data)
             logger.info("✅ Scan data saved to database")
-            
-            # Send notification to user about scan result
+
+            # Notification logic (unchanged)
             if user_id:
                 try:
                     mushroom_name = result.get('classification', {}).get('label', 'Unknown') if result.get('classification') else 'Unknown'
@@ -153,21 +142,7 @@ def predict_mushroom():
         except Exception as db_error:
             logger.warning(f"⚠️ Failed to save scan to database: {str(db_error)}")
             # Continue even if saving fails
-        
-        # Log result
-        if result.get("success"):
-            detection = result.get('detection', {})
-            classification = result.get('classification')
-            
-            if detection.get('found'):
-                if classification:
-                    logger.info(f"✅ Mushroom detected & classified: {classification['label']}")
-                else:
-                    logger.info(f"✅ Mushroom detected (confidence: {detection['confidence']})")
-            else:
-                logger.info(f"⚠️ No mushroom detected in image (confidence: {detection['confidence']})")
-        else:
-            logger.error(f"❌ Prediction failed: {result.get('error')}")
+
         
         # Send email with prediction results (if user email provided)
         user_email = data.get('user_email')
