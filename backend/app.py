@@ -218,6 +218,15 @@ def init_database(db):
     species.create_index("edible")
     species.create_index("location")
 
+    # Initialize farms collection
+    if "farms" not in db.list_collection_names():
+        db.create_collection("farms")
+    
+    farms = db.farms
+    farms.create_index("id", unique=True)
+    farms.create_index("type")
+    farms.create_index([("lat", 1), ("lng", 1)])
+
     print("[OK] Database ready")
 
 
@@ -268,6 +277,13 @@ def register_blueprints(app):
         traceback.print_exc()
         import sys
         sys.stdout.flush()
+    
+    try:
+        from routes.farms_routes import farms_bp
+        app.register_blueprint(farms_bp)
+        print("[OK] Farms routes loaded")
+    except Exception as e:
+        print("[WARN] Farms blueprint error:", e)
 
 
 # ==================================================
