@@ -7,9 +7,11 @@ from flask_jwt_extended import (
 )
 from datetime import datetime, timedelta
 from bson import ObjectId
+import secrets
 import re
 from werkzeug.security import generate_password_hash, check_password_hash
 from services.notification_service import NotificationService
+from services.email_service import send_verification_email
 
 auth_bp = Blueprint("auth", __name__, url_prefix="/auth")
 
@@ -44,6 +46,8 @@ def register():
         password = (data.get("password") or "").strip()
         confirm_password = (data.get("confirmPassword") or data.get("confirm_password") or "").strip()
         name = (data.get("name") or "").strip()
+        verification_token = secrets.token_urlsafe(32)  # random secure token
+        token_expires_at = datetime.utcnow() + timedelta(hours=24)  # 24h expiration
 
         if not email or not password or not name:
             return jsonify({"success": False, "message": "All fields are required"}), 400
@@ -75,10 +79,21 @@ def register():
             "access_token": None,
             "refresh_token": None,
             "token_created_at": None,
-            "token_expires_at": None
-        }
+            "token_expires_at": None,
 
+    # EMAIL VERIFICATION FIELDS
+            "is_verified": False,
+            "verification_token": verification_token,
+            "verification_token_expires": token_expires_at
+}
+    
         result = mongo.db.users.insert_one(user)
+
+        # Send verification email
+        try:
+            send_verification_email(email, username, verification_token)
+        except Exception as e:
+            current_app.logger.warning(f"Failed to send verification email: {e}")
 
         access_token = create_access_token(
             identity=str(result.inserted_id),

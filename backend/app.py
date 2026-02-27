@@ -64,6 +64,9 @@ def create_app(config_name="development"):
     app.config['MAIL_USE_SSL'] = os.getenv('MAIL_USE_SSL', 'False').lower() == 'true'
     app.config['MAIL_DEFAULT_SENDER'] = os.getenv('MAIL_DEFAULT_SENDER', 'noreply@snapshroom.app')
 
+    # FRONTEND URL for email verification links
+    app.config['FRONTEND_URL'] = os.getenv('FRONTEND_URL', 'http://localhost:3000')
+
     # ==================================================
     # CORS (FIXED)
     # ==================================================

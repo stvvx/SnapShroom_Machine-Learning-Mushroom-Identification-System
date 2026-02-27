@@ -200,3 +200,41 @@ def send_alert_email(user_email, user_name, alert_type, alert_message):
     except Exception as e:
         logger.error(f"Failed to send alert email to {user_email}: {str(e)}")
         return False
+
+#verify email
+def send_verification_email(user_email, user_name, token):
+    """Send verification email to the user."""
+    try:
+        verification_link = f"{current_app.config['FRONTEND_URL']}/verify-email?token={token}"
+
+        html_content = f"""
+        <html>
+            <body style="font-family: Arial, sans-serif; line-height:1.5;">
+                <h2>Hello {escape(user_name)},</h2>
+                <p>Thank you for registering on SnapShroom!</p>
+                <p>Please verify your email by clicking the link below:</p>
+                <p><a href="{verification_link}" target="_blank">Verify Email</a></p>
+                <p>This link expires in 24 hours.</p>
+                <p>🍄 SnapShroom Team</p>
+            </body>
+        </html>
+        """
+
+        msg = Message(
+            subject="Verify Your SnapShroom Email",
+            recipients=[user_email],
+            html=html_content
+        )
+
+        mail = current_app.extensions.get('mail')
+        if mail:
+            mail.send(msg)
+            logger.info(f"Verification email sent to {user_email}")
+            return True
+        else:
+            logger.error("Mail extension not initialized")
+            return False
+
+    except Exception as e:
+        logger.error(f"Failed to send verification email to {user_email}: {str(e)}")
+        return False
