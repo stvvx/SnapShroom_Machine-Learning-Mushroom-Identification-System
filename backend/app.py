@@ -13,6 +13,7 @@ import sys
 
 import cloudinary.uploader
 import cloudinary_config   # this activates config
+from routes.toxicity_routes_custom import toxicity_bp
 
 
 # ==================================================

@@ -108,7 +108,9 @@ const Divider = () => <View style={styles.divider} />;
 export default function PredictionScreen() {
   const { imageUri, imageBase64, cloudinaryUrl } = useLocalSearchParams();
   const router = useRouter();
-  const { user } = useContext(AuthContext) as { user: { email: string; name?: string; username?: string } | null } || {};
+  const { user } = useContext(AuthContext) as {
+    user: { id: string; email: string; name?: string; username?: string } | null;
+  } || {};
   const [isAnalyzing, setIsAnalyzing] = useState(true);
   const [result, setResult] = useState<PredictionResult | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -259,6 +261,9 @@ export default function PredictionScreen() {
       // Send image to backend for analysis
       const backendResult: BackendResult = await analyzeMushroom({
         image_base64: cleanBase64,
+        // Pass user_id explicitly so the backend can
+        // associate this scan with the authenticated user.
+        user_id: user?.id,
         user_email: user?.email,
         user_name: user?.name || user?.username,
         location: {

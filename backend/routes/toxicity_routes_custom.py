@@ -1,7 +1,3 @@
-"""
-Custom Mushroom Classification Routes
-Uses locally trained PyTorch model
-"""
 
 import sys
 import os
@@ -19,8 +15,9 @@ print("[ROUTE] 2. Imported Flask...", file=sys.stderr, flush=True)
 from custom_predict import create_predictor
 from services.notification_service import NotificationService
 from services.email_service import send_prediction_email, send_alert_email
+from flask_jwt_extended import jwt_required, get_jwt_identity
+toxicity_bp = Blueprint('toxicity_custom', __name__)
 
-print("[ROUTE] 3. Importing create_predictor...", file=sys.stderr, flush=True)
 
 # Setup logging
 logging.basicConfig(level=logging.INFO)
@@ -28,7 +25,7 @@ logger = logging.getLogger(__name__)
 
 print("[ROUTE] 4. Created blueprint...", file=sys.stderr, flush=True)
 
-toxicity_bp = Blueprint('toxicity_custom', __name__)
+
 
 print("[ROUTE] 5. Starting predictor initialization...", file=sys.stderr, flush=True)
 
@@ -74,11 +71,18 @@ def predict_mushroom():
         # Save scan to database
         try:
             mongo = current_app.mongo
-            user_id = None
+            # Prefer JWT identity when available, but also accept explicit
+            # user_id from the request body as a fallback so authenticated
+            # scans are always associated to a user.
+            user_id = data.get("user_id")
             try:
-                user_id = get_jwt_identity()
-            except:
-                pass  # Not authenticated
+                from flask_jwt_extended import verify_jwt_in_request
+                verify_jwt_in_request(optional=True)
+                jwt_identity = get_jwt_identity()
+                if jwt_identity:
+                    user_id = jwt_identity
+            except Exception:
+                pass  # Not authenticated / no valid JWT
             
             location_data = data.get('location', {})
             image_url = data.get('image_url') or data.get('cloudinary_url')
@@ -232,6 +236,7 @@ def predict_mushroom():
 
 
 @toxicity_bp.route('/scans/history', methods=['GET'])
+@jwt_required()
 def get_scan_history():
     """
     Get scan history with optional scope filtering.
@@ -254,18 +259,13 @@ def get_scan_history():
         
         # If scope is provided, resolve current user from JWT
         if scope in ('mine', 'universe'):
-            current_user_id = None
-            try:
-                from flask_jwt_extended import get_jwt_identity
-                current_user_id = get_jwt_identity()
-            except Exception:
-                pass
+            current_user_id = get_jwt_identity()
             
             if current_user_id:
                 if scope == 'mine':
                     query['user_id'] = ObjectId(current_user_id)
                 elif scope == 'universe':
-                    query['user_id'] = {'$ne': ObjectId(current_user_id)}
+                    query = {}  # all scans
         elif user_id:
             # Legacy: filter by explicit user_id param
             try:
@@ -278,31 +278,34 @@ def get_scan_history():
                     .sort('created_at', -1)
                     .limit(limit))
         
-        # Convert ObjectId to string for JSON serialization
+        # Convert ObjectId and datetime to string for JSON serialization
+        from datetime import datetime as dt
         for scan in scans:
             scan['_id'] = str(scan['_id'])
             if scan.get('user_id'):
                 scan['user_id'] = str(scan['user_id'])
+            # Explicitly convert datetime to ISO string with Z suffix (JS-safe)
+            if isinstance(scan.get('created_at'), dt):
+                scan['created_at'] = scan['created_at'].strftime('%Y-%m-%dT%H:%M:%S.') + \
+                    f"{scan['created_at'].microsecond // 1000:03d}Z"
         
-        # Look up usernames for scans (for universe view)
-        if scope == 'universe':
-            user_ids = set()
-            for scan in scans:
-                uid = scan.get('user_id')
-                if uid:
-                    user_ids.add(uid)
-            # Batch fetch usernames
-            user_map = {}
-            if user_ids:
-                users_cursor = mongo.db.users.find(
-                    {"_id": {"$in": [ObjectId(uid) for uid in user_ids]}},
-                    {"_id": 1, "username": 1, "name": 1}
-                )
-                for u in users_cursor:
-                    user_map[str(u["_id"])] = u.get("name") or u.get("username") or "Unknown"
-            for scan in scans:
-                uid = scan.get('user_id')
-                scan['scanned_by'] = user_map.get(uid, 'Anonymous') if uid else 'Anonymous'
+        # Look up usernames for all scans
+        user_ids = set()
+        for scan in scans:
+            uid = scan.get('user_id')
+            if uid:
+                user_ids.add(uid)
+        user_map = {}
+        if user_ids:
+            users_cursor = mongo.db.users.find(
+                {"_id": {"$in": [ObjectId(uid) for uid in user_ids]}},
+                {"_id": 1, "username": 1, "name": 1}
+            )
+            for u in users_cursor:
+                user_map[str(u["_id"])] = u.get("name") or u.get("username") or "Unknown"
+        for scan in scans:
+            uid = scan.get('user_id')
+            scan['scanned_by'] = user_map.get(uid, 'Anonymous') if uid else 'Anonymous'
         
         return jsonify({
             "success": True,

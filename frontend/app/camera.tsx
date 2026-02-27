@@ -7,7 +7,9 @@ const checkForMushroom = async (base64: string, photoUri?: string): Promise<{ is
       cleanBase64 = cleanBase64.split(',')[1];
     }
     // Build API URL from environment variables
-    const BACKEND_IP = process.env.EXPO_PUBLIC_BACKEND_IP || '192.168.1.102';
+    // Default to localhost so the device/emulator talking to the backend
+    // on the same machine works without a hard-coded LAN IP.
+    const BACKEND_IP = process.env.EXPO_PUBLIC_BACKEND_IP || 'localhost';
     const BACKEND_PORT = process.env.EXPO_PUBLIC_BACKEND_PORT || '5000';
     const apiUrl = process.env.EXPO_PUBLIC_API_URL || `http://${BACKEND_IP}:${BACKEND_PORT}/api`;
     const response = await fetch(`${apiUrl}/toxicity/detect`, {
@@ -197,32 +199,9 @@ export default function CameraScreen() {
         console.error('❌ Cloudinary upload error:', error);
         throw error;
       }
-      const BACKEND_IP = process.env.EXPO_PUBLIC_BACKEND_IP || '192.168.1.102';
-      const BACKEND_PORT = process.env.EXPO_PUBLIC_BACKEND_PORT || '5000';
-      const apiUrl = process.env.EXPO_PUBLIC_API_URL || `http://${BACKEND_IP}:${BACKEND_PORT}/api`;
-      
-      const response = await fetch(`${apiUrl}/toxicity/detect`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ image_base64: cleanBase64 }),
-      });
-
-      if (!response.ok) {
-        console.warn('⚠️ Mushroom detection failed:', response.status);
-        return { isMushroom: true, confidence: 0.5 };
-      }
-
-      const data = await response.json();
-      console.log('Detection result:', data);
-
-      const hasMushroom = data.detection_results?.detected === true || 
-                         (data.objects && data.objects.length > 0);
-      const confidence = data.confidence || 0;
-
-      return { isMushroom: hasMushroom, confidence: confidence };
     } catch (error) {
-      console.error('❌ Mushroom detection error:', error);
-      return { isMushroom: true, confidence: 0.5 };
+      console.error('❌ Cloudinary upload error:', error);
+      throw error;
     }
   };
 

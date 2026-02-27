@@ -1,5 +1,5 @@
-import { Image } from 'expo-image';
-import { TouchableOpacity, StyleSheet, Alert, ScrollView, View, Dimensions, Animated, Linking } from 'react-native';
+import { Image as ExpoImage } from 'expo-image';
+import { TouchableOpacity, StyleSheet, Alert, ScrollView, View, Dimensions, Animated, Linking, Platform, Image as RNImage } from 'react-native';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { useRouter } from 'expo-router';
@@ -14,6 +14,7 @@ import NotificationDropdown from '@/components/NotificationDropdown';
 import { styles } from '../styles/index.styles';
 
 const { width, height } = Dimensions.get('window');
+const isWeb = Platform.OS === 'web';
 const isSmallScreen = width < 768;
 
 // Enhanced color palette - More eye-relaxing
@@ -1340,7 +1341,16 @@ export default function LandingPage() {
         {/* Hero Section */}
         <View style={styles.heroSection}>
           <Animated.View style={[styles.heroImageContainer, { opacity: fadeAnim }]}>
-            <Image source={HERO_SLIDES[currentSlide]} style={styles.heroImage} contentFit="cover" transition={500} />
+            {isWeb ? (
+              <RNImage source={HERO_SLIDES[currentSlide]} style={styles.heroImage} resizeMode="cover" />
+            ) : (
+              <ExpoImage
+                source={HERO_SLIDES[currentSlide]}
+                style={styles.heroImage}
+                contentFit="cover"
+                transition={500}
+              />
+            )}
             <LinearGradient
               colors={['rgba(0,0,0,0)', 'rgba(0,0,0,0.3)', 'rgba(63, 73, 65, 0.85)']}
               style={styles.heroGradient}

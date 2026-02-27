@@ -20,7 +20,9 @@
 const ENV_API_URL = process.env.EXPO_PUBLIC_API_URL;
 
 // 2️⃣ Fallback: local LAN from env variables (only if env not set)
-const BACKEND_IP = process.env.EXPO_PUBLIC_BACKEND_IP || '192.168.1.102';
+// Default to localhost so web in the same browser can reach the backend
+// without relying on a specific LAN IP.
+const BACKEND_IP = process.env.EXPO_PUBLIC_BACKEND_IP || 'localhost';
 const BACKEND_PORT = process.env.EXPO_PUBLIC_BACKEND_PORT || '5000';
 const FALLBACK_LAN_URL = `http://${BACKEND_IP}:${BACKEND_PORT}`;
 

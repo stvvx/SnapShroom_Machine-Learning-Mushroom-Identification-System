@@ -1,5 +1,5 @@
-import { Image } from 'expo-image';
-import { TouchableOpacity, StyleSheet, Alert, ScrollView, View, Dimensions, Animated } from 'react-native';
+import { Image as ExpoImage } from 'expo-image';
+import { TouchableOpacity, StyleSheet, Alert, ScrollView, View, Dimensions, Animated, Platform, Image as RNImage } from 'react-native';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { useRouter } from 'expo-router';
@@ -14,6 +14,7 @@ import NotificationDropdown from '@/components/NotificationDropdown';
 
 const { width, height } = Dimensions.get('window');
 const isSmallScreen = width < 768;
+const isWeb = Platform.OS === 'web';
 
 // Enhanced color palette - More eye-relaxing
 const COLORS = {
@@ -1359,7 +1360,16 @@ export default function LandingPage() {
         {/* Hero Section - Reduced height */}
         <View style={styles.heroSection}>
           <Animated.View style={[styles.heroImageContainer, { opacity: fadeAnim }]}>
-            <Image source={HERO_SLIDES[currentSlide]} style={styles.heroImage} contentFit="cover" transition={500} />
+            {isWeb ? (
+              <RNImage source={HERO_SLIDES[currentSlide]} style={styles.heroImage} resizeMode="cover" />
+            ) : (
+              <ExpoImage
+                source={HERO_SLIDES[currentSlide]}
+                style={styles.heroImage}
+                contentFit="cover"
+                transition={500}
+              />
+            )}
             <LinearGradient
               colors={['rgba(0,0,0,0)', 'rgba(0,0,0,0.3)', 'rgba(63, 73, 65, 0.85)']}
               style={styles.heroGradient}
@@ -1543,7 +1553,7 @@ export default function LandingPage() {
 
         {/* Safety Notice - Reduced padding */}
         <View style={styles.safetySection}>
-          <View style={styles.safetyCard}>
+          <View style={styles.safetyNoticeCard}>
             <ThemedText style={styles.safetyEmoji}>⚠️</ThemedText>
             <View style={styles.safetyContent}>
               <ThemedText style={styles.safetyTitle}>Safety First</ThemedText>
@@ -2551,7 +2561,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: SPACING.md,
     backgroundColor: COLORS.sand,
   },
-  safetyCard: {
+  safetyNoticeCard: {
     flexDirection: 'row',
     padding: SPACING.lg,
     borderRadius: 18,

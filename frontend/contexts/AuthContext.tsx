@@ -16,7 +16,9 @@ import { signOut } from 'firebase/auth';
 // ENV & API URL
 // ==================================================
 // Build fallback URL from environment variables
-const BACKEND_IP = process.env.EXPO_PUBLIC_BACKEND_IP || '192.168.1.102';
+// Default to localhost so Expo web in the browser can reach the backend
+// running on the same machine without relying on a specific LAN IP.
+const BACKEND_IP = process.env.EXPO_PUBLIC_BACKEND_IP || 'localhost';
 const BACKEND_PORT = process.env.EXPO_PUBLIC_BACKEND_PORT || '5000';
 const FALLBACK_URL = `http://${BACKEND_IP}:${BACKEND_PORT}`;
 

@@ -118,8 +118,16 @@ export default function HistoryScreen() {
     return 'warning';
   };
 
-  const formatDate = (dateString: string) => {
-    const date = new Date(dateString);
+  const formatDate = (dateString: string | Date | number | null | undefined) => {
+    if (!dateString) return 'Unknown date';
+    // Normalize Python isoformat quirks for JS Date:
+    //  - +00:00 → Z  (Hermes doesn't parse +00:00)
+    //  - 6-digit microseconds → 3-digit milliseconds (.387000 → .387)
+    const normalized = typeof dateString === 'string'
+      ? dateString.replace('+00:00', 'Z').replace(/(\.\d{3})\d+/, '$1')
+      : dateString;
+    const date = new Date(normalized as any);
+    if (isNaN(date.getTime())) return 'Unknown date';
     const now = new Date();
     const diffMs = now.getTime() - date.getTime();
     const diffMins = Math.floor(diffMs / 60000);
@@ -145,51 +153,46 @@ export default function HistoryScreen() {
   };
 
   // ── MOBILE card renderer ──────────────────────────────────────────────────
-  const renderScanCard = (scan: ScanRecord) => {
+          const renderScanCard = (scan: ScanRecord) => {
 
-    
-    const edibilityColor = getEdibilityColor(scan.edibility);
-    const edibilityIcon = getEdibilityIcon(scan.edibility);
+          
+            const edibilityColor = getEdibilityColor(scan.edibility);
+            const edibilityIcon = getEdibilityIcon(scan.edibility);
 
-    // Log image_url for debugging
-    console.log('History image_url:', scan.image_url);
-    const [imageError, setImageError] = useState(false);
-    return (
-      <TouchableOpacity
-        key={scan._id}
-        style={styles.scanCard}
-        onPress={() => {
-          if (scan.mushroom_type) {
-            Alert.alert(
-              scan.mushroom_type,
-              `Confidence: ${((scan.classification_confidence || 0) * 100).toFixed(1)}%\n` +
-              `Edibility: ${scan.edibility || 'Unknown'}\n` +
-              `Location: ${scan.location?.region || 'Unknown'}`,
-              [{ text: 'OK' }]
-            );
-          }
-        }}
+            // Log image_url for debugging
+            console.log('History image_url:', scan.image_url);
+          //const [imageError, setImageError] = useState(false);
+            return (
+              <TouchableOpacity
+                key={scan._id}
+                style={styles.scanCard}
+                onPress={() => {
+                  if (scan.mushroom_type) {
+                    Alert.alert(
+                      scan.mushroom_type,
+                      `Confidence: ${((scan.classification_confidence || 0) * 100).toFixed(1)}%\n` +
+                      `Edibility: ${scan.edibility || 'Unknown'}\n` +
+                      `Location: ${scan.location?.region || 'Unknown'}`,
+                      [{ text: 'OK' }]
+                    );
+                  }
+                }}
       >
-        <View style={styles.imageContainer}>
-          {scan.image_url && !imageError ? (
-            <Image
-              source={{ uri: scan.image_url }}
-              style={styles.scanImage}
-              resizeMode="cover"
-              onError={() => {
-                setImageError(true);
-                console.warn('Failed to load image:', scan.image_url);
-              }}
-            />
-          ) : (
-            <View style={[styles.scanImage, styles.noImagePlaceholder]}>
-              <Ionicons name="image-outline" size={40} color="#CCC" />
-            </View>
-          )}
-          <View style={[styles.detectionBadge, { backgroundColor: scan.mushroom_detected ? '#4CAF50' : '#D32F2F' }]}>
-            <Ionicons name={scan.mushroom_detected ? 'checkmark' : 'close'} size={14} color="#FFF" />
+        <TouchableOpacity key={scan._id} style={styles.scanCard}>
+      <View style={styles.imageContainer}>
+        {scan.image_url ? (
+          <Image
+            source={{ uri: scan.image_url }}
+            style={styles.scanImage}
+            resizeMode="cover"
+          />
+        ) : (
+          <View style={[styles.scanImage, styles.noImagePlaceholder]}>
+            <Ionicons name="image-outline" size={40} color="#CCC" />
           </View>
-        </View>
+        )}
+      </View>
+    </TouchableOpacity>
 
         <View style={styles.scanInfo}>
           <View style={styles.scanHeader}>
@@ -215,21 +218,13 @@ export default function HistoryScreen() {
             </ThemedText>
           </View>
 
-          {scan.location?.region && (
-            <View style={styles.locationRow}>
-              <Ionicons name="location" size={14} color="#999" />
-              <ThemedText style={styles.locationText}>
-                {scan.location.province || scan.location.region}
-              </ThemedText>
-            </View>
-          )}
 
-          {scope === 'universe' && scan.scanned_by && (
-            <View style={styles.locationRow}>
-              <Ionicons name="person-circle" size={14} color="#999" />
-              <ThemedText style={styles.locationText}>{scan.scanned_by}</ThemedText>
-            </View>
-          )}
+          <View style={styles.locationRow}>
+            <Ionicons name="person-circle" size={14} color="#999" />
+            <ThemedText style={styles.locationText}>
+              Scanned by: {scan.scanned_by || (scope === 'mine' ? (user?.name || user?.username || user?.email || 'You') : 'Anonymous')}
+            </ThemedText>
+          </View>
         </View>
       </TouchableOpacity>
     );
@@ -250,8 +245,7 @@ export default function HistoryScreen() {
             Alert.alert(
               scan.mushroom_type,
               `Confidence: ${((scan.classification_confidence || 0) * 100).toFixed(1)}%\n` +
-              `Edibility: ${scan.edibility || 'Unknown'}\n` +
-              `Location: ${scan.location?.region || 'Unknown'}`,
+              `Edibility: ${scan.edibility || 'Unknown'}\n`,
               [{ text: 'OK' }]
             );
           }
@@ -298,23 +292,14 @@ export default function HistoryScreen() {
             </View>
           )}
 
-          {scan.location?.region && (
-            <View style={webStyles.cardRow}>
-              <Ionicons name="location" size={14} color="#aaa" />
-              <Text style={webStyles.cardMeta} numberOfLines={1}>
-                {scan.location.province || scan.location.region}
-              </Text>
-            </View>
-          )}
+         
 
-          {scope === 'universe' && scan.scanned_by && (
-            <View style={webStyles.cardRow}>
-              <Ionicons name="person-circle-outline" size={14} color="#aaa" />
-              <Text style={webStyles.cardMeta} numberOfLines={1}>
-                {scan.scanned_by}
-              </Text>
-            </View>
-          )}
+          <View style={webStyles.cardRow}>
+            <Ionicons name="person-circle-outline" size={14} color="#aaa" />
+            <Text style={webStyles.cardMeta} numberOfLines={1}>
+              Scanned by: {scan.scanned_by || (scope === 'mine' ? (user?.name || user?.username || user?.email || 'You') : 'Anonymous')}
+            </Text>
+          </View>
         </View>
       </TouchableOpacity>
     );
