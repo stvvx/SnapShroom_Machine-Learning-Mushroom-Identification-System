@@ -893,8 +893,10 @@ mushroom identification system. As of the reporting date, the platform has <stro
 registered users</strong>, of whom <strong>${a.users.active_users} (${activeRate}%) are currently active</strong>.
 The platform has processed <strong>${a.mushrooms.total_scans} total identification scans</strong>, with
 <strong>${a.mushrooms.scans_last_30d} scans recorded in the past 30 days</strong>.
-The automated detection pipeline achieved a success rate of <strong>${a.mushrooms.detection_success_rate}%</strong>. Of all scans with edibility classifications,
-<strong>${edibleShare}% were identified as edible species</strong>.`;
+<br><br>
+<strong>Key Insights:</strong> The platform shows ${parseFloat(activeRate) > 70 ? 'strong' : parseFloat(activeRate) > 50 ? 'moderate' : 'low'} user engagement with ${activeRate}% active users. 
+Recent activity accounts for ${a.mushrooms.total_scans > 0 ? ((a.mushrooms.scans_last_30d / a.mushrooms.total_scans) * 100).toFixed(1) : 0}% of total scans, 
+indicating ${a.mushrooms.scans_last_30d > a.mushrooms.total_scans * 0.3 ? 'healthy' : 'declining'} platform usage.`;
 };
 
 const execSummaryUsers = (users: User[]) => {
@@ -915,7 +917,10 @@ ${
     ? `The most recently registered account belongs to <em>${newest.name}</em>,
 created on ${fmtDate(newest.created_at)}.`
     : ''
-}`;
+}
+<br><br>
+<strong>Key Insights:</strong> User engagement is ${parseFloat(activeRate) > 70 ? 'excellent' : parseFloat(activeRate) > 50 ? 'moderate' : 'low'} with ${activeRate}% active users.
+The admin-to-user ratio is ${users.length > 0 ? (admins / users.length * 100).toFixed(1) : 0}%, which ${admins > users.length * 0.1 ? 'indicates strong administrative oversight' : 'suggests adequate administrative coverage'}.`;
 };
 
 /* ════════════════════════════════════════════════════════════════
@@ -960,6 +965,14 @@ export const buildAnalyticsReport = (analytics: Analytics, adminName: string): s
     ${distBar('Active Accounts',   analytics.users.active_users,   analytics.users.total_users, C.teal)}
     ${distBar('Inactive Accounts', analytics.users.inactive_users, analytics.users.total_users, C.red)}
     ${distBar('Admin Accounts',    analytics.users.admin_count,    analytics.users.total_users, C.sage)}
+
+    <div class="subsection-title" style="margin-top: 4mm;">📊</div>
+    <div style="background: #f8f9fa; padding: 3mm; border-radius: 2mm; font-size: 8.5pt; line-height: 1.4;">
+      <strong>User Engagement:</strong> ${parseFloat(userActPct) > 70 ? 'Excellent engagement' : parseFloat(userActPct) > 50 ? 'Moderate engagement' : 'Low engagement'} with ${userActPct}% active users. 
+      ${analytics.users.recent_logins_7d > analytics.users.active_users * 0.5 ? 'Strong weekly activity observed.' : 'Consider re-engagement strategies for inactive users.'}<br>
+      <strong>User Growth:</strong> ${analytics.users.recent_registrations_30d > analytics.users.total_users * 0.1 ? 'Healthy growth trajectory' : 'Moderate growth pattern'} with ${analytics.users.recent_registrations_30d} new users in the last 30 days.
+      ${analytics.users.admin_count > analytics.users.total_users * 0.15 ? 'Strong administrative coverage.' : 'Adequate administrative structure.'}
+    </div>
   `);
 
   /* ── Page 3: Mushroom Scan Analytics ── */
@@ -999,6 +1012,13 @@ export const buildAnalyticsReport = (analytics: Analytics, adminName: string): s
            )}`
         : ''
     }
+
+    <div class="subsection-title" style="margin-top: 4mm;">📊</div>
+    <div style="background: #f8f9fa; padding: 3mm; border-radius: 2mm; font-size: 8.5pt; line-height: 1.4;">
+      <strong>Platform Usage:</strong> ${analytics.mushrooms.scans_last_30d > analytics.mushrooms.total_scans * 0.3 ? 'High recent activity' : analytics.mushrooms.scans_last_30d > analytics.mushrooms.total_scans * 0.1 ? 'Moderate recent activity' : 'Low recent activity'} with ${analytics.mushrooms.scans_last_30d} scans in the last 30 days.<br>
+      <strong>Detection Performance:</strong> ${analytics.mushrooms.detection_success_rate >= 90 ? 'Excellent accuracy' : analytics.mushrooms.detection_success_rate >= 80 ? 'Good accuracy' : 'Needs improvement'} at ${analytics.mushrooms.detection_success_rate}% success rate.
+      ${analytics.mushrooms.most_scanned_mushrooms.length > 0 ? `Top species <em>${analytics.mushrooms.most_scanned_mushrooms[0].name}</em> represents ${analytics.mushrooms.total_scans > 0 ? ((analytics.mushrooms.most_scanned_mushrooms[0].count / analytics.mushrooms.total_scans) * 100).toFixed(1) : 0}% of all scans.` : ''}
+    </div>
   `);
 
   /* ── Page 4: Locations + Timeline ── */
@@ -1027,7 +1047,15 @@ export const buildAnalyticsReport = (analytics: Analytics, adminName: string): s
       ])}
 
       <div class="subsection-title">Daily Scan Activity (last ${Math.min(timelineData.length, 28)} days)</div>
-      ${sparkline(timelineData)}`
+      ${sparkline(timelineData)}
+
+      <div class="subsection-title" style="margin-top: 4mm;">📊 </div>
+      <div style="background: #f8f9fa; padding: 3mm; border-radius: 2mm; font-size: 8.5pt; line-height: 1.4;">
+        <strong>Activity Patterns:</strong> ${parseFloat(avgDaily) > 10 ? 'High daily engagement' : parseFloat(avgDaily) > 5 ? 'Moderate daily engagement' : 'Low daily engagement'} with an average of ${avgDaily} scans per day.
+        ${peakDay.scans > parseFloat(avgDaily) * 2 ? `Peak activity on ${peakDay.date} with ${peakDay.scans} scans suggests optimal user engagement periods.` : 'Consistent daily activity pattern observed.'}<br>
+        <strong>Usage Trends:</strong> ${timelineData.length > 0 ? `${timelineData.length} days tracked show ${totalTimelineScans > 0 ? ((totalTimelineScans / timelineData.length).toFixed(1)) : 0} average daily scans.` : 'No timeline data available.'}
+        ${totalTimelineScans > analytics.mushrooms.scans_last_30d ? 'Historical data shows higher activity than recent period.' : 'Recent activity aligns with historical patterns.'}
+      </div>`
         : ''
     }
   `);
@@ -1098,6 +1126,14 @@ export const buildUsersReport = (users: User[], adminName: string): string => {
     ${distBar('Active',   active,   users.length, C.teal)}
     ${distBar('Inactive', inactive, users.length, C.red)}
     ${distBar('Admins',   admins,   users.length, C.sage)}
+
+    <div class="subsection-title" style="margin-top: 4mm;">📊 </div>
+    <div style="background: #f8f9fa; padding: 3mm; border-radius: 2mm; font-size: 8.5pt; line-height: 1.4;">
+      <strong>User Engagement:</strong> ${parseFloat(pct(active, users.length)) > 70 ? 'Excellent engagement' : parseFloat(pct(active, users.length)) > 50 ? 'Moderate engagement' : 'Low engagement'} with ${active} active users (${pct(active, users.length)}%).
+      ${inactive > users.length * 0.3 ? 'High inactive rate suggests need for re-engagement strategies.' : 'Healthy active user ratio.'}<br>
+      <strong>Administrative Coverage:</strong> ${parseFloat(pct(admins, users.length)) > 10 ? 'Strong administrative oversight' : parseFloat(pct(admins, users.length)) > 5 ? 'Adequate administrative coverage' : 'Limited administrative coverage'} with ${admins} admin accounts (${pct(admins, users.length)}%).
+      ${admins < 2 ? 'Consider adding backup administrators for better coverage.' : 'Administrative structure appears well-balanced.'}
+    </div>
   `);
 
   const sorted = [...users].sort((a, b) => a.name.localeCompare(b.name));
