@@ -219,14 +219,7 @@ const CartoonMushroom = ({
         )}
         
         {/* Cute face */}
-        <View style={{   position: 'absolute',
-  top: 0,
-  left: 0,
-  width: '100%',
-  height: '100%',
-  backgroundColor: 'rgba(0,0,0,0.4)',
-  alignItems: 'center',
-  justifyContent: 'center' }}>
+        <View style={{ position: 'absolute', bottom: '15%', left: 0, right: 0, alignItems: 'center' }}>
           <View style={{ flexDirection: 'row', gap: size * 0.12 }}>
             {/* Eyes */}
             <View
@@ -467,7 +460,6 @@ const MushroomInfographics = () => {
         </ThemedText>
       </View>
 
-   
 
       {/* Tab Navigation */}
       <View style={styles.tabContainer}>
