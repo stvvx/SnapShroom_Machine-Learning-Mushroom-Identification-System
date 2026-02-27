@@ -259,8 +259,7 @@ export default function AboutPage() {
               <Text style={styles.cardHeaderText}>About the App</Text>
             </View>
             <Text style={styles.descriptionText}>
-              SnapShroom uses advanced computer vision and machine learning to identify mushrooms and 
-              assess their edibility with scientific accuracy.
+ SnapShroom is a smart, user-friendly app designed for mushroom enthusiasts, amateur foragers, and professional mycologists. Leveraging advanced machine learning and computer vision, the app can identify mushrooms from photos in real-time, providing accurate species information and assessing edibility and toxicity levels.
             </Text>
           </View>
 
@@ -272,10 +271,35 @@ export default function AboutPage() {
             </View>
             
             <View style={[styles.featuresGrid, isWeb && styles.featuresGridWeb]}>
-              <FeatureCard icon="camera" title="ML Recognition" color="#7BA05B" />
-              <FeatureCard icon="flask" title="Toxicity Info" color="#E85D5D" />
-              <FeatureCard icon="map" title="Habitat Data" color="#4DA6FF" />
-              <FeatureCard icon="bar-chart" title="Risk Analysis" color="#FFB74D" />
+              <CompactVMCard 
+                icon="camera"
+                title="ML Recognition"
+                description="Snap a picture and get detailed information about the species, including common names, scientific classification, and visual characteristics. The system uses advanced machine learning algorithms to identify mushroom species quickly and accurately."
+                iconColor="#00ff55bd"
+                isWeb={isWeb}
+              />
+               <CompactVMCard 
+                icon="flask"
+                title="Toxicity Info"
+                description="Provides detailed information about the edibility and toxicity of mushrooms, ensuring users can make safe decisions when encountering different species."
+                iconColor="#ff0000a7"
+                isWeb={isWeb}
+              />
+               <CompactVMCard 
+                icon="map"
+                title="Habitat Data"
+                description="Offers insights into the natural habitats, regions, and environmental conditions where various mushrooms grow, supporting ecological understanding and foraging safety."
+                iconColor="#693af4"
+                isWeb={isWeb}
+              />
+               <CompactVMCard 
+                icon="bar-chart"
+                title="Risk Analysis"
+                description="Evaluates the potential risks associated with consuming or handling mushrooms, combining species data and toxicity levels to guide safe practices."
+                iconColor="#FF9800"
+                isWeb={isWeb}
+              />
+             
             </View>
           </View>
 
@@ -290,7 +314,7 @@ export default function AboutPage() {
               <CompactVMCard 
                 icon="bulb"
                 title="Our Vision"
-                description="To become the world's most trusted and comprehensive platform for mycological knowledge and safety, revolutionizing how people interact with fungi in their natural habitats. We envision a future where advanced machine learning technologies make expert-level mushroom identification accessible to everyone - from professional mycologists and researchers to amateur foragers and nature enthusiasts."
+                description="To become the Philippines’ most trusted and comprehensive platform for mycological knowledge and safety, transforming how Filipinos interact with mushrooms in their local forests, farms, and communities. We envision a future where advanced machine learning technology makes expert-level mushroom identification accessible to everyone in the country—from professional mycologists and researchers to amateur foragers and nature enthusiasts exploring the rich biodiversity of the Philippines."
                 iconColor="#FF9800"
                 isWeb={isWeb}
               />
