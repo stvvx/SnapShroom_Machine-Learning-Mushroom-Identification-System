@@ -1,5 +1,5 @@
 import { Image as ExpoImage } from 'expo-image';
-import { TouchableOpacity, StyleSheet, Alert, ScrollView, View, Dimensions, Animated, Platform, Image as RNImage } from 'react-native';
+import { TouchableOpacity, StyleSheet, Alert, ScrollView, View, Dimensions, Animated, Platform, Image as RNImage, Linking } from 'react-native';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { useRouter } from 'expo-router';
@@ -59,6 +59,50 @@ const HERO_SLIDES = [
   { uri: 'https://images.unsplash.com/photo-1528518290605-1fcc8dcca204?q=80&w=1200&auto=format&fit=crop' },
   { uri: 'https://cdn.wallpapersafari.com/72/31/UXdKZD.jpg' },
   { uri: 'https://wallpaperaccess.com/full/85562.jpg' },
+];
+
+// Mushroom Resources for Carousel
+const MUSHROOM_RESOURCES = [
+  {
+    id: 1,
+    title: 'North American Mycological Association',
+    description: 'Scientific research, identification guides, and mushroom conservation',
+    url: 'https://www.namyco.org/',
+    icon: 'library-outline',
+    color: COLORS.sage
+  },
+  {
+    id: 2,
+    title: 'Mushroom Expert',
+    description: 'Comprehensive mushroom identification, photos, and educational resources',
+    url: 'https://www.mushroomexpert.com/',
+    icon: 'camera-outline',
+    color: COLORS.forest
+  },
+  {
+    id: 3,
+    title: 'First Nature',
+    description: 'Field guides, distribution maps, and taxonomic information',
+    url: 'https://www.first-nature.com/',
+    icon: 'globe-outline',
+    color: COLORS.moss
+  },
+  {
+    id: 4,
+    title: 'Mycological Society of America',
+    description: 'Professional mycology organization with research and education',
+    url: 'https://www.msafungi.org/',
+    icon: 'school-outline',
+    color: COLORS.terracotta
+  },
+  {
+    id: 5,
+    title: 'Mushroom World',
+    description: 'International mushroom database with species information',
+    url: 'https://www.mushroom.world/',
+    icon: 'planet-outline',
+    color: COLORS.coral
+  }
 ];
 
 // ============ DECORATIVE MUSHROOM COMPONENTS ============
@@ -175,7 +219,14 @@ const CartoonMushroom = ({
         )}
         
         {/* Cute face */}
-        <View style={{ position: 'absolute', bottom: '15%', left: 0, right: 0, alignItems: 'center' }}>
+        <View style={{   position: 'absolute',
+  top: 0,
+  left: 0,
+  width: '100%',
+  height: '100%',
+  backgroundColor: 'rgba(0,0,0,0.4)',
+  alignItems: 'center',
+  justifyContent: 'center' }}>
           <View style={{ flexDirection: 'row', gap: size * 0.12 }}>
             {/* Eyes */}
             <View
@@ -369,6 +420,7 @@ const FloatingSpore = ({ delay, x, duration }: { delay: number; x: number; durat
 // ============ MUSHROOM INFOGRAPHICS SECTION ============
 const MushroomInfographics = () => {
   const [activeTab, setActiveTab] = useState('facts');
+  const [activeUrlIndex, setActiveUrlIndex] = useState(0);
   const containerAnim = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
@@ -414,6 +466,8 @@ const MushroomInfographics = () => {
           Essential knowledge about the fascinating world of fungi
         </ThemedText>
       </View>
+
+   
 
       {/* Tab Navigation */}
       <View style={styles.tabContainer}>
@@ -1232,6 +1286,7 @@ export default function LandingPage() {
   const isLoggedIn = !!user;
 
   const [currentSlide, setCurrentSlide] = useState(0);
+  const [activeUrlIndex, setActiveUrlIndex] = useState(0);
   const fadeAnim = useRef(new Animated.Value(1)).current;
   const scrollY = useRef(new Animated.Value(0)).current;
 
@@ -1270,11 +1325,7 @@ export default function LandingPage() {
   };
 
   const handleInfoPress = () => {
-    Alert.alert(
-      'About SnapShroom',
-      'SnapShroom is a Machine Learning-powered mushroom identification app that helps you safely identify mushrooms using your phone camera.\n\n⚠️ WARNING: This app is for educational purposes only. Never consume mushrooms based solely on app identification.',
-      [{ text: 'OK' }]
-    );
+    router.push('/(tabs)/about');
   };
 
   const handleTestConnection = async () => {
@@ -1412,7 +1463,7 @@ export default function LandingPage() {
               )}
 
               <TouchableOpacity style={styles.secondaryButton} onPress={handleInfoPress}>
-                <ThemedText style={styles.secondaryButtonText}>Learn More</ThemedText>
+                <ThemedText style={styles.secondaryButtonText}>About Us</ThemedText>
                 <Ionicons name="arrow-forward" size={16} color={COLORS.white} />
               </TouchableOpacity>
             </View>

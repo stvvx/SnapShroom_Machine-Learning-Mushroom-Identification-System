@@ -1,4 +1,5 @@
 import { StyleSheet, Dimensions } from 'react-native';
+import { Linking } from 'expo-linking';
 import { COLORS, SPACING } from './index.constants';
 
 const { width, height } = Dimensions.get('window');
@@ -1091,17 +1092,125 @@ export const styles = StyleSheet.create({
   footerTagline: {
     fontSize: 12,
     color: 'rgba(255, 255, 255, 0.7)',
-    textAlign: 'center',
   },
-  footerMushroomRow: {
+
+  // Mushroom Resources Carousel - Enhanced Design
+  carouselContainer: {
+    marginVertical: SPACING.xl,
+    paddingHorizontal: SPACING.md,
+  },
+  carouselHeader: {
     flexDirection: 'row',
-    gap: SPACING.md,
-    alignItems: 'flex-end',
-    marginBottom: SPACING.md,
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: SPACING.lg,
+    backgroundColor: COLORS.white,
+    padding: SPACING.md,
+    borderRadius: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 3,
   },
-  copyright: {
-    fontSize: 11,
-    color: 'rgba(255, 255, 255, 0.5)',
+  carouselArrow: {
+    padding: SPACING.sm,
+    borderRadius: 12,
+    backgroundColor: `${COLORS.sage}15`,
+    borderWidth: 1,
+    borderColor: COLORS.sage,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 3,
+    elevation: 1,
+  },
+  carouselTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: COLORS.forest,
     textAlign: 'center',
+    flex: 1,
+  },
+  carouselCardsContainer: {
+    flexDirection: 'row',
+  alignItems: 'flex-start',
+  paddingHorizontal: SPACING.lg,
+  gap: SPACING.xl, // Larger gap between cards
+},
+  carouselScrollView: {
+    flexGrow: 0,
+  },
+  urlCard: {
+   backgroundColor: COLORS.white,
+  borderRadius: 16, // Slightly smaller radius
+  padding: SPACING.lg,
+  shadowColor: '#000',
+  shadowOffset: { width: 0, height: 4 }, // Lighter shadow
+  shadowOpacity: 0.08, // More subtle shadow
+  shadowRadius: 8,
+  elevation: 4,
+  width: 280, // Smaller, more manageable width
+  marginRight: 0, // Remove margin since gap handles spacing
+  borderWidth: 1,
+  borderColor: COLORS.cloud,
+},
+  urlCardHeader: {
+     flexDirection: 'row',
+  alignItems: 'center',
+  marginBottom: SPACING.md,
+},
+  urlCardTitle: {
+    fontSize: 18, // Slightly smaller
+  fontWeight: '700',
+  color: COLORS.charcoal,
+  flex: 1,
+  marginLeft: SPACING.sm,
+},
+  urlCardDescription: {
+    fontSize: 14,
+  color: COLORS.stone,
+  marginBottom: SPACING.lg,
+  lineHeight: 20,
+},
+  urlCardButton: {
+     backgroundColor: COLORS.forest,
+  flexDirection: 'row',
+  alignItems: 'center',
+  justifyContent: 'center',
+  paddingVertical: SPACING.sm,
+  paddingHorizontal: SPACING.lg,
+  borderRadius: 8, // Smaller radius
+  marginTop: SPACING.sm,
+  shadowColor: '#000',
+  shadowOffset: { width: 0, height: 2 },
+  shadowOpacity: 0.15,
+  shadowRadius: 4,
+  elevation: 2,
+},
+  urlCardButtonText: {
+    color: COLORS.white,
+    fontSize: 15,
+    fontWeight: '600',
+  },
+  carouselIndicators: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    marginTop: SPACING.md,
+    gap: SPACING.sm,
+  },
+  carouselIndicator: {
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+    backgroundColor: COLORS.cloud,
+  },
+  activeCarouselIndicator: {
+    backgroundColor: COLORS.forest,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+    elevation: 1,
   },
 });
