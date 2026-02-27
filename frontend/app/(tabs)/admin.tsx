@@ -886,16 +886,7 @@ export default function AdminDashboard() {
                 </Card>
               </View>
             )}
-            {M.top_locations.length > 0 && (
-              <View style={halfStyle}>
-                <SectionHeader title="Top Locations" subtitle="Most active" emoji="📍" />
-                <Card style={s.mb0}>
-                  {M.top_locations.slice(0, 5).map((item, i) => (
-                    <RankItem key={i} rank={i + 1} name={item.location} value={item.count} valueLabel="scans" />
-                  ))}
-                </Card>
-              </View>
-            )}
+          
           </View>
         )}
 
@@ -927,59 +918,12 @@ export default function AdminDashboard() {
                 </Card>
               </View>
 
-              {/* On web: locations chart beside species chart — also in ScrollView */}
-              {IS_WIDE && M.top_locations.length > 0 && (
-                <View style={halfStyle}>
-                  <Card style={s.mb0}>
-                    <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-                      {(() => {
-                        const bd = safeBarData(M.top_locations.map(l => ({ label: l.location, value: l.count })));
-                        return (
-                          <BarChart
-                            data={{ labels: bd.labels, datasets: bd.datasets }}
-                            width={bd.chartWidth}
-                            height={WEB_BAR_H}
-                            fromZero
-                            showValuesOnTopOfBars
-                            chartConfig={{ ...chartConfig, barPercentage: 0.6, color: (o = 1) => `rgba(122,158,116,${o})` }}
-                            style={s.chart}
-                            verticalLabelRotation={0}
-                          />
-                        );
-                      })()}
-                    </ScrollView>
-                  </Card>
-                </View>
-              )}
+            
             </View>
           </>
         )}
 
-        {/* On mobile: locations chart gets its own full-width section — also in ScrollView */}
-        {!IS_WIDE && M.top_locations.length > 0 && (
-          <>
-            <SectionHeader title="Locations Chart" subtitle="Scans by location" emoji="📍" />
-            <Card>
-              <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-                {(() => {
-                  const bd = safeBarData(M.top_locations.map(l => ({ label: l.location, value: l.count })));
-                  return (
-                    <BarChart
-                      data={{ labels: bd.labels, datasets: bd.datasets }}
-                      width={bd.chartWidth}
-                      height={MOBILE_BAR_H}
-                      fromZero
-                      showValuesOnTopOfBars
-                      chartConfig={{ ...chartConfig, barPercentage: 0.55, color: (o = 1) => `rgba(122,158,116,${o})` }}
-                      style={s.chart}
-                      verticalLabelRotation={45}
-                    />
-                  );
-                })()}
-              </ScrollView>
-            </Card>
-          </>
-        )}
+      
 
         {/* ═══ EXPORT ═══ */}
         <SectionHeader title="Reports" emoji="📄" />

@@ -844,7 +844,7 @@ interface MushroomAnalytics {
   total_scans: number;
   scans_last_30d: number;
   most_scanned_mushrooms: { name: string; count: number }[];
-  top_locations: { location: string; count: number }[];
+ 
   detection_success_rate: number;
   edible_vs_toxic: { edible: number; toxic: number; unknown: number };
 }
@@ -882,7 +882,7 @@ const execSummaryAnalytics = (a: Analytics) => {
       ? ((a.users.active_users / a.users.total_users) * 100).toFixed(1)
       : '0';
   const topMush = a.mushrooms.most_scanned_mushrooms[0]?.name ?? 'N/A';
-  const topLoc = a.mushrooms.top_locations[0]?.location ?? 'N/A';
+ 
   const edibleShare =
     a.mushrooms.total_scans > 0
       ? ((a.mushrooms.edible_vs_toxic.edible / a.mushrooms.total_scans) * 100).toFixed(1)
@@ -893,9 +893,7 @@ mushroom identification system. As of the reporting date, the platform has <stro
 registered users</strong>, of whom <strong>${a.users.active_users} (${activeRate}%) are currently active</strong>.
 The platform has processed <strong>${a.mushrooms.total_scans} total identification scans</strong>, with
 <strong>${a.mushrooms.scans_last_30d} scans recorded in the past 30 days</strong>.
-The automated detection pipeline achieved a success rate of <strong>${a.mushrooms.detection_success_rate}%</strong>.
-The most frequently identified species is <em>${topMush}</em>, and the highest-volume scanning
-location is <em>${topLoc}</em>. Of all scans with edibility classifications,
+The automated detection pipeline achieved a success rate of <strong>${a.mushrooms.detection_success_rate}%</strong>. Of all scans with edibility classifications,
 <strong>${edibleShare}% were identified as edible species</strong>.`;
 };
 
@@ -1013,31 +1011,13 @@ export const buildAnalyticsReport = (analytics: Analytics, adminName: string): s
     { date: 'N/A', scans: 0 },
   );
 
-  const page4 = pageShell('Locations & Scan Timeline', 4, `
-    ${sectionHeading('04', 'Top Scan Locations')}
+  const page4 = pageShell('Scan Activity Timeline', 4, `
 
-    ${
-      analytics.mushrooms.top_locations.length > 0
-        ? `${rankedList(
-            analytics.mushrooms.top_locations.map(l => ({ name: l.location, count: l.count })),
-            analytics.mushrooms.total_scans,
-            C.teal,
-          )}
-          <div class="subsection-title">Location Scan Volume Chart</div>
-          ${verticalBarChart(
-            analytics.mushrooms.top_locations.map(l => ({
-              label: l.location,
-              value: l.count,
-            })),
-            C.teal,
-          )}`
-        : '<p style="color:#999;padding:3mm 0;font-size:8.5pt;">No location data available.</p>'
-    }
 
     ${
       timelineData.length > 0
         ? `
-      ${sectionHeading('05', 'Scan Activity Timeline')}
+      ${sectionHeading('04', 'Scan Activity Timeline')}
 
       ${kpiGrid([
         { value: totalTimelineScans.toLocaleString(), label: 'Total (Period)', cls: 'teal' },
@@ -1071,8 +1051,7 @@ export const buildAnalyticsReport = (analytics: Analytics, adminName: string): s
     { num: '01', label: 'Executive Summary' },
     { num: '02', label: 'User Analytics' },
     { num: '03', label: 'Mushroom Scan Analytics & Species Chart' },
-    { num: '04', label: 'Top Scan Locations & Location Chart' },
-    { num: '05', label: 'Scan Activity Timeline' },
+    { num: '04', label: 'Scan Activity Timeline' },
   ])}
   ${page2}
   ${page3}
