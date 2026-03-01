@@ -1,38 +1,12 @@
-{
-  "class_names": [
-    "Button Mushroom",
-    "Death Cap",
-    "Enoki Mushroom",
-    "False Morel",
-    "Funeral Bell Mushroom",
-    "Jack O Lantern Mushroom",
-    "Oyster Mushroom",
-    "Red Cage Mushroom",
-    "Shiitake Mushroom",
-    "Wood Ear Mushroom"
-  ],
-  "class_to_idx": {
-    "Button Mushroom": 0,
-    "Death Cap": 1,
-    "Enoki Mushroom": 2,
-    "False Morel": 3,
-    "Funeral Bell Mushroom": 4,
-    "Jack O Lantern Mushroom": 5,
-    "Oyster Mushroom": 6,
-    "Red Cage Mushroom": 7,
-    "Shiitake Mushroom": 8,
-    "Wood Ear Mushroom": 9
-  },
-  "idx_to_class": {
-    "0": "Button Mushroom",
-    "1": "Death Cap",
-    "2": "Enoki Mushroom",
-    "3": "False Morel",
-    "4": "Funeral Bell Mushroom",
-    "5": "Jack O Lantern Mushroom",
-    "6": "Oyster Mushroom",
-    "7": "Red Cage Mushroom",
-    "8": "Shiitake Mushroom",
-    "9": "Wood Ear Mushroom"
-  }
-}
+[
+  "Button Mushroom",
+  "Death Cap",
+  "Enoki Mushroom",
+  "False Morel",
+  "Funeral Bell Mushroom",
+  "Jack O Lantern Mushroom",
+  "Oyster Mushroom",
+  "Red Cage Mushroom",
+  "Shiitake Mushroom",
+  "Wood Ear Mushroom"
+]

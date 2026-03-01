@@ -92,6 +92,17 @@ interface User {
 }
 type Section = 'home' | 'users' | 'analytics';
 
+/* ─── Deactivation reasons ────────────────────────────────────────── */
+const DEACTIVATION_REASONS = [
+  'Inactive for a long time',
+  'Abusing camera or uploading inappropriate images/videos',
+  'Spamming or sending scam',
+  'Fake identity or impersonation',
+  'Suspicious or fraudulent activity',
+  'Multiple/duplicate accounts used for abuse',
+  'Violating community guidelines or app policies',
+];
+
 /* ─── Base chart config ─── */
 const chartConfig = {
   backgroundGradientFrom: COLORS.white,
@@ -335,6 +346,9 @@ export default function AdminDashboard() {
   const [users, setUsers]                   = useState<User[]>([]);
   const [isConfirmingRole, setIsConfirmingRole] = useState(false);
   const [pendingRoleChange, setPendingRoleChange] = useState<{ userId: string; newRole: string; actionLabel: string } | null>(null);
+  const [showDeactivateModal, setShowDeactivateModal] = useState(false);
+  const [pendingDeactivateUserId, setPendingDeactivateUserId] = useState<string | null>(null);
+  const [selectedDeactivateReason, setSelectedDeactivateReason] = useState('');
 
   useEffect(() => {
     if (!user || user.role !== 'admin') {
@@ -393,18 +407,49 @@ export default function AdminDashboard() {
   };
 
   const handleToggleUserStatus = async (userId: string, currentStatus: boolean) => {
+    if (currentStatus) {
+      // Deactivating → show reason modal first
+      setPendingDeactivateUserId(userId);
+      setSelectedDeactivateReason('');
+      setShowDeactivateModal(true);
+    } else {
+      // Activating → proceed directly
+      try {
+        setAuthHeader();
+        const res = await api.put(`/admin/users/${userId}/activate`);
+        if (res.data.success) {
+          Alert.alert('Success', res.data.message);
+          await loadUsers();
+        }
+      } catch (error: any) {
+        Alert.alert('Error', error.response?.data?.message || 'Failed to activate user');
+      }
+    }
+  };
+
+  const handleCancelDeactivate = () => {
+    setShowDeactivateModal(false);
+    setPendingDeactivateUserId(null);
+    setSelectedDeactivateReason('');
+  };
+
+  const handleConfirmDeactivate = async () => {
+    if (!pendingDeactivateUserId || !selectedDeactivateReason) return;
+    setShowDeactivateModal(false);
     try {
       setAuthHeader();
-      const endpoint = currentStatus
-        ? `/admin/users/${userId}/deactivate`
-        : `/admin/users/${userId}/activate`;
-      const res = await api.put(endpoint);
+      const res = await api.put(`/admin/users/${pendingDeactivateUserId}/deactivate`, {
+        reason: selectedDeactivateReason,
+      });
       if (res.data.success) {
         Alert.alert('Success', res.data.message);
         await loadUsers();
       }
     } catch (error: any) {
-      Alert.alert('Error', error.response?.data?.message || 'Failed to update user status');
+      Alert.alert('Error', error.response?.data?.message || 'Failed to deactivate user');
+    } finally {
+      setPendingDeactivateUserId(null);
+      setSelectedDeactivateReason('');
     }
   };
 
@@ -1035,6 +1080,73 @@ export default function AdminDashboard() {
         </View>
       )}
 
+      {/* Deactivation Reason Modal */}
+      {showDeactivateModal && (
+        <View style={s.modalOverlay}>
+          <View style={[s.modalContent, { maxWidth: 460, width: '92%' }]}>
+            {/* Header */}
+            <View style={s.deactModalHeader}>
+              <Ionicons name="ban" size={20} color={COLORS.toxicRed} />
+              <Text style={[s.modalTitle, { color: COLORS.toxicRed, marginBottom: 0, marginLeft: 8 }]}>
+                Deactivate Account
+              </Text>
+            </View>
+            <Text style={[s.modalMessage, { marginTop: 10 }]}>
+              Select a reason for deactivating this account. The user will be notified by email.
+            </Text>
+
+            {/* Reason list */}
+            <View style={s.deactReasonList}>
+              {DEACTIVATION_REASONS.map((reason, i) => (
+                <TouchableOpacity
+                  key={i}
+                  style={[
+                    s.deactReasonItem,
+                    selectedDeactivateReason === reason && s.deactReasonItemSelected,
+                  ]}
+                  onPress={() => setSelectedDeactivateReason(reason)}
+                  activeOpacity={0.8}
+                >
+                  <View style={[
+                    s.deactReasonRadio,
+                    selectedDeactivateReason === reason && s.deactReasonRadioSelected,
+                  ]} />
+                  <Text style={[
+                    s.deactReasonText,
+                    selectedDeactivateReason === reason && s.deactReasonTextSelected,
+                  ]}>
+                    {reason}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+
+            <View style={s.modalButtonRow}>
+              <TouchableOpacity
+                style={[s.modalBtn, s.modalBtnCancel]}
+                onPress={handleCancelDeactivate}
+                activeOpacity={0.8}
+              >
+                <Text style={s.modalBtnCancelText}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[
+                  s.modalBtn,
+                  { backgroundColor: selectedDeactivateReason ? COLORS.toxicRed : COLORS.spore },
+                ]}
+                onPress={handleConfirmDeactivate}
+                disabled={!selectedDeactivateReason}
+                activeOpacity={0.8}
+              >
+                <Text style={[s.modalBtnConfirmText, { color: selectedDeactivateReason ? COLORS.cream : COLORS.unknownGray }]}>
+                  Deactivate
+                </Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      )}
+
     </ThemedView>
   );
 }
@@ -1268,6 +1380,54 @@ const s = StyleSheet.create({
   mb16: { marginBottom: 16 },
   mb20: { marginBottom: 20 },
   mb24: { marginBottom: 24 },
+
+  // ── Deactivation modal extras ───────────────────────────────────
+  deactModalHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 4,
+  },
+  deactReasonList: {
+    marginBottom: 20,
+    gap: 8,
+  },
+  deactReasonItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 10,
+    paddingHorizontal: 14,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    backgroundColor: COLORS.parchment,
+    gap: 10,
+  },
+  deactReasonItemSelected: {
+    borderColor: COLORS.toxicRed,
+    backgroundColor: 'rgba(201,64,64,0.06)',
+  },
+  deactReasonRadio: {
+    width: 16,
+    height: 16,
+    borderRadius: 8,
+    borderWidth: 2,
+    borderColor: COLORS.spore,
+    backgroundColor: COLORS.white,
+  },
+  deactReasonRadioSelected: {
+    borderColor: COLORS.toxicRed,
+    backgroundColor: COLORS.toxicRed,
+  },
+  deactReasonText: {
+    flex: 1,
+    fontSize: 13,
+    color: COLORS.textMid,
+    lineHeight: 18,
+  },
+  deactReasonTextSelected: {
+    color: COLORS.toxicRed,
+    fontWeight: '600',
+  },
 
   // Modal styles
   modalOverlay: {

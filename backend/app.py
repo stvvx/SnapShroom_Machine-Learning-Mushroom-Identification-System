@@ -15,6 +15,23 @@ import cloudinary.uploader
 import cloudinary_config   # this activates config
 from routes.toxicity_routes_custom import toxicity_bp
 
+# ==================================================
+# FIREBASE ADMIN INITIALISATION (module-level, once)
+# ==================================================
+try:
+    import firebase_admin
+    from firebase_admin import credentials as fb_credentials
+    if not firebase_admin._apps:
+        _fb_cred_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "firebase-admin.json")
+        if os.path.exists(_fb_cred_path):
+            _fb_cred = fb_credentials.Certificate(_fb_cred_path)
+            firebase_admin.initialize_app(_fb_cred)
+            print("[OK] Firebase Admin initialized")
+        else:
+            print("[WARN] firebase-admin.json not found – Firebase Admin not initialized")
+except Exception as _fb_err:
+    print(f"[WARN] Firebase Admin init error: {_fb_err}")
+
 
 # ==================================================
 # LOAD ENV VARIABLES
@@ -58,8 +75,8 @@ def create_app(config_name="development"):
     # ==================================================
     app.config['MAIL_SERVER'] = os.getenv('MAIL_SERVER', 'sandbox.smtp.mailtrap.io')
     app.config['MAIL_PORT'] = int(os.getenv('MAIL_PORT', 2525))
-    app.config['MAIL_USERNAME'] = os.getenv('MAIL_USERNAME', 'a1dd469610546c')
-    app.config['MAIL_PASSWORD'] = os.getenv('MAIL_PASSWORD', '51dd58d7a290f5')
+    app.config['MAIL_USERNAME'] = os.getenv('MAIL_USERNAME')
+    app.config['MAIL_PASSWORD'] = os.getenv('MAIL_PASSWORD')
     app.config['MAIL_USE_TLS'] = os.getenv('MAIL_USE_TLS', 'True').lower() == 'true'
     app.config['MAIL_USE_SSL'] = os.getenv('MAIL_USE_SSL', 'False').lower() == 'true'
     app.config['MAIL_DEFAULT_SENDER'] = os.getenv('MAIL_DEFAULT_SENDER', 'noreply@snapshroom.app')

@@ -25,7 +25,6 @@ class UserModel:
             "avatar": user.get("avatar"),
             "role": "admin" if user.get("is_admin") == 1 else "user",
             "is_admin": user.get("is_admin", 0),
-            "is_verified": user.get("is_verified", False),
             "is_active": user.get("is_active", True),
             "created_at": user.get("created_at"),
             "last_login": user.get("last_login"),
@@ -78,7 +77,6 @@ class UserModel:
             "updated_at": datetime.utcnow(),
             "last_login": None,
             "is_active": True,
-            "is_verified": False,
             "subscription": {"type": "free"},
             "preferences": {
                 "notifications": True,

@@ -1,0 +1,13 @@
+{
+  "type": "service_account",
+  "project_id": "snapshroom-39671",
+  "private_key_id": "1cd9451a1cee7297fcd7ad5ad0a179f7ba6fa89a",
+  "private_key": "-----BEGIN PRIVATE KEY-----\nMIIEvgIBADANBgkqhkiG9w0BAQEFAASCBKgwggSkAgEAAoIBAQCrbsPjOek/VcoY\nh/DXtL8nfNfTczjgVbgASYao49SZp1DC7NDpbgqjXubi+eN7rK/o3LHsVnt2dRxs\nBoCUZ89v8BqavQlYExpqnRD2WUAUXac9q9FjKIRCfZ15RR2kTWTIUyuJIJ8ruKXa\n7VhIGl/8tnLtv9YHTvRNGtQGPNQr3bxWXfQd2qBmhkE07fBC7efoq8J+tlEnoD3G\n0H6a6vbQfbmC1/kcqzsOMF4yp61kr4XgAiAx9gJvVV6jwqDb9L6ohdCetZc5cMaj\nABYxKolJxUAsrzn6+ufoxb8IHgLj5Ps+synF3k+awnUl/PHuFPH6rWAYeTiUCbzD\ncHVZsMmhAgMBAAECggEAE1T0b05nooIjvfgvdT2vTC5IftJonKih7RtdfXRitDiR\nU4flx5sGhVWFex1DlT3cIOnpQP3gIpOygq6Jh6K8ulJkx6QPVpCh6xme8O7P2nQU\nsNBMNo66Om7EqCkefnmRRsNVPpuQg3tJLbrT2J6ryhlPdMbMJYsWYs8Gj5UCtpb1\ncsVf5eRlbY0pLGoFnQ86faVxs69kdncI1QPsTtUM/o3huZn0J4bSbMIv/1uhDGiV\nzNd/7noP5JuUpJhiLMMtJLLiW1RsQIZlT4s8R3x3nwOkDH86S0RgMCD9CATG4PCe\nR/L9YULW9a+7cEqzWCIr8FDlQwoLIJFSKWs2PQmGiQKBgQDbUQ6kRNW4tvN3okK3\nZk8XPQMRJ99FzVClgmmVSVXDitP+oqjj4lf5vUwYp2U9PZLq+R7XmuvEEZWe6ETk\n3jF9cUbG+SiJ0ym38HTpqhKAA96HDwIcdj8fPl9YsILcbdVXG7W+6SjcU+sa4Z0D\n4Fu3PhvZkoi/ZL3e2MAvGBMTSQKBgQDIG1wYxAn7TEsHJG4XQRJ5pIwOKifrIT4A\nJCBW2EDw5h9bR49MdiCG7QfEt7GH26UGr4pkoJVdg60PkzROZjt+A0FomF+4HTr8\noowUqFtTCNTF9Cw07kU0iaRgpwPzpEHr7wVj9c1L34sgyCFmjsXkXg0fEvs+sAGP\nqogatKUrmQKBgQCP0u5JJ6MIiWHMmKor33oKgUZbn8w52FUE1SssbXVC0O4JVN5w\n42RSMKOQn2Yy7QhF860YM05dvDJkjWlwtY269+g0X/0HtWTsbVIeUhvju6XY6Cy4\nQYtPj/WzEb4flB+OCmv7kKftJVNOw5nWivFaj+5vljr7WLNzSq1ttNn9kQKBgD7z\nZHiiC2XT7XJ0wnFsViyQWEMIfgBZN9EBjG7lnyBptImZrHnoW3k2zg/TnfTYY0UE\nKixX3EVL7ECPFZBoVuTgj04hSVN5VpotZJYHFJu9lnojw1hvcLQDbQO+5t5Z2Sco\nzXBR3mC1FWadruw9lAGwmL4i0Yk6A3O3uRN1qtRZAoGBAL6r1lf3ZjU27vZp4ab2\n7afyLSQgM7MPhen9awJOp+2TW8/PPx8Ywdvn8Ud3C/9CEItf9VZzf54EW1W/3DK4\nQowZTOY81KoxceGEtsOHkUBHgcu9nZYjpqhyZJ8+zPcFpDgruwDMbahaaySpOafs\nu8BuraLc62vDIKp7UR8D6jpC\n-----END PRIVATE KEY-----\n",
+  "client_email": "firebase-adminsdk-fbsvc@snapshroom-39671.iam.gserviceaccount.com",
+  "client_id": "112604839130650695779",
+  "auth_uri": "https://accounts.google.com/o/oauth2/auth",
+  "token_uri": "https://oauth2.googleapis.com/token",
+  "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",
+  "client_x509_cert_url": "https://www.googleapis.com/robot/v1/metadata/x509/firebase-adminsdk-fbsvc%40snapshroom-39671.iam.gserviceaccount.com",
+  "universe_domain": "googleapis.com"
+}

@@ -273,6 +273,7 @@ const sharedStyles = `
   .badge-prevalence-low    { background: rgba(129,201,149,0.2); color: #3d8c57; }
   .badge-cultivated  { background: rgba(95,124,82,0.12); color: ${COLORS.forest}; }
   .badge-wild        { background: rgba(139,147,136,0.12); color: ${COLORS.stone}; }
+  .badge-toxic       { background: rgba(211,47,47,0.12); color: #B71C1C; font-weight: 600; }
 
   .location-notes {
     margin-top: 8px;
@@ -310,15 +311,9 @@ const mapScript = (locationsJSON: string, apiKey: string) => `
       const infoWindow = new google.maps.InfoWindow();
       const bounds = new google.maps.LatLngBounds();
 
-      const prevalenceColors = {
-        high:   '#E88B7C',
-        medium: '#F4B860',
-        low:    '#81C995',
-      };
-
       locations.forEach(loc => {
-        const markerScale = loc.prevalence === 'high' ? 14 : loc.prevalence === 'medium' ? 11 : 8;
-        const fillColor = loc.cultivated ? '#5F7C52' : (prevalenceColors[loc.prevalence] || '#9CAF88');
+        const markerScale = loc.toxic ? 13 : loc.cultivated ? 10 : 9;
+        const fillColor = loc.toxic ? '#D32F2F' : (loc.cultivated ? '#2E7D32' : '#F57C00');
 
         const marker = new google.maps.Marker({
           map,
@@ -339,9 +334,7 @@ const mapScript = (locationsJSON: string, apiKey: string) => `
             <div style="min-width:200px; font-family:'DM Sans',sans-serif; padding:4px;">
               <div style="font-size:15px; font-weight:500; color:#3F4941; margin-bottom:8px;">\${loc.name}</div>
               <div style="display:flex; gap:6px; flex-wrap:wrap;">
-                <span style="padding:2px 10px; border-radius:100px; font-size:11px; font-weight:500; background:rgba(156,175,136,0.2); color:#4A6244;">
-                  \${loc.prevalence.toUpperCase()}
-                </span>
+                \${loc.toxic ? '<span style="padding:2px 10px; border-radius:100px; font-size:11px; font-weight:600; background:rgba(211,47,47,0.12); color:#B71C1C;">☠️ Toxic</span>' : ''}
                 <span style="padding:2px 10px; border-radius:100px; font-size:11px; font-weight:500; background:rgba(95,124,82,0.12); color:#5F7C52;">
                   \${loc.cultivated ? '🌱 Cultivated' : '🌲 Wild'}
                 </span>
@@ -365,13 +358,13 @@ function buildBody(mushroomName: string, locations: MushroomLocation[], location
   const escapedName = escapeHtml(mushroomName);
 
   const locationCards = locations.map(l => {
-    const prevalenceLabel = l.prevalence.charAt(0).toUpperCase() + l.prevalence.slice(1);
     const notes = l.notes ? `<div class="location-notes">📝 ${escapeHtml(l.notes)}</div>` : '';
+    const toxicBadge = l.toxic ? `<span class="badge badge-toxic">☠️ Toxic</span>` : '';
     return `
-      <div class="location-item ${l.prevalence}">
+      <div class="location-item ${l.toxic ? 'high' : l.cultivated ? 'low' : 'medium'}">
         <div class="location-name">${escapeHtml(l.name)}</div>
         <div class="location-meta">
-          <span class="badge badge-prevalence-${l.prevalence}">${prevalenceLabel}</span>
+          ${toxicBadge}
           <span class="badge ${l.cultivated ? 'badge-cultivated' : 'badge-wild'}">${l.cultivated ? '🌱 Cultivated' : '🌲 Wild'}</span>
         </div>
         ${notes}
@@ -383,7 +376,7 @@ function buildBody(mushroomName: string, locations: MushroomLocation[], location
     <div class="header">
       <div class="header-eyebrow">Distribution Map</div>
       <h1>${escapedName}</h1>
-      <p>Global distribution &amp; cultivation centers</p>
+      <p>Philippine distribution &amp; sighting locations</p>
     </div>
 
     <div id="map"></div>
@@ -394,8 +387,8 @@ function buildBody(mushroomName: string, locations: MushroomLocation[], location
         <div class="label">Locations</div>
       </div>
       <div class="stat-card">
-        <div class="value">${locations.filter(l => l.cultivated).length}</div>
-        <div class="label">Cultivated</div>
+        <div class="value">${locations.filter(l => l.toxic).length}</div>
+        <div class="label">Toxic Sites</div>
       </div>
       <div class="stat-card">
         <div class="value">${locations.filter(l => !l.cultivated).length}</div>
@@ -404,11 +397,9 @@ function buildBody(mushroomName: string, locations: MushroomLocation[], location
     </div>
 
     <div class="legend">
-      <div class="legend-item"><div class="legend-dot" style="background:${COLORS.danger};"></div>High Prevalence</div>
-      <div class="legend-item"><div class="legend-dot" style="background:${COLORS.warning};"></div>Medium Prevalence</div>
-      <div class="legend-item"><div class="legend-dot" style="background:${COLORS.success};"></div>Low Prevalence</div>
-      <div class="legend-item"><div class="legend-dot" style="background:${COLORS.forest};"></div>🌱 Cultivated</div>
-      <div class="legend-item"><div class="legend-dot" style="background:${COLORS.stone};"></div>🌲 Wild</div>
+      <div class="legend-item"><div class="legend-dot" style="background:#D32F2F;"></div>☠️ Toxic / Dangerous</div>
+      <div class="legend-item"><div class="legend-dot" style="background:#2E7D32;"></div>🌱 Cultivated</div>
+      <div class="legend-item"><div class="legend-dot" style="background:#F57C00;"></div>🌲 Wild</div>
     </div>
 
     <div class="locations-list">
@@ -425,6 +416,7 @@ function generateWebMapHTML(mushroomName: string, locations: MushroomLocation[])
   const locationsJSON = JSON.stringify(locations.map(l => ({
     name: escapeHtml(l.name), lat: l.lat, lng: l.lng,
     prevalence: l.prevalence, cultivated: l.cultivated,
+    toxic: l.toxic || false,
     notes: l.notes ? escapeHtml(l.notes) : '',
     color: getPrevalenceColor(l.prevalence),
   })));
@@ -446,6 +438,7 @@ function generateNativeMapHTML(mushroomName: string, locations: MushroomLocation
   const locationsJSON = JSON.stringify(locations.map(l => ({
     name: escapeHtml(l.name), lat: l.lat, lng: l.lng,
     prevalence: l.prevalence, cultivated: l.cultivated,
+    toxic: l.toxic || false,
     notes: l.notes ? escapeHtml(l.notes) : '',
     color: getPrevalenceColor(l.prevalence),
   })));

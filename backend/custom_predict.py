@@ -48,19 +48,6 @@ CLASSIFICATION_CONFIDENCE_THRESHOLD = 0.30  # Minimum confidence for classificat
 MAX_TOP_PREDICTIONS = 3  # Number of top predictions to return
 
 
-class MushroomDetector(nn.Module):
-    """Binary classifier: Mushroom or Not Mushroom"""
-    
-    def __init__(self):
-        super(MushroomDetector, self).__init__()
-        self.backbone = models.resnet50(pretrained=False)
-        num_features = self.backbone.fc.in_features
-        self.backbone.fc = nn.Linear(num_features, 2)  # Binary: not mushroom, mushroom
-    
-    def forward(self, x):
-        return self.backbone(x)
-
-
 class MushroomClassifier(nn.Module):
     """ResNet50-based mushroom classifier"""
     
@@ -96,7 +83,7 @@ class CustomMushroomPredictor:
     """
     
     def __init__(self, 
-                 detector_path: str = "models/mushroom_detector.pth",
+                 detector_path: str = "models/mushroom_detector.pt", 
                  classifier_path: str = "models/mushroom_classifier.pth", 
                  classes_path: str = "models/mushroom_classes.json",
                  enable_caching: bool = True):
@@ -140,43 +127,24 @@ class CustomMushroomPredictor:
     
     def _load_detector(self):
         """
-        Load the binary mushroom detector model.
-        
-        The detector is optional - if not found, system assumes all images contain mushrooms.
-        This allows the classifier to work independently during development.
-        
-        Raises:
-            RuntimeError: If detector file exists but fails to load
+        Load the YOLOv8 mushroom detector model.
+
+        The detector is optional - if not found, the classifier still runs
+        but all images are assumed to contain mushrooms.
         """
         if not os.path.exists(self.detector_path):
             logger.warning(f"Detector not found: {self.detector_path}")
             logger.warning("Skipping detection stage - all images assumed to contain mushrooms")
-            logger.info("To enable detection: python train_mushroom_detector.py")
             return
-        
+
         try:
-            self.detector = MushroomDetector()
-            
-            # Load checkpoint
-            checkpoint = torch.load(self.detector_path, map_location=self.device)
-            
-            # Handle different checkpoint formats
-            if isinstance(checkpoint, dict) and 'model_state_dict' in checkpoint:
-                # Checkpoint saved with metadata
-                logger.info("Loading detector from checkpoint with metadata")
-                self.detector.load_state_dict(checkpoint['model_state_dict'])
-            else:
-                # Checkpoint is just the state dict
-                logger.info("Loading detector from plain state dict")
-                self.detector.load_state_dict(checkpoint)
-            
-            self.detector.to(self.device)
-            self.detector.eval()
-            
-            logger.info(f"Detector loaded successfully: {self.detector_path}")
+            from ultralytics import YOLO as _YOLO
+            self.detector = _YOLO(self.detector_path)
+            logger.info(f"Detector loaded (YOLOv8): {self.detector_path}")
         except Exception as e:
-            logger.error(f"Failed to load detector: {e}")
-            raise RuntimeError(f"Detector loading failed: {e}")
+            logger.warning(f"YOLOv8 detector failed to load: {e}")
+            logger.warning("Skipping detection stage - all images assumed to contain mushrooms")
+            self.detector = None
     
     def _load_classifier(self):
         """
@@ -204,15 +172,21 @@ class CustomMushroomPredictor:
         try:
             with open(self.classes_path, 'r') as f:
                 classes_dict = json.load(f)
-            
-            num_classes = len(classes_dict['class_names'])
+
+            # Support both plain list and structured dict formats
+            if isinstance(classes_dict, list):
+                class_names = classes_dict
+            else:
+                class_names = classes_dict['class_names']
+
+            num_classes = len(class_names)
             logger.info(f"Loading classifier for {num_classes} classes")
             
             # Initialize classifier
             self.classifier = MushroomClassifier(num_classes=num_classes)
             
             # Load checkpoint
-            checkpoint = torch.load(self.classifier_path, map_location=self.device)
+            checkpoint = torch.load(self.classifier_path, map_location=self.device, weights_only=False)
             
             # Handle different checkpoint formats
             if isinstance(checkpoint, dict) and 'model_state_dict' in checkpoint:
@@ -260,17 +234,22 @@ class CustomMushroomPredictor:
         try:
             with open(self.classes_path, 'r') as f:
                 classes_dict = json.load(f)
-            
-            # Validate required fields
-            required_fields = ['class_names', 'class_to_idx', 'idx_to_class']
-            for field in required_fields:
-                if field not in classes_dict:
-                    raise ValueError(f"Missing required field '{field}' in classes file")
-            
-            self.classes = classes_dict['class_names']
-            self.class_to_id = classes_dict['class_to_idx']
-            self.id_to_class = classes_dict['idx_to_class']
-            
+
+            # Support both plain list and structured dict formats
+            if isinstance(classes_dict, list):
+                self.classes = classes_dict
+                self.class_to_id = {name: idx for idx, name in enumerate(classes_dict)}
+                self.id_to_class = {str(idx): name for idx, name in enumerate(classes_dict)}
+            else:
+                # Validate required fields
+                required_fields = ['class_names', 'class_to_idx', 'idx_to_class']
+                for field in required_fields:
+                    if field not in classes_dict:
+                        raise ValueError(f"Missing required field '{field}' in classes file")
+                self.classes = classes_dict['class_names']
+                self.class_to_id = classes_dict['class_to_idx']
+                self.id_to_class = classes_dict['idx_to_class']
+
             logger.info(f"Classes loaded: {len(self.classes)} mushroom species")
             logger.debug(f"Species: {', '.join(self.classes)}")
         except json.JSONDecodeError as e:
@@ -279,87 +258,57 @@ class CustomMushroomPredictor:
             logger.error(f"Failed to load classes: {e}")
             raise
     
-    def _preprocess_image(self, image_input) -> torch.Tensor:
+    def _decode_image(self, image_input) -> Image.Image:
         """
-        Preprocess image for model input.
-        
-        Handles multiple input formats:
-        - Base64 encoded strings (with or without data URI prefix)
-        - Numpy arrays (uint8, RGB or grayscale)
-        - PIL Image objects (any mode)
-        
+        Decode any supported input format to a PIL RGB image.
+        Used by both the YOLO detector and the classifier preprocessor.
+        """
+        if isinstance(image_input, str):
+            if image_input.startswith("data:image"):
+                image_input = image_input.split(",")[1]
+            image_data = base64.b64decode(image_input)
+            return Image.open(io.BytesIO(image_data)).convert('RGB')
+        elif isinstance(image_input, np.ndarray):
+            if image_input.dtype != np.uint8:
+                image_input = (image_input * 255).astype(np.uint8)
+            return Image.fromarray(image_input).convert('RGB')
+        elif isinstance(image_input, Image.Image):
+            return image_input.convert('RGB')
+        else:
+            raise ValueError(f"Unsupported image type: {type(image_input)}")
+
+    def _preprocess_image(self, pil_image: Image.Image) -> torch.Tensor:
+        """
+        Preprocess a PIL RGB image into a normalised tensor for the classifier.
+
         Processing steps:
-        1. Convert to PIL RGB image
-        2. Resize to 224x224
-        3. Convert to tensor
-        4. Normalize using ImageNet statistics
-        
+        1. Resize to 224x224
+        2. Convert to tensor
+        3. Normalize using ImageNet statistics
+
         Args:
-            image_input: Image in base64, numpy array, or PIL format
-            
+            pil_image: PIL RGB image
+
         Returns:
             Preprocessed tensor ready for model input (1, 3, 224, 224)
-            
-        Raises:
-            ValueError: If input type is unsupported or image is invalid
         """
         try:
-            # Handle different input types
-            if isinstance(image_input, str):
-                # Base64 string
-                if image_input.startswith("data:image"):
-                    # Remove data URI prefix
-                    image_input = image_input.split(",")[1]
-                
-                # Decode base64
-                image_data = base64.b64decode(image_input)
-                image = Image.open(io.BytesIO(image_data)).convert('RGB')
-                logger.debug("Loaded image from base64 string")
-            
-            elif isinstance(image_input, np.ndarray):
-                # Numpy array
-                if image_input.dtype != np.uint8:
-                    logger.warning(f"Converting numpy array from {image_input.dtype} to uint8")
-                    image_input = (image_input * 255).astype(np.uint8)
-                
-                image = Image.fromarray(image_input).convert('RGB')
-                logger.debug("Loaded image from numpy array")
-            
-            elif isinstance(image_input, Image.Image):
-                # PIL Image
-                if image_input.mode != 'RGB':
-                    image = image_input.convert('RGB')
-                    logger.debug(f"Converted image from {image_input.mode} to RGB")
-                else:
-                    image = image_input
-            
-            else:
-                raise ValueError(
-                    f"Unsupported image input type: {type(image_input)}. "
-                    f"Supported types: str (base64), numpy.ndarray, PIL.Image"
-                )
-            
-            # Validate image
-            if image.size[0] == 0 or image.size[1] == 0:
-                raise ValueError(f"Invalid image dimensions: {image.size}")
-            
-            logger.debug(f"Original image size: {image.size}")
-            
-            # Apply transforms (ResNet50 standard preprocessing)
+            if pil_image.size[0] == 0 or pil_image.size[1] == 0:
+                raise ValueError(f"Invalid image dimensions: {pil_image.size}")
+
             transform = transforms.Compose([
                 transforms.Resize((IMAGE_SIZE, IMAGE_SIZE)),
                 transforms.ToTensor(),
                 transforms.Normalize(
-                    mean=[0.485, 0.456, 0.406],  # ImageNet mean
-                    std=[0.229, 0.224, 0.225]     # ImageNet std
+                    mean=[0.485, 0.456, 0.406],
+                    std=[0.229, 0.224, 0.225]
                 )
             ])
-            
-            tensor = transform(image).unsqueeze(0).to(self.device)
+
+            tensor = transform(pil_image).unsqueeze(0).to(self.device)
             logger.debug(f"Preprocessed tensor shape: {tensor.shape}")
-            
             return tensor
-            
+
         except Exception as e:
             logger.error(f"Image preprocessing failed: {e}")
             raise ValueError(f"Failed to preprocess image: {e}")
@@ -409,15 +358,15 @@ class CustomMushroomPredictor:
         """
         try:
             logger.info("Starting mushroom prediction pipeline")
-            
-            # ============ PREPROCESSING ============
-            logger.info("Stage 0: Image preprocessing")
-            image_tensor = self._preprocess_image(image_input)
-            
-            # ============ STAGE 1: DETECTION ============
-            logger.info("Stage 1: Mushroom detection")
-            detection_result = self._detect_mushroom(image_tensor)
-            
+
+            # ============ DECODE IMAGE ============
+            logger.info("Stage 0: Decoding image")
+            pil_image = self._decode_image(image_input)
+
+            # ============ STAGE 1: YOLO DETECTION ============
+            logger.info("Stage 1: Mushroom detection (YOLOv8)")
+            detection_result = self._detect_mushroom(pil_image)
+
             if not detection_result["found"]:
                 logger.info("No mushroom detected - stopping pipeline")
                 return {
@@ -429,9 +378,10 @@ class CustomMushroomPredictor:
                         "Please ensure the image shows a clear view of the mushroom."
                     )
                 }
-            
+
             # ============ STAGE 2: CLASSIFICATION ============
             logger.info("Stage 2: Species classification")
+            image_tensor = self._preprocess_image(pil_image)
             classification_result = self._classify_mushroom(image_tensor)
             
             result = {
@@ -467,26 +417,25 @@ class CustomMushroomPredictor:
                 "error_type": "unexpected_error"
             }
     
-    def _detect_mushroom(self, image_tensor: torch.Tensor) -> Dict:
+    def _detect_mushroom(self, pil_image: Image.Image) -> Dict:
         """
-        Stage 1: Binary Detection - Mushroom vs Not Mushroom
-        
-        Uses binary classifier to determine if image contains a mushroom.
-        If detector is not loaded, assumes all images contain mushrooms.
-        
-        Confidence Threshold:
-        - Detections below DETECTION_CONFIDENCE_THRESHOLD are rejected
-        - This prevents false positives on non-mushroom images
-        
+        Stage 1: YOLOv8 Detection - Mushroom vs Not Mushroom
+
+        Runs the YOLOv8 model on the PIL image and checks whether any
+        detection box exceeds DETECTION_CONFIDENCE_THRESHOLD.
+        If the detector is not loaded, all images are assumed to contain
+        a mushroom so the classifier can still run.
+
         Args:
-            image_tensor: Preprocessed image tensor (1, 3, 224, 224)
-            
+            pil_image: PIL RGB image (any size - YOLO handles resizing internally)
+
         Returns:
             Dict with detection results:
             {
                 "found": bool,
-                "confidence": float,
+                "confidence": float,   # highest box confidence (0-1)
                 "prediction": str,
+                "boxes": int,          # number of detections above threshold
                 "warning": str (optional)
             }
         """
@@ -494,44 +443,58 @@ class CustomMushroomPredictor:
             logger.debug("Detector not loaded, assuming mushroom present")
             return {
                 "found": True,
-                "confidence": 0.0,
+                "confidence": None,
                 "prediction": "Assumed Mushroom",
+                "boxes": 0,
                 "warning": "Detector not loaded - skipping detection stage"
             }
-        
+
         try:
-            with torch.no_grad():
-                outputs = self.detector(image_tensor)
-                probabilities = torch.nn.functional.softmax(outputs, dim=1)
-                confidence, class_idx = torch.max(probabilities, 1)
-            
-            class_idx = class_idx.item()
-            confidence = confidence.item()
-            
-            # class_idx 0 = not mushroom, 1 = mushroom
-            is_mushroom = class_idx == 1
-            
-            # Apply confidence threshold
-            if is_mushroom and confidence < DETECTION_CONFIDENCE_THRESHOLD:
-                logger.warning(f"Low detection confidence: {confidence:.3f} < {DETECTION_CONFIDENCE_THRESHOLD}")
-                is_mushroom = False
-            
-            result = {
+            # Run YOLOv8 inference (verbose=False suppresses per-image console output)
+            results = self.detector(pil_image, verbose=False)
+            result = results[0]  # single image
+
+            boxes = result.boxes
+            if boxes is None or len(boxes) == 0:
+                logger.info("YOLO: no detections")
+                return {
+                    "found": False,
+                    "confidence": 0.0,
+                    "prediction": "Not a Mushroom",
+                    "boxes": 0
+                }
+
+            # Confidence scores for all detections
+            confidences = boxes.conf.cpu().tolist()  # list of floats
+            max_conf = max(confidences)
+            above_threshold = [c for c in confidences if c >= DETECTION_CONFIDENCE_THRESHOLD]
+
+            is_mushroom = len(above_threshold) > 0
+
+            detection = {
                 "found": is_mushroom,
-                "confidence": round(confidence, 3),
-                "prediction": "Mushroom" if is_mushroom else "Not a Mushroom"
+                "confidence": round(max_conf, 3),
+                "prediction": "Mushroom" if is_mushroom else "Not a Mushroom",
+                "boxes": len(above_threshold)
             }
-            
-            logger.info(f"Detection: {result['prediction']} (confidence: {result['confidence']})")
-            return result
-            
+
+            if not is_mushroom:
+                detection["warning"] = (
+                    f"Detected object(s) but max confidence {max_conf:.1%} "
+                    f"is below threshold {DETECTION_CONFIDENCE_THRESHOLD:.0%}."
+                )
+
+            logger.info(f"YOLO detection: {detection['prediction']} "
+                        f"(max_conf={max_conf:.3f}, boxes={len(above_threshold)})")
+            return detection
+
         except Exception as e:
-            logger.error(f"Detection failed: {e}")
-            # Fallback to assuming mushroom on error
+            logger.error(f"YOLO detection failed: {e}")
             return {
                 "found": True,
-                "confidence": 0.0,
+                "confidence": None,
                 "prediction": "Error - Assumed Mushroom",
+                "boxes": 0,
                 "warning": f"Detection error: {str(e)}"
             }
     

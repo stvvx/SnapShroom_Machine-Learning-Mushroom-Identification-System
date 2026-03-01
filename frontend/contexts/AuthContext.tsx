@@ -228,9 +228,26 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       await storeAuth(res.data.access_token, res.data.user, 'email');
     } catch (err: any) {
       let msg = 'Login failed';
-      if (axios.isAxiosError(err)) msg = err.response?.data?.message || msg;
+      let code = '';
+      let deactivationReason = '';
+      if (axios.isAxiosError(err)) {
+        const data = err.response?.data;
+        code = data?.code || '';
+        if (code === 'email_not_verified') {
+          msg = data.message || 'Please verify your email before logging in.';
+        } else if (code === 'account_disabled') {
+          msg = data.message || 'Your account has been deactivated.';
+          deactivationReason = data?.deactivation_reason || '';
+        } else {
+          msg = data?.message || msg;
+        }
+      }
       setError(msg);
-      throw new Error(msg);
+      // Attach code so callers can differentiate popups
+      const error = new Error(msg) as any;
+      error.code = code;
+      error.deactivation_reason = deactivationReason;
+      throw error;
     } finally {
       setIsLoading(false);
     }
@@ -255,11 +272,33 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
       if (!res.data.success) throw new Error(res.data.message);
 
-      // auto login
-      await login({ email: data.email, password: data.password });
+      // After registration the user must verify their email before logging in.
+      // Attempt auto-login; if backend blocks due to unverified email, surface
+      // a friendly message rather than a generic "Registration failed" error.
+      try {
+        await login({ email: data.email, password: data.password });
+      } catch (loginErr: any) {
+        const msg: string = loginErr?.message || '';
+        if (
+          msg.toLowerCase().includes('verify') ||
+          msg.toLowerCase().includes('verification') ||
+          msg.toLowerCase().includes('email_not_verified')
+        ) {
+          // Registration succeeded – just need to verify email
+          setError(null);
+          throw new Error('Account created! Please check your email and click the verification link before signing in.');
+        }
+        throw loginErr;
+      }
     } catch (err: any) {
       let msg = 'Registration failed';
-      if (axios.isAxiosError(err)) msg = err.response?.data?.message || msg;
+      if (err?.message?.startsWith('Account created!')) {
+        msg = err.message;
+      } else if (axios.isAxiosError(err)) {
+        msg = err.response?.data?.message || msg;
+      } else if (err?.message) {
+        msg = err.message;
+      }
       setError(msg);
       throw new Error(msg);
     } finally {

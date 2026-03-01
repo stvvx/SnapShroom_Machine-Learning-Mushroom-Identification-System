@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import {
   View,
+  Text,
   TextInput,
   TouchableOpacity,
   StyleSheet,
@@ -11,6 +12,7 @@ import {
   Keyboard,
   ScrollView,
   KeyboardAvoidingView,
+  Modal,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
@@ -31,10 +33,14 @@ const isSmallScreen = width < 375;
 const isWideScreen = width >= 768;
 
 export default function LoginScreen() {
+  const SNAPSHROOM_EMAIL = 'snapshroom.official@gmail.com';
+
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
+  const [deactivatedModalVisible, setDeactivatedModalVisible] = useState(false);
+  const [deactivatedReason, setDeactivatedReason] = useState('');
 
   const router = useRouter();
   const { login, isLoading, error, clearError } = useAuth();
@@ -101,7 +107,20 @@ export default function LoginScreen() {
       await login({ email, password });
       showToast('Login successful!', 'success');
       router.replace('/(tabs)');
-    } catch {}
+    } catch (err: any) {
+      const code: string = err?.code || '';
+      if (code === 'email_not_verified') {
+        Alert.alert(
+          'Email Not Verified',
+          err.message || 'Please verify your email before logging in. Check your inbox for the verification link.',
+          [{ text: 'OK' }]
+        );
+      } else if (code === 'account_disabled') {
+        setDeactivatedReason(err?.deactivation_reason || '');
+        setDeactivatedModalVisible(true);
+      }
+      // other errors already shown via AuthContext error state in the form
+    }
   };
 
   const handleGuestLogin = () => {
@@ -112,9 +131,64 @@ export default function LoginScreen() {
     router.push('/(auth)/register');
   };
 
+  /* ─── Deactivation Modal ─────────────────────────────────────────────────── */
+  const DeactivatedModal = () => (
+    <Modal
+      visible={deactivatedModalVisible}
+      transparent
+      animationType="fade"
+      onRequestClose={() => setDeactivatedModalVisible(false)}
+    >
+      <View style={styles.deactOverlay}>
+        <View style={styles.deactCard}>
+          {/* Header */}
+          <View style={styles.deactHeader}>
+            <Ionicons name="ban" size={32} color="#FFFFFF" />
+            <Text style={styles.deactHeaderTitle}>Account Deactivated</Text>
+          </View>
+
+          {/* Body */}
+          <View style={styles.deactBody}>
+            <Text style={styles.deactBodyText}>
+              Your account has been deactivated by an administrator.
+            </Text>
+
+            {/* Reason block */}
+            {deactivatedReason ? (
+              <View style={styles.deactReasonBox}>
+                <Text style={styles.deactReasonLabel}>REASON</Text>
+                <Text style={styles.deactReasonText}>{deactivatedReason}</Text>
+              </View>
+            ) : null}
+
+            {/* Contact block */}
+            <View style={styles.deactContactBox}>
+              <Ionicons name="mail-outline" size={16} color="#3A6BC9" style={{ marginRight: 6 }} />
+              <Text style={styles.deactContactText}>
+                For assistance, contact us at{' '}
+                <Text style={styles.deactContactEmail}>{SNAPSHROOM_EMAIL}</Text>
+              </Text>
+            </View>
+          </View>
+
+          {/* Close button */}
+          <TouchableOpacity
+            style={styles.deactCloseBtn}
+            onPress={() => setDeactivatedModalVisible(false)}
+            activeOpacity={0.85}
+          >
+            <Text style={styles.deactCloseBtnText}>OK</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+    </Modal>
+  );
+
   // ─── WEB LAYOUT ─────────────────────────────────────────────────────────────
   if (isWideScreen) {
     return (
+      <>
+      <DeactivatedModal />
       <View style={styles.webRoot}>
         {/* Left hero panel */}
         <LinearGradient colors={['#3A5A28', '#5A8040', '#7BA05B']} style={styles.webHero}>
@@ -250,11 +324,14 @@ export default function LoginScreen() {
           </View>
         </ScrollView>
       </View>
+      </>
     );
   }
 
   // ─── MOBILE LAYOUT (original — completely untouched) ────────────────────────
   return (
+    <>
+    <DeactivatedModal />
     <KeyboardAvoidingView
       style={styles.container}
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
@@ -402,6 +479,7 @@ export default function LoginScreen() {
         </View>
       </ScrollView>
     </KeyboardAvoidingView>
+    </>
   );
 }
 
@@ -565,6 +643,99 @@ const styles = StyleSheet.create({
     fontSize: 15,
     color: '#7BA05B',
     fontWeight: '600',
+  },
+
+  // ── Deactivated Account Modal ─────────────────────────────────────────────
+  deactOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.55)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 24,
+  },
+  deactCard: {
+    width: '100%',
+    maxWidth: 420,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 20,
+    overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 12 },
+    shadowOpacity: 0.2,
+    shadowRadius: 24,
+    elevation: 16,
+  },
+  deactHeader: {
+    backgroundColor: '#C94040',
+    paddingVertical: 22,
+    paddingHorizontal: 24,
+    alignItems: 'center',
+    gap: 10,
+    flexDirection: 'row',
+  },
+  deactHeaderTitle: {
+    color: '#FFFFFF',
+    fontSize: 18,
+    fontWeight: '700',
+    letterSpacing: 0.2,
+  },
+  deactBody: {
+    padding: 24,
+  },
+  deactBodyText: {
+    fontSize: 14,
+    color: '#444',
+    lineHeight: 21,
+    marginBottom: 16,
+  },
+  deactReasonBox: {
+    backgroundColor: '#FFF3F3',
+    borderLeftWidth: 3,
+    borderLeftColor: '#C94040',
+    borderRadius: 6,
+    padding: 14,
+    marginBottom: 16,
+  },
+  deactReasonLabel: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: '#C94040',
+    letterSpacing: 0.08,
+    marginBottom: 4,
+  },
+  deactReasonText: {
+    fontSize: 14,
+    color: '#333',
+    fontWeight: '500',
+    lineHeight: 20,
+  },
+  deactContactBox: {
+    backgroundColor: '#EEF3FF',
+    borderRadius: 8,
+    padding: 14,
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+  },
+  deactContactText: {
+    fontSize: 13,
+    color: '#444',
+    flex: 1,
+    lineHeight: 19,
+  },
+  deactContactEmail: {
+    color: '#3A6BC9',
+    fontWeight: '600',
+  },
+  deactCloseBtn: {
+    backgroundColor: '#C94040',
+    paddingVertical: 16,
+    alignItems: 'center',
+  },
+  deactCloseBtnText: {
+    color: '#FFFFFF',
+    fontSize: 15,
+    fontWeight: '700',
+    letterSpacing: 0.5,
   },
 
   // ── WEB ONLY ──────────────────────────────────────────────────────────────

@@ -38,7 +38,6 @@ def register_user(mongo, username, email, password, name=None):
             "created_at": datetime.utcnow(),
             "updated_at": datetime.utcnow(),
             "is_active": True,
-            "email_verified": False,
             "subscription": {"type": "free"},
             "preferences": {
                 "notifications": True,

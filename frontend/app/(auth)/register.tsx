@@ -143,8 +143,19 @@ export default function RegisterScreen() {
           onPress: () => router.replace('/(tabs)'),
         },
       ]);
-    } catch {
-      // error handled by AuthContext
+    } catch (err: any) {
+      const msg: string = err?.message || '';
+      if (msg.startsWith('Account created!')) {
+        // Registration succeeded but email verification required
+        clearError();
+        showToast('Account created!', 'success');
+        Alert.alert(
+          'Verify Your Email',
+          msg.replace('Account created! ', ''),
+          [{ text: 'OK', onPress: () => router.replace('/(auth)/login') }]
+        );
+      }
+      // other errors already shown via AuthContext error state
     }
   };
 

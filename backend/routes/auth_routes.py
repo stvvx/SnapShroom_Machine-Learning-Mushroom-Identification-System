@@ -7,11 +7,58 @@ from flask_jwt_extended import (
 )
 from datetime import datetime, timedelta
 from bson import ObjectId
-import secrets
 import re
 from werkzeug.security import generate_password_hash, check_password_hash
 from services.notification_service import NotificationService
-from services.email_service import send_verification_email
+try:
+    import firebase_admin
+    from firebase_admin import auth as firebase_auth
+    _FIREBASE_AVAILABLE = True
+except ImportError:
+    _FIREBASE_AVAILABLE = False
+
+
+def _firebase_email_verified(email: str) -> bool:
+    """Return True if the email exists in Firebase and is verified."""
+    if not _FIREBASE_AVAILABLE:
+        return True  # Skip check if Firebase Admin not installed
+    try:
+        firebase_user = firebase_auth.get_user_by_email(email)
+        return firebase_user.email_verified
+    except firebase_admin.exceptions.NotFoundError:
+        return False
+    except Exception:
+        return False
+
+
+def _ensure_firebase_user_and_verify(email: str, password: str = None) -> dict:
+    """
+    Ensure the email has a Firebase account and return its verification status.
+    Returns dict: { 'verified': bool, 'created': bool, 'error': str|None }
+    """
+    if not _FIREBASE_AVAILABLE:
+        return {'verified': True, 'created': False, 'error': None}
+    try:
+        firebase_user = firebase_auth.get_user_by_email(email)
+        return {'verified': firebase_user.email_verified, 'created': False, 'error': None}
+    except firebase_admin.exceptions.NotFoundError:
+        # User not in Firebase – create account and send verification email
+        try:
+            create_kwargs = {'email': email, 'email_verified': False}
+            if password:
+                create_kwargs['password'] = password
+            firebase_auth.create_user(**create_kwargs)
+            try:
+                link = firebase_auth.generate_email_verification_link(email)
+                from services.email_service import send_firebase_verification_email
+                send_firebase_verification_email(email, email.split('@')[0], link)
+            except Exception as mail_err:
+                current_app.logger.warning(f"Verification email failed for {email}: {mail_err}")
+            return {'verified': False, 'created': True, 'error': None}
+        except Exception as create_err:
+            return {'verified': False, 'created': False, 'error': str(create_err)}
+    except Exception as err:
+        return {'verified': False, 'created': False, 'error': str(err)}
 
 auth_bp = Blueprint("auth", __name__, url_prefix="/auth")
 
@@ -46,8 +93,6 @@ def register():
         password = (data.get("password") or "").strip()
         confirm_password = (data.get("confirmPassword") or data.get("confirm_password") or "").strip()
         name = (data.get("name") or "").strip()
-        verification_token = secrets.token_urlsafe(32)  # random secure token
-        token_expires_at = datetime.utcnow() + timedelta(hours=24)  # 24h expiration
 
         if not email or not password or not name:
             return jsonify({"success": False, "message": "All fields are required"}), 400
@@ -62,8 +107,87 @@ def register():
         if password != confirm_password:
             return jsonify({"success": False, "message": "Passwords do not match"}), 400
 
-        if mongo.db.users.find_one({"email": email}):
-            return jsonify({"success": False, "message": "Email already registered"}), 409
+        existing_user = mongo.db.users.find_one({"email": email})
+        if existing_user:
+            # Check if already verified in Firebase – if so, hard-block
+            already_verified = False
+            if _FIREBASE_AVAILABLE:
+                try:
+                    fb_user = firebase_auth.get_user_by_email(email)
+                    already_verified = fb_user.email_verified
+                except firebase_admin.exceptions.NotFoundError:
+                    already_verified = False
+                except Exception:
+                    already_verified = True  # err on the side of caution
+
+            if already_verified:
+                return jsonify({"success": False, "message": "Email already registered"}), 409
+
+            # Not yet verified – allow re-registration: update existing record
+            username = generate_username(email)
+            mongo.db.users.update_one(
+                {"_id": existing_user["_id"]},
+                {"$set": {
+                    "username": username,
+                    "name": name,
+                    "password_hash": generate_password_hash(password),
+                    "created_at": datetime.utcnow(),
+                    "is_active": True,
+                    "is_admin": 0,
+                    "avatar": None,
+                    "access_token": None,
+                    "refresh_token": None,
+                    "token_created_at": None,
+                    "token_expires_at": None,
+                }}
+            )
+            inserted_id = existing_user["_id"]
+
+            # Update Firebase password and resend verification
+            if _FIREBASE_AVAILABLE:
+                try:
+                    try:
+                        fb_user = firebase_auth.get_user_by_email(email)
+                        firebase_auth.update_user(fb_user.uid, password=password)
+                    except firebase_admin.exceptions.NotFoundError:
+                        firebase_auth.create_user(email=email, password=password, email_verified=False)
+                    verification_link = firebase_auth.generate_email_verification_link(email)
+                    try:
+                        from services.email_service import send_firebase_verification_email
+                        send_firebase_verification_email(email, username, verification_link)
+                    except Exception as mail_err:
+                        current_app.logger.warning(f"Verification email failed: {mail_err}")
+                except Exception as fb_err:
+                    current_app.logger.warning(f"Firebase re-registration error: {fb_err}")
+
+            access_token = create_access_token(
+                identity=str(inserted_id),
+                expires_delta=timedelta(hours=24)
+            )
+            refresh_token = create_refresh_token(identity=str(inserted_id))
+            mongo.db.users.update_one(
+                {"_id": inserted_id},
+                {"$set": {
+                    "access_token": access_token,
+                    "refresh_token": refresh_token,
+                    "token_created_at": datetime.utcnow(),
+                    "token_expires_at": datetime.utcnow() + timedelta(hours=24)
+                }}
+            )
+            return jsonify({
+                "success": True,
+                "message": "Account updated. Please check your email to verify your address.",
+                "user": {
+                    "id": str(inserted_id),
+                    "email": email,
+                    "name": name,
+                    "username": username,
+                    "avatar": None,
+                    "role": "user"
+                },
+                "access_token": access_token,
+                "refresh_token": refresh_token
+            }), 200
 
         username = generate_username(email)
 
@@ -80,20 +204,27 @@ def register():
             "refresh_token": None,
             "token_created_at": None,
             "token_expires_at": None,
-
-    # EMAIL VERIFICATION FIELDS
-            "is_verified": False,
-            "verification_token": verification_token,
-            "verification_token_expires": token_expires_at
-}
+        }
     
         result = mongo.db.users.insert_one(user)
 
-        # Send verification email
-        try:
-            send_verification_email(email, username, verification_token)
-        except Exception as e:
-            current_app.logger.warning(f"Failed to send verification email: {e}")
+        # Create / update Firebase user and send email-verification link
+        if _FIREBASE_AVAILABLE:
+            try:
+                try:
+                    firebase_auth.get_user_by_email(email)
+                except firebase_admin.exceptions.NotFoundError:
+                    firebase_auth.create_user(email=email, password=password, email_verified=False)
+                verification_link = firebase_auth.generate_email_verification_link(email)
+                # Send via Flask-Mail if configured
+                try:
+                    from services.email_service import send_firebase_verification_email
+                    send_firebase_verification_email(email, username, verification_link)
+                except Exception as mail_err:
+                    current_app.logger.warning(f"Verification email send failed: {mail_err}")
+                    current_app.logger.info(f"Verification link for {email}: {verification_link}")
+            except Exception as fb_err:
+                current_app.logger.warning(f"Firebase user creation error: {fb_err}")
 
         access_token = create_access_token(
             identity=str(result.inserted_id),
@@ -155,9 +286,38 @@ def login():
         if not email or not password:
             return jsonify({"success": False, "message": "Email and password required"}), 400
 
-        user = mongo.db.users.find_one({"email": email, "is_active": True})
+        # Look up user regardless of is_active first so we can give a specific message
+        user = mongo.db.users.find_one({"email": email})
+
         if not user or not check_password_hash(user["password_hash"], password):
             return jsonify({"success": False, "message": "Invalid credentials"}), 401
+
+        # Check if account is disabled
+        if not user.get("is_active", True):
+            reason = user.get("deactivation_reason", "")
+            msg = "Your account has been deactivated."
+            if reason:
+                msg = f"Your account has been deactivated for the following reason: {reason}"
+            return jsonify({
+                "success": False,
+                "message": msg,
+                "code": "account_disabled",
+                "deactivation_reason": reason
+            }), 403
+
+        # Check Firebase email verification (handles existing users not yet in Firebase)
+        fb = _ensure_firebase_user_and_verify(email)
+        if not fb['verified']:
+            msg = (
+                "A verification email has been sent. Please verify your email before logging in."
+                if fb['created']
+                else "Please verify your email before logging in. Check your inbox for the verification link."
+            )
+            return jsonify({
+                "success": False,
+                "message": msg,
+                "code": "email_not_verified"
+            }), 403
 
         mongo.db.users.update_one(
             {"_id": user["_id"]},

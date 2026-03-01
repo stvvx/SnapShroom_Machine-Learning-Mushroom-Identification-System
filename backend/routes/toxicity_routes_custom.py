@@ -148,6 +148,12 @@ def predict_mushroom():
             # Continue even if saving fails
 
         
+        # Skip email entirely when no mushroom was detected
+        if not result.get('detection', {}).get('found', False):
+            result["email_sent"] = False
+            result["note"] = "No email sent – no mushroom was detected in the image."
+            return jsonify(result), 200
+
         # Send email with prediction results (if user email provided)
         user_email = data.get('user_email')
         user_name = data.get('user_name', 'User')
@@ -265,7 +271,8 @@ def get_scan_history():
                 if scope == 'mine':
                     query['user_id'] = ObjectId(current_user_id)
                 elif scope == 'universe':
-                    query = {}  # all scans
+                    # Universe: everyone's scans, but only ones where a mushroom was detected
+                    query['mushroom_detected'] = True
         elif user_id:
             # Legacy: filter by explicit user_id param
             try:

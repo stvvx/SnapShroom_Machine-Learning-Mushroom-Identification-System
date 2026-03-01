@@ -178,6 +178,9 @@ def deactivate_user(user_id):
         return jsonify({"success": False, "message": "Admin access required"}), 403
     
     try:
+        data = request.get_json() or {}
+        reason = (data.get("reason") or "").strip()
+
         user = mongo.db.users.find_one({"_id": ObjectId(user_id)})
         if not user:
             return jsonify({"success": False, "message": "User not found"}), 404
@@ -187,14 +190,25 @@ def deactivate_user(user_id):
         
         mongo.db.users.update_one(
             {"_id": ObjectId(user_id)},
-            {"$set": {"is_active": False}}
+            {"$set": {
+                "is_active": False,
+                "deactivation_reason": reason,
+                "deactivated_at": datetime.utcnow()
+            }}
         )
         
-        # Notify user about account deactivation
+        # In-app notification
         try:
             NotificationService.notify_account_status_changed(mongo, user_id, False)
         except Exception as notif_err:
             print(f"Failed to send deactivation notification: {notif_err}")
+
+        # Email the user
+        try:
+            from services.email_service import send_account_deactivation_email
+            send_account_deactivation_email(user["email"], user.get("name", user["username"]), reason)
+        except Exception as mail_err:
+            print(f"Failed to send deactivation email: {mail_err}")
         
         return jsonify({
             "success": True,
@@ -226,14 +240,21 @@ def activate_user(user_id):
         
         mongo.db.users.update_one(
             {"_id": ObjectId(user_id)},
-            {"$set": {"is_active": True}}
+            {"$set": {"is_active": True}, "$unset": {"deactivation_reason": "", "deactivated_at": ""}}
         )
         
-        # Notify user about account activation
+        # In-app notification
         try:
             NotificationService.notify_account_status_changed(mongo, user_id, True)
         except Exception as notif_err:
             print(f"Failed to send activation notification: {notif_err}")
+
+        # Email the user
+        try:
+            from services.email_service import send_account_activation_email
+            send_account_activation_email(user["email"], user.get("name", user["username"]))
+        except Exception as mail_err:
+            print(f"Failed to send activation email: {mail_err}")
         
         return jsonify({
             "success": True,

@@ -52,20 +52,10 @@ interface MushroomData {
   edible: string;
   poisonous: string;
   location_region: string;
-  location_province: string;
   habitat: string;
-  cap_color: string;
-  cap_size_cm: string;
-  gills_present: string;
-  gills_color: string;
-  stem_color: string;
-  stem_length_cm: string;
-  size_reference: string;
-  spore_print_color: string;
-  texture: string;
   season_month: string;
-  cultivated: string;
-  wild: string;
+  cultivated_wild: string;
+  description: string;
   notes: string;
 }
 
@@ -193,21 +183,11 @@ export default function PredictionScreen() {
           edible: species.edible ? 'TRUE' : 'FALSE',
           poisonous: !species.edible ? 'TRUE' : 'FALSE',
           location_region: species.location || '',
-          location_province: species.province || '',
           habitat: species.habitat || '',
-          cap_color: '',
-          cap_size_cm: '',
-          gills_present: species.gills_present ? 'TRUE' : 'FALSE',
-          gills_color: species.gills_color || 'none',
-          stem_color: species.stem_color || '',
-          stem_length_cm: species.stem_length || '',
-          size_reference: species.size_reference || '',
-          spore_print_color: species.spore_print_color || '',
-          texture: species.texture || '',
           season_month: species.season || '',
-          cultivated: species.cultivated ? 'TRUE' : 'FALSE',
-          wild: species.wild ? 'TRUE' : 'FALSE',
-          notes: species.description || species.notes || ''
+          cultivated_wild: species.cultivated_wild || '',
+          description: species.description || '',
+          notes: species.notes || '',
         };
 
         setMushroomData(transformedData);
@@ -590,45 +570,122 @@ export default function PredictionScreen() {
   const renderDatabaseSection = () => {
     if (!mushroomData) return null;
 
+    const isEdible = mushroomData.edible === 'TRUE';
+
+    const ecologyRows = [
+      { label: 'Habitat',     value: mushroomData.habitat,         icon: 'trail-sign-outline'  as const },
+      { label: 'Region',      value: mushroomData.location_region, icon: 'location-outline'    as const },
+      { label: 'Season',      value: mushroomData.season_month,    icon: 'sunny-outline'       as const },
+      { label: 'Cultivation', value: mushroomData.cultivated_wild, icon: 'leaf-outline'        as const },
+    ].filter(r => r.value);
+
     return (
       <View style={styles.section}>
         <View style={styles.sectionHeader}>
-          <Ionicons name="server" size={24} color="#1976D2" />
-          <Text style={styles.sectionTitle}>Mushroom Database Record</Text>
+          <Ionicons name="leaf" size={22} color="#2E7D32" />
+          <Text style={styles.sectionTitle}>Mushroom Information</Text>
         </View>
 
-        <View style={styles.databaseCard}>
-          <InfoRow label="English Name" value={mushroomData.english_name} />
-          <InfoRow label="Local Name" value={mushroomData.local_name} />
-          <InfoRow label="Scientific Name" value={mushroomData.scientific_name} />
+        <View style={styles.dbCard}>
 
-          <Divider />
+          {/* ── Identity ─────────────────────────────── */}
+          <View style={styles.dbIdentityBlock}>
+            <Text style={styles.dbCommonName}>{mushroomData.english_name || '—'}</Text>
+            {mushroomData.local_name ? (
+              <Text style={styles.dbLocalName}>{mushroomData.local_name}</Text>
+            ) : null}
+            {mushroomData.scientific_name ? (
+              <Text style={styles.dbScientificName}>{mushroomData.scientific_name}</Text>
+            ) : null}
+          </View>
 
-          <InfoRow label="Edible" value={mushroomData.edible} />
-          <InfoRow label="Poisonous" value={mushroomData.poisonous} />
+          {/* ── Edibility badge ──────────────────────── */}
+          <View style={[styles.dbEdibilityBanner, isEdible ? styles.dbEdibleBanner : styles.dbPoisonBanner]}>
+            <Ionicons
+              name={isEdible ? 'checkmark-circle' : 'warning'}
+              size={18}
+              color={isEdible ? '#1B5E20' : '#7F0000'}
+            />
+            <Text style={[styles.dbEdibilityText, { color: isEdible ? '#1B5E20' : '#7F0000' }]}>
+              {isEdible ? 'Edible — Safe for consumption' : 'Poisonous — Do not consume'}
+            </Text>
+          </View>
 
-          <Divider />
+          {/* ── Ecology rows ─────────────────────────── */}
+          {ecologyRows.length > 0 ? (
+            <View style={styles.dbGroup}>
+              <Text style={styles.dbGroupTitle}>ECOLOGY</Text>
+              {ecologyRows.map((item, i) => (
+                <View key={i} style={[styles.dbRow, i % 2 === 0 && styles.dbRowAlt]}>
+                  <View style={styles.dbLabelRow}>
+                    <Ionicons name={item.icon} size={13} color="#78909C" style={{ marginRight: 5 }} />
+                    <Text style={styles.dbLabel}>{item.label}</Text>
+                  </View>
+                  <Text style={styles.dbValue}>{item.value}</Text>
+                </View>
+              ))}
+            </View>
+          ) : null}
 
-          <InfoRow label="Habitat" value={mushroomData.habitat} />
-          <InfoRow label="Region" value={mushroomData.location_region} />
-          <InfoRow label="Province" value={mushroomData.location_province} />
-          <InfoRow label="Season" value={mushroomData.season_month} />
+          {/* ── Description ──────────────────────────── */}
+          {mushroomData.description ? (
+            <View style={styles.dbDescriptionBlock}>
+              <View style={styles.dbGroupTitleRow}>
+                <Ionicons name="document-text-outline" size={13} color="#78909C" />
+                <Text style={[styles.dbGroupTitle, { marginLeft: 5 }]}>DESCRIPTION</Text>
+              </View>
+              <Text style={styles.dbDescriptionText}>{mushroomData.description}</Text>
+            </View>
+          ) : null}
 
-          <Divider />
+          {/* ── Notes ────────────────────────────────── */}
+          {mushroomData.notes ? (
+            <View style={styles.dbNotesBlock}>
+              <View style={styles.dbGroupTitleRow}>
+                <Ionicons name="pencil-outline" size={13} color="#78909C" />
+                <Text style={[styles.dbGroupTitle, { marginLeft: 5 }]}>NOTES</Text>
+              </View>
+              <Text style={styles.dbNotesText}>{mushroomData.notes}</Text>
+            </View>
+          ) : null}
 
-          <InfoRow label="Stem Color" value={mushroomData.stem_color} />
-          <InfoRow label="Stem Length (cm)" value={mushroomData.stem_length_cm} />
-          <InfoRow label="Texture" value={mushroomData.texture} />
-          <InfoRow label="Spore Print" value={mushroomData.spore_print_color} />
-
-          {mushroomData.notes && (
-            <>
-              <Divider />
-              <Text style={styles.notesLabel}>Notes</Text>
-              <Text style={styles.notesText}>{mushroomData.notes}</Text>
-            </>
-          )}
         </View>
+      </View>
+    );
+  };
+
+  const renderMapSection = () => {
+    if (!mapHtml) return null;
+
+    if (isWeb) {
+      return (
+        <View style={styles.section}>
+          <View style={styles.sectionHeader}>
+            <Ionicons name="map" size={22} color="#1976D2" />
+            <Text style={styles.sectionTitle}>Where to Find This Mushroom</Text>
+          </View>
+          <View style={{ borderRadius: 12, overflow: 'hidden', height: 520 }}>
+            {/* @ts-ignore */}
+            <iframe
+              srcDoc={mapHtml}
+              style={{ width: '100%', height: '100%', border: 'none' }}
+              title="Mushroom Location Map"
+            />
+          </View>
+        </View>
+      );
+    }
+
+    return (
+      <View style={styles.section}>
+        <View style={styles.sectionHeader}>
+          <Ionicons name="map" size={22} color="#1976D2" />
+          <Text style={styles.sectionTitle}>Where to Find This Mushroom</Text>
+        </View>
+        <TouchableOpacity style={styles.mapButton} onPress={() => setShowMap(true)}>
+          <Ionicons name="map" size={20} color="white" />
+          <Text style={styles.mapButtonText}>View Location Map</Text>
+        </TouchableOpacity>
       </View>
     );
   };
@@ -688,137 +745,7 @@ export default function PredictionScreen() {
     );
   };
 
-  const renderMushroomDetails = () => {
-    if (!mushroomData) return null;
 
-    return (
-      <View style={styles.section}>
-        <View style={styles.sectionHeader}>
-          <Ionicons name="information-circle" size={24} color="#2196F3" />
-          <Text style={styles.sectionTitle}>Mushroom Information</Text>
-        </View>
-
-        {/* Map Button */}
-        <TouchableOpacity
-          style={styles.mapButton}
-          onPress={() => setShowMap(true)}
-        >
-          <Ionicons name="map" size={20} color="white" />
-          <Text style={styles.mapButtonText}>View Location Map</Text>
-        </TouchableOpacity>
-
-        <View style={styles.detailsCard}>
-          {/* Names */}
-          <View style={styles.detailRow}>
-            <Text style={styles.detailLabel}>English Name:</Text>
-            <Text style={styles.detailValue}>{mushroomData.english_name}</Text>
-          </View>
-
-          <View style={styles.detailRow}>
-            <Text style={styles.detailLabel}>Local Name:</Text>
-            <Text style={styles.detailValue}>{mushroomData.local_name}</Text>
-          </View>
-
-          <View style={styles.detailRow}>
-            <Text style={styles.detailLabel}>Scientific Name:</Text>
-            <Text style={styles.detailValue}>{mushroomData.scientific_name}</Text>
-          </View>
-
-          {/* Size Information */}
-          <Text style={styles.categoryTitle}>Physical Characteristics</Text>
-
-          <View style={styles.detailRow}>
-            <Text style={styles.detailLabel}>Stem Length:</Text>
-            <Text style={styles.detailValue}>{mushroomData.stem_length_cm} cm</Text>
-          </View>
-
-          <View style={styles.detailRow}>
-            <Text style={styles.detailLabel}>Stem Color:</Text>
-            <Text style={styles.detailValue}>{mushroomData.stem_color.replace(/_/g, ' ')}</Text>
-          </View>
-
-          <View style={styles.detailRow}>
-            <Text style={styles.detailLabel}>Texture:</Text>
-            <Text style={styles.detailValue}>{mushroomData.texture}</Text>
-          </View>
-
-          <View style={styles.detailRow}>
-            <Text style={styles.detailLabel}>Gills Present:</Text>
-            <Text style={styles.detailValue}>{mushroomData.gills_present === 'TRUE' ? 'Yes' : 'No'}</Text>
-          </View>
-
-          {mushroomData.gills_present === 'TRUE' && (
-            <View style={styles.detailRow}>
-              <Text style={styles.detailLabel}>Gills Color:</Text>
-              <Text style={styles.detailValue}>{mushroomData.gills_color}</Text>
-            </View>
-          )}
-
-          <View style={styles.divider} />
-
-          {/* Location Information */}
-          <Text style={styles.categoryTitle}>Location & Habitat</Text>
-
-          <View style={styles.detailRow}>
-            <Text style={styles.detailLabel}>Region:</Text>
-            <Text style={styles.detailValue}>{mushroomData.location_region}</Text>
-          </View>
-
-          <View style={styles.detailRow}>
-            <Text style={styles.detailLabel}>Province:</Text>
-            <Text style={styles.detailValue}>{mushroomData.location_province}</Text>
-          </View>
-
-          <View style={styles.detailRow}>
-            <Text style={styles.detailLabel}>Habitat Type:</Text>
-            <Text style={styles.detailValue}>{mushroomData.habitat.replace(/_/g, ' ')}</Text>
-          </View>
-
-          <View style={styles.detailRow}>
-            <Text style={styles.detailLabel}>Season:</Text>
-            <Text style={styles.detailValue}>{mushroomData.season_month.replace(/_/g, ' ')}</Text>
-          </View>
-
-          <View style={styles.divider} />
-
-          {/* Growing Information */}
-          <Text style={styles.categoryTitle}>Growing Information</Text>
-
-          <View style={styles.detailRow}>
-            <Text style={styles.detailLabel}>Cultivated:</Text>
-            <Text style={styles.detailValue}>{mushroomData.cultivated === 'TRUE' ? 'Yes' : 'No'}</Text>
-          </View>
-
-          <View style={styles.detailRow}>
-            <Text style={styles.detailLabel}>Found in Wild:</Text>
-            <Text style={styles.detailValue}>{mushroomData.wild === 'TRUE' ? 'Yes' : 'No'}</Text>
-          </View>
-
-          <View style={styles.divider} />
-
-          {/* Additional Information */}
-          <Text style={styles.categoryTitle}>Additional Details</Text>
-
-          <View style={styles.detailRow}>
-            <Text style={styles.detailLabel}>Spore Print Color:</Text>
-            <Text style={styles.detailValue}>{mushroomData.spore_print_color.replace(/_/g, ' ')}</Text>
-          </View>
-
-          <View style={styles.detailRow}>
-            <Text style={styles.detailLabel}>Size Reference:</Text>
-            <Text style={styles.detailValue}>{mushroomData.size_reference.replace(/_/g, ' ')}</Text>
-          </View>
-
-          {mushroomData.notes && (
-            <View style={styles.notesContainer}>
-              <Text style={styles.notesLabel}>Notes:</Text>
-              <Text style={styles.notesText}>{mushroomData.notes}</Text>
-            </View>
-          )}
-        </View>
-      </View>
-    );
-  };
   
   if (isAnalyzing) {
     return (
@@ -860,8 +787,28 @@ export default function PredictionScreen() {
 
   if (detectionStatus && detectionStatus.found === false) {
     return (
-      <View style={styles.noDetectionContainer}>
-        <Ionicons name="search-circle" size={80} color="#FF9800" />
+      <ScrollView
+        contentContainerStyle={styles.noDetectionContainer}
+        showsVerticalScrollIndicator={false}
+      >
+        {/* ── Image with "No Mushroom Detected" overlay ── */}
+        {displayImageUrl ? (
+          <View style={styles.noDetectionImageWrapper}>
+            <Image
+              source={{ uri: displayImageUrl }}
+              style={styles.noDetectionImage}
+              resizeMode="cover"
+            />
+            {/* Red banner across the bottom of the image */}
+            <View style={styles.noDetectionImageOverlay}>
+              <Ionicons name="close-circle" size={20} color="white" />
+              <Text style={styles.noDetectionImageOverlayText}>No Mushroom Detected</Text>
+            </View>
+          </View>
+        ) : (
+          <Ionicons name="search-circle" size={80} color="#FF9800" style={{ marginBottom: 8 }} />
+        )}
+
         <Text style={styles.noDetectionTitle}>No Mushroom Detected</Text>
         <Text style={styles.noDetectionText}>
           {detectionStatus.message || 'Please capture a closer, clearer image of the mushroom.'}
@@ -888,7 +835,7 @@ export default function PredictionScreen() {
             <Text style={styles.secondaryButtonText}>Go Back</Text>
           </TouchableOpacity>
         </View>
-      </View>
+      </ScrollView>
     );
   }
 
@@ -991,8 +938,8 @@ export default function PredictionScreen() {
             <SafeComponent component={renderRiskAssessment()} />
             <SafeComponent component={renderSpeciesInfo()} />
             <SafeComponent component={renderToxicityInfo()} />
-            <SafeComponent component={renderMushroomDetails()} />
             <SafeComponent component={renderDatabaseSection()} />
+            <SafeComponent component={renderMapSection()} />
             <SafeComponent component={renderRecommendations()} />
             <SafeComponent component={renderSafetyActions()} />
           </ScrollView>
@@ -1046,7 +993,8 @@ export default function PredictionScreen() {
         <SafeComponent component={renderRiskAssessment()} />
         <SafeComponent component={renderSpeciesInfo()} />
         <SafeComponent component={renderToxicityInfo()} />
-        <SafeComponent component={renderMushroomDetails()} />
+        <SafeComponent component={renderDatabaseSection()} />
+        <SafeComponent component={renderMapSection()} />
         <SafeComponent component={renderRecommendations()} />
         <SafeComponent component={renderSafetyActions()} />
 
@@ -1223,11 +1171,45 @@ const styles = StyleSheet.create({
     padding: 20,
   },
   noDetectionContainer: {
-    flex: 1,
-    justifyContent: 'center',
+    flexGrow: 1,
     alignItems: 'center',
     backgroundColor: '#F5F5F5',
     padding: 20,
+    paddingTop: 40,
+  },
+  noDetectionImageWrapper: {
+    width: '100%',
+    maxWidth: 420,
+    borderRadius: 16,
+    overflow: 'hidden',
+    marginBottom: 24,
+    elevation: 4,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.18,
+    shadowRadius: 6,
+  },
+  noDetectionImage: {
+    width: '100%',
+    aspectRatio: 1,
+  },
+  noDetectionImageOverlay: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    backgroundColor: 'rgba(211, 47, 47, 0.88)',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 10,
+    gap: 8,
+  },
+  noDetectionImageOverlayText: {
+    color: 'white',
+    fontWeight: '700',
+    fontSize: 15,
+    letterSpacing: 0.3,
   },
   errorTitle: {
     fontSize: 24,
@@ -1671,5 +1653,162 @@ const styles = StyleSheet.create({
     color: '#111',
     maxWidth: '55%',
     textAlign: 'right',
+  },
+  /* ── Redesigned Mushroom Info Card ─────────────── */
+  dbCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: '#E8EDF2',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.07,
+    shadowRadius: 8,
+    elevation: 3,
+  },
+  dbIdentityBlock: {
+    alignItems: 'center',
+    paddingVertical: 20,
+    paddingHorizontal: 16,
+    backgroundColor: '#F0F7F0',
+    borderBottomWidth: 1,
+    borderBottomColor: '#D8EDD8',
+  },
+  dbCommonName: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: '#1B5E20',
+    textAlign: 'center',
+    marginBottom: 4,
+  },
+  dbLocalName: {
+    fontSize: 14,
+    color: '#4CAF50',
+    fontWeight: '600',
+    marginBottom: 3,
+    textAlign: 'center',
+  },
+  dbScientificName: {
+    fontSize: 13,
+    fontStyle: 'italic',
+    color: '#6B8E6B',
+    textAlign: 'center',
+  },
+  dbEdibilityBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 10,
+    gap: 8,
+    borderBottomWidth: 1,
+  },
+  dbEdibleBanner: {
+    backgroundColor: '#E8F5E9',
+    borderBottomColor: '#C8E6C9',
+  },
+  dbPoisonBanner: {
+    backgroundColor: '#FFEBEE',
+    borderBottomColor: '#FFCDD2',
+  },
+  dbEdibilityText: {
+    fontSize: 14,
+    fontWeight: '700',
+    letterSpacing: 0.2,
+  },
+  dbGroup: {
+    paddingHorizontal: 0,
+    paddingBottom: 8,
+  },
+  dbGroupTitle: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: '#90A4AE',
+    letterSpacing: 1.2,
+    paddingHorizontal: 16,
+    paddingTop: 14,
+    paddingBottom: 4,
+  },
+  dbGroupTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingTop: 14,
+    paddingBottom: 4,
+  },
+  dbRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    justifyContent: 'space-between',
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+  },
+  dbRowAlt: {
+    backgroundColor: '#F8FAFB',
+  },
+  dbLabelRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 0.45,
+  },
+  dbLabel: {
+    fontSize: 13,
+    color: '#607D8B',
+    fontWeight: '600',
+  },
+  dbValue: {
+    fontSize: 13,
+    color: '#263238',
+    fontWeight: '500',
+    flex: 0.55,
+    textAlign: 'right',
+  },
+  dbDescriptionBlock: {
+    marginHorizontal: 16,
+    marginBottom: 4,
+    marginTop: 4,
+    borderLeftWidth: 3,
+    borderLeftColor: '#4CAF50',
+    backgroundColor: '#F9FBF9',
+    borderRadius: 6,
+    paddingBottom: 12,
+  },
+  dbDescriptionText: {
+    fontSize: 13,
+    color: '#37474F',
+    lineHeight: 20,
+    paddingHorizontal: 12,
+  },
+  dbNotesBlock: {
+    marginHorizontal: 16,
+    marginBottom: 16,
+    marginTop: 4,
+    borderLeftWidth: 3,
+    borderLeftColor: '#90A4AE',
+    backgroundColor: '#F5F7F9',
+    borderRadius: 6,
+    paddingBottom: 12,
+  },
+  dbNotesText: {
+    fontSize: 13,
+    color: '#546E7A',
+    lineHeight: 20,
+    fontStyle: 'italic',
+    paddingHorizontal: 12,
+  },
+  mapButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#1976D2',
+    borderRadius: 10,
+    paddingVertical: 14,
+    paddingHorizontal: 24,
+    gap: 8,
+  },
+  mapButtonText: {
+    color: 'white',
+    fontSize: 15,
+    fontWeight: '600',
   },
 });
