@@ -50,6 +50,7 @@ export default function HistoryScreen() {
   const [error, setError] = useState<string | null>(null);
   const [activeFilter, setActiveFilter] = useState<'all' | 'detected' | 'edible' | 'poisonous'>('all');
   const [scope, setScope] = useState<'mine' | 'universe'>('mine');
+  const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
 
   useEffect(() => {
     fetchScanHistory();
@@ -90,6 +91,42 @@ export default function HistoryScreen() {
   const handleRefresh = () => {
     setRefreshing(true);
     fetchScanHistory();
+  };
+
+  const executeDeleteScan = async (scanId: string) => {
+    setDeleteConfirmId(null);
+    try {
+      const response = await fetch(`${API_URL}/api/toxicity/scans/${scanId}`, {
+        method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
+        },
+      });
+      const data = await response.json();
+      if (data.success) {
+        setScans(prev => prev.filter(s => s._id !== scanId));
+      } else {
+        Alert.alert('Error', data.message || 'Failed to delete scan.');
+      }
+    } catch {
+      Alert.alert('Error', 'Failed to delete scan. Please try again.');
+    }
+  };
+
+  const handleDeleteScan = (scanId: string) => {
+    if (isWeb) {
+      setDeleteConfirmId(scanId);
+      return;
+    }
+    Alert.alert(
+        'Delete Scan',
+        'Remove this scan from your history? It will no longer appear in My Scans or Universe.',
+        [
+          { text: 'Cancel', style: 'cancel' },
+          { text: 'Delete', style: 'destructive', onPress: () => executeDeleteScan(scanId) },
+        ]
+      );
   };
 
   const isDangerous = (edibility: string | null) => {
@@ -199,7 +236,18 @@ export default function HistoryScreen() {
             <ThemedText style={styles.mushroomName}>
               {scan.mushroom_type || 'Unknown Mushroom'}
             </ThemedText>
-            <ThemedText style={styles.scanDate}>{formatDate(scan.created_at)}</ThemedText>
+            <View style={styles.scanHeaderRight}>
+              <ThemedText style={styles.scanDate}>{formatDate(scan.created_at)}</ThemedText>
+              {scope === 'mine' && (
+                <TouchableOpacity
+                  onPress={() => handleDeleteScan(scan._id)}
+                  style={styles.deleteMobileBtn}
+                  hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                >
+                  <Ionicons name="trash-outline" size={16} color="#D32F2F" />
+                </TouchableOpacity>
+              )}
+            </View>
           </View>
 
           {scan.mushroom_detected && scan.classification_confidence !== null && (
@@ -265,6 +313,16 @@ export default function HistoryScreen() {
             <Ionicons name={scan.mushroom_detected ? 'checkmark' : 'close'} size={11} color="#FFF" />
             <Text style={webStyles.detectionPillText}>{scan.mushroom_detected ? 'Detected' : 'Not Detected'}</Text>
           </View>
+
+          {/* Delete button — only in My Scans */}
+          {scope === 'mine' && (
+            <TouchableOpacity
+              style={webStyles.deleteBtn}
+              onPress={() => handleDeleteScan(scan._id)}
+            >
+              <Ionicons name="trash" size={12} color="#fff" />
+            </TouchableOpacity>
+          )}
         </View>
 
         {/* Card body */}
@@ -485,6 +543,42 @@ export default function HistoryScreen() {
             )}
           </ScrollView>
         </View>
+
+        {/* ── DELETE CONFIRM MODAL ─────────────────────────────────────── */}
+        {deleteConfirmId !== null && (
+          <View style={webStyles.deleteModalOverlay}>
+            <View style={webStyles.deleteModalCard}>
+              {/* Icon header */}
+              <View style={webStyles.deleteModalIconWrap}>
+                <Ionicons name="trash" size={28} color="#fff" />
+              </View>
+
+              <Text style={webStyles.deleteModalTitle}>Delete Scan?</Text>
+              <Text style={webStyles.deleteModalBody}>
+                This scan will be removed from your{' '}
+                <Text style={{ fontWeight: '700' }}>My Scans</Text> and{' '}
+                <Text style={{ fontWeight: '700' }}>Universe</Text> feeds.{`\n`}
+                The record is kept in our database.
+              </Text>
+
+              <View style={webStyles.deleteModalActions}>
+                <TouchableOpacity
+                  style={webStyles.deleteModalCancelBtn}
+                  onPress={() => setDeleteConfirmId(null)}
+                >
+                  <Text style={webStyles.deleteModalCancelText}>Cancel</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={webStyles.deleteModalConfirmBtn}
+                  onPress={() => executeDeleteScan(deleteConfirmId)}
+                >
+                  <Ionicons name="trash-outline" size={15} color="#fff" />
+                  <Text style={webStyles.deleteModalConfirmText}>Delete</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </View>
+        )}
       </ThemedView>
     );
   }
@@ -832,6 +926,17 @@ const webStyles = StyleSheet.create({
     fontSize: 10,
     fontWeight: '700',
   },
+  deleteBtn: {
+    position: 'absolute',
+    top: 10,
+    right: 10,
+    backgroundColor: '#D32F2F',
+    borderRadius: 20,
+    width: 27,
+    height: 27,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   cardBody: {
     padding: 14,
     gap: 4,
@@ -865,6 +970,98 @@ const webStyles = StyleSheet.create({
     fontSize: 12,
     color: '#888',
     flex: 1,
+  },
+
+  // ── Delete confirm modal ───────────────────────────────────────────────────
+  deleteModalOverlay: {
+    position: 'fixed' as any,
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(0,0,0,0.45)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    zIndex: 9999,
+  },
+  deleteModalCard: {
+    backgroundColor: '#fff',
+    borderRadius: 20,
+    paddingHorizontal: 32,
+    paddingTop: 36,
+    paddingBottom: 28,
+    width: 360,
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 12 },
+    shadowOpacity: 0.18,
+    shadowRadius: 24,
+  },
+  deleteModalIconWrap: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    backgroundColor: '#D32F2F',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 18,
+    shadowColor: '#D32F2F',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.35,
+    shadowRadius: 12,
+  },
+  deleteModalTitle: {
+    fontSize: 20,
+    fontWeight: '800',
+    color: '#1A1A1A',
+    marginBottom: 10,
+    textAlign: 'center',
+  },
+  deleteModalBody: {
+    fontSize: 14,
+    color: '#666',
+    textAlign: 'center',
+    lineHeight: 22,
+    marginBottom: 28,
+  },
+  deleteModalActions: {
+    flexDirection: 'row',
+    gap: 12,
+    width: '100%' as any,
+  },
+  deleteModalCancelBtn: {
+    flex: 1,
+    paddingVertical: 13,
+    borderRadius: 12,
+    borderWidth: 1.5,
+    borderColor: '#D8D8D8',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#FAFAFA',
+  },
+  deleteModalCancelText: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#555',
+  },
+  deleteModalConfirmBtn: {
+    flex: 1,
+    flexDirection: 'row',
+    gap: 6,
+    paddingVertical: 13,
+    borderRadius: 12,
+    backgroundColor: '#D32F2F',
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#D32F2F',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+  },
+  deleteModalConfirmText: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#fff',
   },
 });
 
@@ -1036,6 +1233,14 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'flex-start',
     marginBottom: 4,
+  },
+  scanHeaderRight: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  deleteMobileBtn: {
+    padding: 2,
   },
   mushroomName: {
     fontSize: 16,

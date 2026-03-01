@@ -280,6 +280,9 @@ def get_scan_history():
             except Exception:
                 query['user_id'] = None
         
+        # Exclude soft-deleted scans (deleted by the owning user)
+        query['deleted_by_user'] = {'$ne': True}
+
         # Fetch scans sorted by most recent first
         scans = list(mongo.db.mushroom_scans.find(query)
                     .sort('created_at', -1)
@@ -326,6 +329,42 @@ def get_scan_history():
             "success": False,
             "error": str(e)
         }), 500
+
+
+@toxicity_bp.route('/scans/<scan_id>', methods=['DELETE'])
+@jwt_required()
+def delete_scan(scan_id):
+    """
+    Soft-delete a scan record.  Sets deleted_by_user=True on the document so
+    that it is excluded from all history queries but remains in the database.
+    Only the scan's owner may delete it.
+    """
+    try:
+        mongo = current_app.mongo
+        current_user_id = get_jwt_identity()
+
+        try:
+            oid = ObjectId(scan_id)
+        except Exception:
+            return jsonify({'success': False, 'message': 'Invalid scan ID'}), 400
+
+        scan = mongo.db.mushroom_scans.find_one({'_id': oid})
+        if not scan:
+            return jsonify({'success': False, 'message': 'Scan not found'}), 404
+
+        if str(scan.get('user_id')) != current_user_id:
+            return jsonify({'success': False, 'message': 'Not authorised to delete this scan'}), 403
+
+        mongo.db.mushroom_scans.update_one(
+            {'_id': oid},
+            {'$set': {'deleted_by_user': True, 'deleted_at': datetime.utcnow()}}
+        )
+
+        return jsonify({'success': True, 'message': 'Scan deleted'}), 200
+
+    except Exception as e:
+        logger.error(f"❌ Error deleting scan: {str(e)}")
+        return jsonify({'success': False, 'error': str(e)}), 500
 
 
 @toxicity_bp.route('/health', methods=['GET'])
