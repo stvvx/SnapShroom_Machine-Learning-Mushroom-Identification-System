@@ -1,40 +1,46 @@
-import React, { useEffect, useRef } from 'react';
-import { ScrollView, View, Text, StyleSheet, Image, Linking, TouchableOpacity, Animated, useWindowDimensions } from 'react-native';
+import React, { useEffect, useRef, useState } from 'react';
+import {
+  ScrollView,
+  View,
+  Text,
+  Image,
+  Linking,
+  TouchableOpacity,
+  Animated,
+  Platform,
+  Dimensions,
+  StatusBar,
+} from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import HamburgerMenu from '@/components/HamburgerMenu';
 import NotificationDropdown from '@/components/NotificationDropdown';
 
-// Team member data with image paths
+const { width, height } = Dimensions.get('window');
+const isWeb = Platform.OS === 'web';
+
+// ─── DESIGN TOKENS (matching LandingPage) ────────────────────────────────────
+const C = {
+  dark:    '#1A2318',
+  forest:  '#2D4A2A',
+  moss:    '#4A7C47',
+  sage:    '#7FAB6E',
+  cream:   '#F8F5EE',
+  sand:    '#EFE8D8',
+  amber:   '#C8873A',
+  coral:   '#D96B4E',
+  white:   '#FFFFFF',
+  stone:   '#8A9288',
+  mist:    '#E4EAE1',
+};
+const SP = { xs: 4, sm: 8, md: 12, lg: 16, xl: 24, xxl: 40, xxxl: 64 };
+
+// ─── DATA ─────────────────────────────────────────────────────────────────────
 const TEAM_MEMBERS = [
-  {
-    id: 1,
-    name: 'Famini, Cristel Kate M.',
-    role: 'Developer',
-    image: require('@/assets/images/cristel.png'),
-    bio: 'cristelkate.famini@tup.edu.ph',
-  },
-  {
-    id: 2,
-    name: 'Garcia, Aia A.',
-    role: 'Developer',
-    image: require('@/assets/images/aia.jpg'),
-    bio: 'aia.garcia@tup.edu.ph',
-  },
-  {
-    id: 3,
-    name: 'Rosario, Jerome Steven S.',
-    role: 'Developer',
-    image: require('@/assets/images/jerome.png'),
-    bio: 'jeromesteven.rosario@tup.edu.ph',
-  },
-  {
-    id: 4,
-    name: 'Tolin, Ernesto III M.',
-    role: 'Developer',
-    image: require('@/assets/images/ernesto.png'),
-    bio: 'ernestoiii.tolin@tup.edu.ph',
-  },
+  { id: 1, name: 'Famini, Cristel Kate M.', role: 'Developer', image: require('@/assets/images/cristel.png'),  bio: 'cristelkate.famini@tup.edu.ph' },
+  { id: 2, name: 'Garcia, Aia A.',           role: 'Developer', image: require('@/assets/images/aia.jpg'),      bio: 'aia.garcia@tup.edu.ph' },
+  { id: 3, name: 'Rosario, Jerome Steven S.',role: 'Developer', image: require('@/assets/images/jerome.png'),   bio: 'jeromesteven.rosario@tup.edu.ph' },
+  { id: 4, name: 'Tolin, Ernesto III M.',    role: 'Developer', image: require('@/assets/images/ernesto.png'),  bio: 'ernestoiii.tolin@tup.edu.ph' },
 ];
 
 const ADVISER = {
@@ -42,1228 +48,394 @@ const ADVISER = {
   role: 'Adviser',
   image: require('@/assets/images/adviser.png'),
   bio: 'pops_madriaga@tup.edu.ph',
+  accent: C.amber,
 };
 
 const TECHNICAL_ADVISER = {
   name: 'Motol, Ian Jasper',
   role: 'Technical Adviser',
+  image: null,
   bio: 'ianjasper.motol@tup.edu.ph',
+  accent: '#4DA6FF',
 };
 
-// Animated Mushroom Component
-function AnimatedMushroom({ delay = 0, size = 40 }: { delay?: number; size?: number }) {
-  const bounceAnim = useRef(new Animated.Value(0)).current;
-  const rotateAnim = useRef(new Animated.Value(0)).current;
+const FEATURES = [
+  { icon: 'camera',      title: 'ML Recognition', desc: 'Snap a picture and get instant species identification using advanced machine learning algorithms trained on thousands of mushroom images.',       accent: C.moss   },
+  { icon: 'flask',       title: 'Toxicity Info',  desc: 'Comprehensive edibility and toxicity data for every identified species so you can make safe, informed decisions in the field.',                  accent: C.coral  },
+  { icon: 'map',         title: 'Habitat Data',   desc: 'Insights into natural habitats, regions, and environmental conditions — supporting ecological understanding and foraging safety.',              accent: '#7B6FD4' },
+  { icon: 'bar-chart',   title: 'Risk Analysis',  desc: 'Combines species data and toxicity levels to evaluate potential risks, guiding safe practices for enthusiasts and foragers alike.',             accent: C.amber  },
+];
+
+const TECH = [
+  { name: 'React Native', icon: 'logo-react' },
+  { name: 'Python Flask', icon: 'logo-python' },
+  { name: 'ML / YOLO',    icon: 'hardware-chip' },
+  { name: 'PyTorch',      icon: 'flash' },
+  { name: 'MongoDB',      icon: 'server' },
+];
+
+// ─── FLOATING MUSHROOM DECORATION ────────────────────────────────────────────
+const FloatingMushroom = ({ size = 40, delay = 0, capColor = C.coral }: { size?: number; delay?: number; capColor?: string }) => {
+  const floatAnim = useRef(new Animated.Value(0)).current;
+  useEffect(() => {
+    Animated.loop(
+      Animated.sequence([
+        Animated.delay(delay),
+        Animated.timing(floatAnim, { toValue: 1, duration: 2600, useNativeDriver: true }),
+        Animated.timing(floatAnim, { toValue: 0, duration: 2600, useNativeDriver: true }),
+      ])
+    ).start();
+  }, []);
+  return (
+    <Animated.View style={{ alignItems: 'center', transform: [{ translateY: floatAnim.interpolate({ inputRange: [0,1], outputRange: [0,-10] }) }] }}>
+      <View style={{ width: size * 0.85, height: size * 0.55, backgroundColor: capColor, borderRadius: size * 0.5, borderBottomLeftRadius: size * 0.2, borderBottomRightRadius: size * 0.2, overflow: 'hidden' }}>
+        <LinearGradient colors={['rgba(255,255,255,0.3)','transparent']} style={{ position: 'absolute', top: 0, left: 0, right: 0, height: '60%', borderRadius: size * 0.5 }} />
+        {[{t:'20%',l:'18%',s:0.12},{t:'35%',r:'22%',s:0.09},{t:'10%',r:'38%',s:0.08}].map((sp,i)=>(
+          <View key={i} style={{ position:'absolute', width: size*sp.s, height: size*sp.s, borderRadius: 999, backgroundColor:'rgba(255,255,255,0.55)', top: sp.t as any, left: (sp as any).l, right: (sp as any).r }} />
+        ))}
+      </View>
+      <View style={{ width: size * 0.32, height: size * 0.55, backgroundColor: '#E8D5B0', borderRadius: size * 0.18, marginTop: -4 }} />
+    </Animated.View>
+  );
+};
+
+// ─── SECTION BADGE ────────────────────────────────────────────────────────────
+const SectionBadge = ({ icon, label }: { icon: string; label: string }) => (
+  <View style={{ flexDirection: 'row', alignItems: 'center', gap: SP.sm, backgroundColor: `${C.moss}18`, paddingHorizontal: SP.lg, paddingVertical: SP.sm, borderRadius: 999, alignSelf: 'flex-start', marginBottom: SP.md }}>
+    <Ionicons name={icon as any} size={14} color={C.moss} />
+    <Text style={{ color: C.moss, fontSize: 12, fontWeight: '700', letterSpacing: 2, textTransform: 'uppercase' }}>{label}</Text>
+  </View>
+);
+
+// ─── FEATURE CARD ─────────────────────────────────────────────────────────────
+const FeatureCard = ({ icon, title, desc, accent, isWide }: { icon: string; title: string; desc: string; accent: string; isWide: boolean }) => (
+  <View style={{
+    flex: 1, minWidth: isWide ? 220 : '100%',
+    backgroundColor: C.white, borderRadius: 20, padding: SP.xl,
+    borderWidth: 1, borderColor: C.mist,
+    shadowColor: C.dark, shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.07, shadowRadius: 16, elevation: 3,
+  }}>
+    <View style={{ width: 52, height: 52, borderRadius: 14, backgroundColor: `${accent}18`, alignItems: 'center', justifyContent: 'center', marginBottom: SP.md }}>
+      <Ionicons name={icon as any} size={26} color={accent} />
+    </View>
+    <Text style={{ fontSize: 16, fontWeight: '800', color: C.dark, marginBottom: SP.sm }}>{title}</Text>
+    <Text style={{ fontSize: 14, color: C.stone, lineHeight: 22 }}>{desc}</Text>
+  </View>
+);
+
+// ─── VM CARD ──────────────────────────────────────────────────────────────────
+const VMCard = ({ icon, title, desc, accent, isWide }: { icon: string; title: string; desc: string; accent: string; isWide: boolean }) => (
+  <View style={{
+    flex: 1, minWidth: isWide ? 280 : '100%',
+    backgroundColor: C.white, borderRadius: 20, padding: SP.xl,
+    borderWidth: 1, borderColor: C.mist,
+    shadowColor: C.dark, shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.07, shadowRadius: 16, elevation: 3,
+  }}>
+    <View style={{ flexDirection: 'row', alignItems: 'center', gap: SP.md, marginBottom: SP.lg }}>
+      <View style={{ width: 52, height: 52, borderRadius: 14, backgroundColor: `${accent}18`, alignItems: 'center', justifyContent: 'center' }}>
+        <Ionicons name={icon as any} size={26} color={accent} />
+      </View>
+      <Text style={{ fontSize: 20, fontWeight: '900', color: C.dark, letterSpacing: -0.5 }}>{title}</Text>
+    </View>
+    <Text style={{ fontSize: 14, color: C.stone, lineHeight: 24 }}>{desc}</Text>
+  </View>
+);
+
+// ─── TEAM CARD ────────────────────────────────────────────────────────────────
+const TeamCard = ({ member, accent = C.moss, isWide }: { member: any; accent?: string; isWide: boolean }) => (
+  <View style={{
+    flex: 1, minWidth: isWide ? 260 : '100%',
+    backgroundColor: C.white, borderRadius: 20,
+    overflow: 'hidden',
+    borderWidth: 1, borderColor: C.mist,
+    shadowColor: C.dark, shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.07, shadowRadius: 16, elevation: 3,
+  }}>
+    {/* Top accent bar */}
+    <View style={{ height: 4, backgroundColor: accent }} />
+    <View style={{ padding: SP.xl, flexDirection: 'row', alignItems: 'center', gap: SP.lg }}>
+      {/* Avatar */}
+      <View style={{ width: isWide ? 72 : 60, height: isWide ? 72 : 60, borderRadius: isWide ? 36 : 30, overflow: 'hidden', borderWidth: 3, borderColor: `${accent}40`, flexShrink: 0 }}>
+        {member.image ? (
+          <Image source={member.image} style={{ width: '100%', height: '100%' }} resizeMode="cover" />
+        ) : (
+          <View style={{ flex: 1, backgroundColor: C.mist, alignItems: 'center', justifyContent: 'center' }}>
+            <Ionicons name="person" size={isWide ? 36 : 28} color={C.stone} />
+          </View>
+        )}
+      </View>
+      {/* Info */}
+      <View style={{ flex: 1 }}>
+        <Text style={{ fontSize: isWide ? 15 : 14, fontWeight: '800', color: C.dark, marginBottom: 4, lineHeight: 20 }}>{member.name}</Text>
+        <Text style={{ fontSize: 12, color: C.sage, fontWeight: '600', marginBottom: SP.sm, fontStyle: 'italic' }}>{member.bio}</Text>
+        <View style={{ backgroundColor: `${accent}18`, paddingHorizontal: SP.md, paddingVertical: 4, borderRadius: 8, alignSelf: 'flex-start' }}>
+          <Text style={{ fontSize: 11, color: accent, fontWeight: '800', textTransform: 'uppercase', letterSpacing: 0.8 }}>{member.role}</Text>
+        </View>
+      </View>
+    </View>
+  </View>
+);
+
+// ─── TECH CHIP ────────────────────────────────────────────────────────────────
+const TechChip = ({ name, icon }: { name: string; icon: string }) => (
+  <View style={{ flexDirection: 'row', alignItems: 'center', gap: SP.sm, backgroundColor: C.white, paddingHorizontal: SP.lg, paddingVertical: SP.md, borderRadius: 12, borderWidth: 1, borderColor: C.mist }}>
+    <Ionicons name={icon as any} size={16} color={C.moss} />
+    <Text style={{ fontSize: 13, color: C.forest, fontWeight: '700' }}>{name}</Text>
+  </View>
+);
+
+// ─── MAIN COMPONENT ───────────────────────────────────────────────────────────
+export default function AboutPage() {
+  const isWide = isWeb && width >= 768;
+  const scrollY = useRef(new Animated.Value(0)).current;
+  const headerAnim = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
-    const bounce = Animated.loop(
-      Animated.sequence([
-        Animated.timing(bounceAnim, {
-          toValue: -10,
-          duration: 1000,
-          delay,
-          useNativeDriver: true,
-        }),
-        Animated.timing(bounceAnim, {
-          toValue: 0,
-          duration: 1000,
-          useNativeDriver: true,
-        }),
-      ])
-    );
+    Animated.timing(headerAnim, { toValue: 1, duration: 600, useNativeDriver: true }).start();
+  }, []);
 
-    const rotate = Animated.loop(
-      Animated.sequence([
-        Animated.timing(rotateAnim, {
-          toValue: 1,
-          duration: 2000,
-          delay,
-          useNativeDriver: true,
-        }),
-        Animated.timing(rotateAnim, {
-          toValue: -1,
-          duration: 2000,
-          useNativeDriver: true,
-        }),
-        Animated.timing(rotateAnim, {
-          toValue: 0,
-          duration: 2000,
-          useNativeDriver: true,
-        }),
-      ])
-    );
-
-    bounce.start();
-    rotate.start();
-
-    return () => {
-      bounce.stop();
-      rotate.stop();
-    };
-  }, [delay]);
-
-  const rotation = rotateAnim.interpolate({
-    inputRange: [-1, 1],
-    outputRange: ['-5deg', '5deg'],
+  const headerBg = scrollY.interpolate({
+    inputRange: [0, 100],
+    outputRange: ['rgba(26,35,24,0)', 'rgba(26,35,24,0.97)'],
+    extrapolate: 'clamp',
   });
 
   return (
-    <Animated.View
-      style={[
-        styles.mushroomContainer,
-        {
-          transform: [{ translateY: bounceAnim }, { rotate: rotation }],
-        },
-      ]}
-    >
-      {/* Mushroom Cap */}
-      <View style={[styles.mushroomCap, { width: size, height: size * 0.6 }]}>
-        {/* White spots */}
-        <View style={[styles.spot, { width: size * 0.15, height: size * 0.15, top: size * 0.1, left: size * 0.2 }]} />
-        <View style={[styles.spot, { width: size * 0.12, height: size * 0.12, top: size * 0.25, right: size * 0.15 }]} />
-        <View style={[styles.spot, { width: size * 0.1, height: size * 0.1, bottom: size * 0.1, left: size * 0.35 }]} />
-      </View>
-      {/* Mushroom Stem */}
-      <View style={[styles.mushroomStem, { width: size * 0.4, height: size * 0.5 }]} />
-      {/* Cute face */}
-      <View style={[styles.mushroomFace, { top: size * 0.3 }]}>
-        <View style={[styles.eye, { width: size * 0.08, height: size * 0.08 }]} />
-        <View style={[styles.eye, { width: size * 0.08, height: size * 0.08, marginLeft: size * 0.15 }]} />
-      </View>
-      <View style={[styles.smile, { width: size * 0.25, top: size * 0.42 }]} />
-    </Animated.View>
-  );
-}
+    <View style={{ flex: 1, backgroundColor: C.cream }}>
+      <StatusBar barStyle="light-content" />
 
-// Decorative Mushroom Background
-function MushroomBackground() {
-  return (
-    <View style={styles.backgroundContainer}>
-      {/* Top Left Cluster */}
-      <View style={styles.mushroomCluster1}>
-        <AnimatedMushroom delay={0} size={45} />
-        <View style={styles.leafDecor1}>
-          <Ionicons name="leaf" size={30} color="#A8C9A0" />
+      {/* ── FLOATING NAVBAR ── */}
+      <Animated.View style={{
+        position: 'absolute', top: 0, left: 0, right: 0, zIndex: 100,
+        backgroundColor: headerBg,
+        paddingTop: Platform.OS === 'ios' ? 50 : Platform.OS === 'android' ? 32 : 0,
+      }}>
+        <View style={{
+          flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+          paddingHorizontal: isWide ? SP.xxxl : SP.xl, paddingVertical: SP.md,
+        }}>
+          <View style={{ flexDirection: 'row', gap: SP.sm, alignItems: 'center' }}>
+            <HamburgerMenu />
+            <NotificationDropdown iconColor={C.sage} />
+          </View>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: SP.sm }}>
+            <View style={{ width: 32, height: 32, borderRadius: 10, backgroundColor: C.moss, alignItems: 'center', justifyContent: 'center' }}>
+              <Ionicons name="leaf" size={18} color={C.white} />
+            </View>
+            <Text style={{ color: C.white, fontSize: 20, fontWeight: '800', letterSpacing: -0.5 }}>SnapShroom</Text>
+          </View>
+          <View style={{ width: 40 }} />
         </View>
-      </View>
+      </Animated.View>
 
-      {/* Top Right */}
-      <View style={styles.mushroomCluster2}>
-        <AnimatedMushroom delay={600} size={38} />
-        <View style={styles.grassDecor}>
-          <View style={styles.grass} />
-          <View style={[styles.grass, { marginLeft: 3, height: 18 }]} />
-          <View style={[styles.grass, { marginLeft: 3, height: 22 }]} />
-        </View>
-      </View>
-
-      {/* Middle Left */}
-      <View style={styles.mushroomCluster3}>
-        <AnimatedMushroom delay={1200} size={42} />
-        <AnimatedMushroom delay={1400} size={28} />
-      </View>
-
-      {/* Middle Right */}
-      <View style={styles.mushroomCluster4}>
-        <AnimatedMushroom delay={800} size={35} />
-        <View style={styles.leafDecor2}>
-          <Ionicons name="leaf" size={25} color="#B8D4AF" />
-        </View>
-      </View>
-
-      {/* Bottom Left */}
-      <View style={styles.mushroomCluster5}>
-        <AnimatedMushroom delay={1600} size={40} />
-        <View style={styles.stoneDecor}>
-          <View style={styles.stone} />
-          <View style={[styles.stone, { width: 18, height: 14, marginLeft: 4 }]} />
-        </View>
-      </View>
-
-      {/* Bottom Right */}
-      <View style={styles.mushroomCluster6}>
-        <AnimatedMushroom delay={2000} size={36} />
-        <AnimatedMushroom delay={2200} size={30} />
-        <View style={styles.leafDecor3}>
-          <Ionicons name="leaf" size={28} color="#9FBF98" />
-        </View>
-      </View>
-
-      {/* Scattered small mushrooms */}
-      <View style={styles.tinyMushroom1}>
-        <AnimatedMushroom delay={400} size={22} />
-      </View>
-      <View style={styles.tinyMushroom2}>
-        <AnimatedMushroom delay={1000} size={25} />
-      </View>
-      <View style={styles.tinyMushroom3}>
-        <AnimatedMushroom delay={1800} size={20} />
-      </View>
-    </View>
-  );
-}
-
-export default function AboutPage() {
-  const { width } = useWindowDimensions();
-  const isWeb = width > 768;
-
-  return (
-    <View style={styles.container}>
-      {/* Gradient Background */}
-      <LinearGradient
-        colors={['#F5F9F3', '#FDFCFA', '#FCF8F3']}
-        style={styles.gradientBackground}
-      />
-      
-      {/* Mushroom Background Pattern */}
-      <MushroomBackground />
-
-      {/* Header with Hamburger Menu */}
-      <LinearGradient
-        colors={['rgba(200, 220, 192, 0.95)', 'rgba(185, 210, 175, 0.92)']}
-        style={styles.header}
+      <Animated.ScrollView
+        showsVerticalScrollIndicator={false}
+        onScroll={Animated.event([{ nativeEvent: { contentOffset: { y: scrollY } } }], { useNativeDriver: false })}
+        scrollEventThrottle={16}
       >
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-          <HamburgerMenu />
-          <NotificationDropdown iconColor="#FFF" />
-        </View>
-        <Text style={styles.headerTitle}>About SnapShroom</Text>
-        <View style={{ width: 40 }} />
-      </LinearGradient>
 
-      <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
-        {/* Max width container for web */}
-        <View style={[styles.contentWrapper, isWeb && styles.contentWrapperWeb]}>
-          {/* Enhanced Hero Section */}
+        {/* ══════════════════════════════════════════
+            HERO SECTION
+        ══════════════════════════════════════════ */}
+        <View style={{ backgroundColor: C.dark, overflow: 'hidden', minHeight: isWide ? 380 : 320 }}>
+          {/* Background pattern */}
           <LinearGradient
-            colors={['#7BA05B', '#6A8F4D', '#5A7E40']}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-            style={styles.heroSection}
-          >
-            <View style={styles.heroGlow} />
-            <View style={styles.logoContainer}>
-              <AnimatedMushroom size={60} />
-            </View>
-            <View style={styles.heroText}>
-              <Text style={styles.appTitle}>SnapShroom</Text>
-              
-              <Text style={styles.tagline}>Machine Learning-powered mushroom identification for enthusiasts and foragers</Text>
-            </View>
-          </LinearGradient>
+            colors={['rgba(74,124,71,0.25)', 'transparent', 'rgba(45,74,42,0.4)']}
+            style={{ position: 'absolute', inset: 0 }}
+          />
+          {/* Decorative circles */}
+          <View style={{ position: 'absolute', top: -80, right: -80, width: 300, height: 300, borderRadius: 150, backgroundColor: `${C.moss}18` }} />
+          <View style={{ position: 'absolute', bottom: -40, left: -60, width: 200, height: 200, borderRadius: 100, backgroundColor: `${C.sage}12` }} />
 
-          {/* Description */}
-          <View style={styles.descriptionCard}>
-            <View style={styles.cardHeader}>
-              <Ionicons name="information-circle" size={20} color="#7BA05B" />
-              <Text style={styles.cardHeaderText}>About the App</Text>
-            </View>
-            <Text style={styles.descriptionText}>
- SnapShroom is a smart, user-friendly app designed for mushroom enthusiasts, amateur foragers, and professional mycologists. Leveraging advanced machine learning and computer vision, the app can identify mushrooms from photos in real-time, providing accurate species information and assessing edibility and toxicity levels.
-            </Text>
-          </View>
-
-          {/* Features Grid */}
-          <View style={styles.section}>
-            <View style={styles.sectionHeader}>
-              <Ionicons name="sparkles" size={24} color="#6B7C61" />
-              <Text style={styles.sectionTitle}>Key Features</Text>
-            </View>
-            
-            <View style={[styles.featuresGrid, isWeb && styles.featuresGridWeb]}>
-              <CompactVMCard 
-                icon="camera"
-                title="ML Recognition"
-                description="Snap a picture and get detailed information about the species, including common names, scientific classification, and visual characteristics. The system uses advanced machine learning algorithms to identify mushroom species quickly and accurately."
-                iconColor="#00ff55bd"
-                isWeb={isWeb}
-              />
-               <CompactVMCard 
-                icon="flask"
-                title="Toxicity Info"
-                description="Provides detailed information about the edibility and toxicity of mushrooms, ensuring users can make safe decisions when encountering different species."
-                iconColor="#ff0000a7"
-                isWeb={isWeb}
-              />
-               <CompactVMCard 
-                icon="map"
-                title="Habitat Data"
-                description="Offers insights into the natural habitats, regions, and environmental conditions where various mushrooms grow, supporting ecological understanding and foraging safety."
-                iconColor="#693af4"
-                isWeb={isWeb}
-              />
-               <CompactVMCard 
-                icon="bar-chart"
-                title="Risk Analysis"
-                description="Evaluates the potential risks associated with consuming or handling mushrooms, combining species data and toxicity levels to guide safe practices."
-                iconColor="#FF9800"
-                isWeb={isWeb}
-              />
-             
-            </View>
-          </View>
-
-          {/* Vision & Mission - Side by Side on Web */}
-          <View style={styles.section}>
-            <View style={styles.sectionHeader}>
-              <Ionicons name="telescope" size={24} color="#6B7C61" />
-              <Text style={styles.sectionTitle}>Vision & Mission</Text>
-            </View>
-            
-            <View style={[styles.vmContainer, isWeb && styles.vmContainerWeb]}>
-              <CompactVMCard 
-                icon="bulb"
-                title="Our Vision"
-                description="To become the Philippines’ most trusted and comprehensive platform for mycological knowledge and safety, transforming how Filipinos interact with mushrooms in their local forests, farms, and communities. We envision a future where advanced machine learning technology makes expert-level mushroom identification accessible to everyone in the country—from professional mycologists and researchers to amateur foragers and nature enthusiasts exploring the rich biodiversity of the Philippines."
-                iconColor="#FF9800"
-                isWeb={isWeb}
-              />
-              <CompactVMCard 
-                icon="flag"
-                title="Our Mission"
-                description="Our mission is to empower individuals and communities with accurate, real-time mushroom identification and comprehensive safety assessment tools through the power of machine learning and scientific research. We are committed to developing and continuously improving our machine learning algorithms to provide the most reliable mushroom identification system available."
-                iconColor="#2196F3"
-                isWeb={isWeb}
-              />
-            </View>
-          </View>
-
-          {/* Team Section */}
-          <View style={styles.section}>
-            <View style={styles.sectionHeader}>
-              <Ionicons name="people" size={24} color="#6B7C61" />
-              <Text style={styles.sectionTitle}>Development Team</Text>
-            </View>
-            
-            {/* Team Grid - 2x2 on web, 1 col on mobile */}
-            <View style={[styles.teamGrid, { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center' }]}> 
-              {TEAM_MEMBERS.map((member) => (
-                <View
-                  style={{
-                    width: isWeb ? '40%' : '48%',
-                    margin: isWeb ? '1%' : '1%',
-                    marginBottom: 16,
-                  }}
-                  key={member.id}
-                >
-                  <CompactTeamCard member={member} isWeb={isWeb} />
-                </View>
-              ))}
-            </View>
-
-            {/* Project Advisers Section */}
-            <View style={styles.advisersSection}>
-              <View style={styles.sectionHeader}>
-                <Ionicons name="school" size={24} color="#6B7C61" />
-                <Text style={styles.sectionTitle}>Project Advisers</Text>
+          <View style={{
+            flexDirection: isWide ? 'row' : 'column',
+            alignItems: 'center',
+            paddingTop: isWide ? 100 : 110,
+            paddingBottom: isWide ? SP.xxxl : SP.xxl,
+            paddingHorizontal: isWide ? SP.xxxl : SP.xl,
+            gap: isWide ? SP.xxxl : SP.xl,
+          }}>
+            {/* Left: text */}
+            <Animated.View style={{
+              flex: isWide ? 1 : undefined,
+              opacity: headerAnim,
+              transform: [{ translateX: headerAnim.interpolate({ inputRange: [0,1], outputRange: [-30,0] }) }],
+            }}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: SP.sm, marginBottom: SP.lg }}>
+                <View style={{ width: 28, height: 2, backgroundColor: C.amber }} />
+                <Text style={{ color: C.amber, fontSize: 12, fontWeight: '700', letterSpacing: 2.5, textTransform: 'uppercase' }}>
+                  Meet the Team
+                </Text>
               </View>
-              
-              <View style={[styles.advisersContainer, isWeb && styles.advisersContainerWeb]}>
-                {/* Adviser */}
-                <View style={styles.adviserCompact}>
-                  <Text style={styles.adviserLabel}>Adviser</Text>
-                  <CompactTeamCard member={ADVISER} isAdviser isWeb={isWeb} />
-                </View>
+              <Text style={{ color: C.white, fontSize: isWide ? 52 : 36, fontWeight: '900', lineHeight: isWide ? 60 : 44, letterSpacing: -1.5, marginBottom: SP.lg }}>
+                About{'\n'}<Text style={{ color: C.sage }}>SnapShroom</Text>
+              </Text>
+              <Text style={{ color: 'rgba(255,255,255,0.65)', fontSize: isWide ? 17 : 15, lineHeight: 26, maxWidth: 480 }}>
+                Machine Learning-powered mushroom identification for enthusiasts, foragers, and professional mycologists.
+              </Text>
+            </Animated.View>
 
-                {/* Technical Adviser */}
-                <View style={styles.adviserCompact}>
-                  <Text style={styles.technicalAdviserLabel}>Technical Adviser</Text>
-                  <CompactTeamCard member={TECHNICAL_ADVISER} isTechnicalAdviser isWeb={isWeb} />
-                </View>
-              </View>
-            </View>
+            {/* Right: mushroom cluster */}
+            <Animated.View style={{
+              opacity: headerAnim,
+              transform: [{ translateY: headerAnim.interpolate({ inputRange: [0,1], outputRange: [20,0] }) }],
+              flexDirection: 'row', alignItems: 'flex-end', gap: SP.md,
+            }}>
+              <FloatingMushroom size={isWide ? 70 : 55} delay={0} capColor={C.coral} />
+              <FloatingMushroom size={isWide ? 90 : 72} delay={400} capColor="#E8A870" />
+              <FloatingMushroom size={isWide ? 65 : 50} delay={800} capColor={C.sage} />
+            </Animated.View>
           </View>
 
-          {/* Tech Stack */}
-          <View style={styles.section}>
-            <View style={styles.sectionHeader}>
-              <Ionicons name="code-slash" size={24} color="#6B7C61" />
-              <Text style={styles.sectionTitle}>Technology Stack</Text>
-            </View>
-            <View style={styles.techGrid}>
-              <TechChip name="React Native" icon="logo-react" />
-              <TechChip name="Python Flask" icon="logo-python" />
-              <TechChip name="ML/YOLO" icon="hardware-chip" />
-              <TechChip name="PyTorch" icon="flash" />
-              <TechChip name="MongoDB" icon="server" />
-            </View>
+          {/* Curved bottom */}
+          <View style={{ height: 50, backgroundColor: C.cream, borderTopLeftRadius: 40, borderTopRightRadius: 40 }}>
+            <LinearGradient colors={[C.dark, C.cream]} style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 30 }} />
           </View>
+        </View>
 
-          {/* Disclaimer and Contact - Side by Side on Web */}
-          <View style={[styles.bottomSection, isWeb && styles.bottomSectionWeb]}>
-            {/* Disclaimer */}
-            <View style={[styles.disclaimerCompact, isWeb && styles.disclaimerWeb]}>
-              <Ionicons name="warning" size={24} color="#FF9800" />
-              <View style={styles.disclaimerContent}>
-                <Text style={styles.disclaimerTitle}>Safety First</Text>
-                <Text style={styles.disclaimerText}>
-                  Educational tool only. Always consult expert mycologists before consuming wild mushrooms.
+        {/* ══════════════════════════════════════════
+            MAIN CONTENT
+        ══════════════════════════════════════════ */}
+        <View style={{ paddingHorizontal: isWide ? SP.xxxl : SP.xl, paddingTop: SP.xl }}>
+          <View style={{ maxWidth: isWide ? 1200 : undefined, alignSelf: isWide ? 'center' : undefined, width: '100%' }}>
+
+            {/* ── ABOUT THE APP ── */}
+            <View style={{ marginBottom: SP.xxxl }}>
+              <SectionBadge icon="information-circle-outline" label="About the App" />
+              <View style={{
+                backgroundColor: C.white, borderRadius: 20, padding: SP.xl,
+                borderWidth: 1, borderColor: C.mist,
+                borderLeftWidth: 4, borderLeftColor: C.sage,
+                shadowColor: C.dark, shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.07, shadowRadius: 16, elevation: 3,
+              }}>
+                <Text style={{ fontSize: isWide ? 16 : 15, color: C.stone, lineHeight: 28 }}>
+                  SnapShroom is a smart, user-friendly app designed for mushroom enthusiasts, amateur foragers, and professional mycologists. Leveraging advanced machine learning and computer vision, the app can identify mushrooms from photos in real-time, providing accurate species information and assessing edibility and toxicity levels.
                 </Text>
               </View>
             </View>
 
-            {/* Contact */}
-            <TouchableOpacity
-              style={[styles.contactCompact, isWeb && styles.contactWeb]}
-              onPress={() => Linking.openURL('mailto:support@snapshroom.app')}
-            >
-              <Ionicons name="mail-outline" size={20} color="#7BA05B" />
-              <Text style={styles.contactText}>support@snapshroom.app</Text>
-              <Ionicons name="chevron-forward" size={16} color="#A8B89D" />
-            </TouchableOpacity>
-          </View>
+            {/* ── KEY FEATURES ── */}
+            <View style={{ marginBottom: SP.xxxl }}>
+              <SectionBadge icon="sparkles-outline" label="Key Features" />
+              <Text style={{ color: C.dark, fontSize: isWide ? 36 : 26, fontWeight: '900', letterSpacing: -0.8, marginBottom: SP.xl }}>
+                What SnapShroom Does
+              </Text>
+              <View style={{ flexDirection: isWide ? 'row' : 'column', flexWrap: isWide ? 'wrap' : 'nowrap', gap: SP.lg }}>
+                {FEATURES.map((f, i) => <FeatureCard key={i} {...f} isWide={isWide} />)}
+              </View>
+            </View>
 
-          {/* Footer */}
-          <View style={styles.footer}>
-            <Text style={styles.footerText}>© 2026 SnapShroom</Text>
-            <Text style={styles.footerSubtext}>Safe Mushroom Identification 🍄</Text>
+            {/* ── VISION & MISSION ── */}
+            <View style={{ backgroundColor: C.sand, borderRadius: isWide ? 28 : 20, padding: isWide ? SP.xxxl : SP.xl, marginBottom: SP.xxxl }}>
+              <SectionBadge icon="telescope-outline" label="Vision & Mission" />
+              <Text style={{ color: C.dark, fontSize: isWide ? 36 : 26, fontWeight: '900', letterSpacing: -0.8, marginBottom: SP.xl }}>
+                Our Purpose
+              </Text>
+              <View style={{ flexDirection: isWide ? 'row' : 'column', gap: SP.lg }}>
+                <VMCard
+                  icon="bulb-outline" title="Our Vision" accent={C.amber} isWide={isWide}
+                  desc="To become the Philippines' most trusted platform for mycological knowledge, transforming how Filipinos interact with mushrooms in local forests, farms, and communities. We envision a future where advanced ML makes expert-level identification accessible to everyone — from professional mycologists to nature enthusiasts."
+                />
+                <VMCard
+                  icon="flag-outline" title="Our Mission" accent="#4DA6FF" isWide={isWide}
+                  desc="To empower individuals and communities with accurate, real-time mushroom identification and comprehensive safety assessment tools through machine learning. We are committed to continuously improving our algorithms to provide the most reliable mushroom identification system available."
+                />
+              </View>
+            </View>
+
+            {/* ── DEVELOPMENT TEAM ── */}
+            <View style={{ marginBottom: SP.xxxl }}>
+              <SectionBadge icon="people-outline" label="Development Team" />
+              <Text style={{ color: C.dark, fontSize: isWide ? 36 : 26, fontWeight: '900', letterSpacing: -0.8, marginBottom: SP.xl }}>
+                The People Behind SnapShroom
+              </Text>
+              <View style={{ flexDirection: isWide ? 'row' : 'column', flexWrap: isWide ? 'wrap' : 'nowrap', gap: SP.lg, marginBottom: SP.xxl }}>
+                {TEAM_MEMBERS.map(m => <TeamCard key={m.id} member={m} isWide={isWide} />)}
+              </View>
+
+              {/* Advisers */}
+              <View style={{
+                backgroundColor: C.sand, borderRadius: isWide ? 24 : 18,
+                padding: isWide ? SP.xxl : SP.xl,
+              }}>
+                <SectionBadge icon="school-outline" label="Project Advisers" />
+                <View style={{ flexDirection: isWide ? 'row' : 'column', gap: SP.lg }}>
+                  <TeamCard member={ADVISER} accent={C.amber} isWide={isWide} />
+                  <TeamCard member={TECHNICAL_ADVISER} accent="#4DA6FF" isWide={isWide} />
+                </View>
+              </View>
+            </View>
+
+            {/* ── TECH STACK ── */}
+            <View style={{ marginBottom: SP.xxxl }}>
+              <SectionBadge icon="code-slash-outline" label="Technology" />
+              <Text style={{ color: C.dark, fontSize: isWide ? 36 : 26, fontWeight: '900', letterSpacing: -0.8, marginBottom: SP.xl }}>
+                Technology Stack
+              </Text>
+              <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: SP.md }}>
+                {TECH.map((t, i) => <TechChip key={i} name={t.name} icon={t.icon} />)}
+              </View>
+            </View>
+
+            {/* ── SAFETY + CONTACT ── */}
+            <View style={{ flexDirection: isWide ? 'row' : 'column', gap: SP.lg, marginBottom: SP.xxxl }}>
+              {/* Safety disclaimer */}
+              <View style={{
+                flex: 1,
+                backgroundColor: '#FEF9EE', borderRadius: 20, padding: SP.xl,
+                flexDirection: 'row', gap: SP.lg, alignItems: 'flex-start',
+                borderWidth: 1, borderColor: '#F5E4A8',
+              }}>
+                <View style={{ width: 48, height: 48, borderRadius: 14, backgroundColor: '#FFF3CD', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                  <Ionicons name="warning-outline" size={24} color="#92400E" />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={{ color: '#92400E', fontSize: 15, fontWeight: '800', marginBottom: SP.xs }}>Safety First</Text>
+                  <Text style={{ color: '#78350F', fontSize: 14, lineHeight: 22 }}>
+                    Educational tool only. Always consult expert mycologists before consuming wild mushrooms. Never rely solely on app identification.
+                  </Text>
+                </View>
+              </View>
+
+              {/* Contact */}
+              <TouchableOpacity
+                onPress={() => Linking.openURL('mailto:support@snapshroom.app')}
+                style={{
+                  flex: isWide ? 0.6 : 1,
+                  backgroundColor: C.white, borderRadius: 20, padding: SP.xl,
+                  flexDirection: 'row', alignItems: 'center', gap: SP.md,
+                  borderWidth: 1, borderColor: C.mist,
+                  shadowColor: C.dark, shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.06, shadowRadius: 12, elevation: 2,
+                }}
+                activeOpacity={0.8}
+              >
+                <View style={{ width: 48, height: 48, borderRadius: 14, backgroundColor: `${C.sage}18`, alignItems: 'center', justifyContent: 'center' }}>
+                  <Ionicons name="mail-outline" size={22} color={C.moss} />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={{ fontSize: 12, color: C.stone, fontWeight: '600', marginBottom: 4, textTransform: 'uppercase', letterSpacing: 1 }}>Contact Us</Text>
+                  <Text style={{ fontSize: 14, color: C.forest, fontWeight: '700' }}>support@snapshroom.app</Text>
+                </View>
+                <Ionicons name="arrow-forward" size={18} color={C.stone} />
+              </TouchableOpacity>
+            </View>
+
           </View>
         </View>
-      </ScrollView>
-    </View>
-  );
-}
 
-function FeatureCard({ icon, title, color }: { icon: string; title: string; color: string }) {
-  const shimmer = useRef(new Animated.Value(0)).current;
-
-  useEffect(() => {
-    Animated.loop(
-      Animated.sequence([
-        Animated.timing(shimmer, {
-          toValue: 1,
-          duration: 2000,
-          useNativeDriver: true,
-        }),
-        Animated.timing(shimmer, {
-          toValue: 0,
-          duration: 2000,
-          useNativeDriver: true,
-        }),
-      ])
-    ).start();
-  }, []);
-
-  const shimmerTranslate = shimmer.interpolate({
-    inputRange: [0, 1],
-    outputRange: [-100, 100],
-  });
-
-  return (
-    <View style={styles.featureCard}>
-      <LinearGradient
-        colors={[color, color + 'DD', color]}
-        style={styles.featureIcon}
-      >
-        <Ionicons name={icon as any} size={24} color="#FFFFFF" />
-        <Animated.View 
-          style={[
-            styles.shimmerEffect,
-            { transform: [{ translateX: shimmerTranslate }] }
-          ]} 
-        />
-      </LinearGradient>
-      <Text style={styles.featureCardTitle}>{title}</Text>
-    </View>
-  );
-}
-
-function CompactVMCard({ 
-  icon, 
-  title, 
-  description, 
-  iconColor,
-  isWeb 
-}: { 
-  icon: string;
-  title: string;
-  description: string;
-  iconColor: string;
-  isWeb: boolean;
-}) {
-  return (
-    <View style={[styles.vmCompactCard, isWeb && styles.vmCompactCardWeb]}>
-      <View style={[styles.vmCompactIcon, { backgroundColor: iconColor }]}>
-        <Ionicons name={icon as any} size={32} color="#FFFFFF" />
-      </View>
-      <View style={styles.vmCompactContent}>
-        <Text style={styles.vmCompactTitle}>{title}</Text>
-        <Text style={styles.vmCompactText}>{description}</Text>
-      </View>
-    </View>
-  );
-}
-
-function CompactTeamCard({ 
-  member, 
-  isAdviser, 
-  isTechnicalAdviser,
-  isWeb 
-}: { 
-  member: any; 
-  isAdviser?: boolean;
-  isTechnicalAdviser?: boolean;
-  isWeb: boolean;
-}) {
-  return (
-    <View style={[
-      styles.teamCompactCard,
-      !isWeb && styles.teamCompactCardMobile,
-      isAdviser && styles.adviserCardCompact,
-      isTechnicalAdviser && styles.technicalAdviserCardCompact,
-      isWeb && styles.teamCompactCardWeb,
-    ]}>
-      {/* Image */}
-      <View style={isWeb ? styles.teamImageContainer : styles.teamImageContainerMobile}>
-        {member.image ? (
-          <Image
-            source={member.image}
-            style={isWeb ? styles.teamImage : styles.teamImageMobile}
-          />
-        ) : (
-          <View style={isWeb ? styles.teamImagePlaceholder : styles.teamImagePlaceholderMobile}>
-            <Ionicons name="person-circle" size={isWeb ? 100 : 70} color="#7A8F7A" />
+        {/* ── FOOTER ── */}
+        <View style={{ backgroundColor: C.dark, paddingVertical: SP.xxl, paddingHorizontal: isWide ? SP.xxxl : SP.xl }}>
+          <View style={{ alignItems: 'center', gap: SP.md }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: SP.md }}>
+              <View style={{ width: 40, height: 40, borderRadius: 12, backgroundColor: C.moss, alignItems: 'center', justifyContent: 'center' }}>
+                <Ionicons name="leaf" size={22} color={C.white} />
+              </View>
+              <Text style={{ color: C.white, fontSize: 22, fontWeight: '900', letterSpacing: -0.8 }}>SnapShroom</Text>
+            </View>
+            <Text style={{ color: 'rgba(255,255,255,0.4)', fontSize: 13 }}>© 2026 SnapShroom · Safe Mushroom Identification 🍄</Text>
           </View>
-        )}
-      </View>
-
-      {/* Info */}
-      <View style={[styles.teamInfo, !isWeb && styles.teamInfoMobile]}>
-        <Text style={[styles.teamName, !isWeb && styles.teamNameMobile]}>{member.name}</Text>
-        <Text style={[styles.teamEmail, !isWeb && styles.teamEmailMobile]}>{member.bio}</Text>
-        <View style={[
-          styles.teamBadge,
-          isTechnicalAdviser && styles.technicalAdviserBadge,
-          !isWeb && styles.teamBadgeMobile,
-        ]}>
-          <Text style={styles.teamRole}>{member.role}</Text>
         </View>
-      </View>
+
+      </Animated.ScrollView>
     </View>
   );
 }
-
-function TechChip({ name, icon }: { name: string; icon: string }) {
-  return (
-    <View style={styles.techChip}>
-      <Ionicons name={icon as any} size={16} color="#6B7C61" />
-      <Text style={styles.techChipText}>{name}</Text>
-    </View>
-  );
-}
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#FDFCFA',
-  },
-  gradientBackground: {
-    position: 'absolute',
-    left: 0,
-    right: 0,
-    top: 0,
-    bottom: 0,
-    zIndex: 0,
-  },
-  backgroundContainer: {
-    position: 'absolute',
-    width: '100%',
-    height: '100%',
-    zIndex: 1,
-    opacity: 0.08,
-  },
-  mushroomCluster1: {
-    position: 'absolute',
-    top: 100,
-    left: 10,
-    flexDirection: 'row',
-    alignItems: 'flex-end',
-  },
-  mushroomCluster2: {
-    position: 'absolute',
-    top: 150,
-    right: 15,
-    alignItems: 'center',
-  },
-  mushroomCluster3: {
-    position: 'absolute',
-    top: 380,
-    left: 5,
-    flexDirection: 'row',
-    alignItems: 'flex-end',
-    gap: 8,
-  },
-  mushroomCluster4: {
-    position: 'absolute',
-    top: 450,
-    right: 20,
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  mushroomCluster5: {
-    position: 'absolute',
-    top: 750,
-    left: 15,
-    alignItems: 'flex-start',
-  },
-  mushroomCluster6: {
-    position: 'absolute',
-    top: 850,
-    right: 10,
-    flexDirection: 'row',
-    alignItems: 'flex-end',
-    gap: 6,
-  },
-  tinyMushroom1: {
-    position: 'absolute',
-    top: 550,
-    right: 50,
-  },
-  tinyMushroom2: {
-    position: 'absolute',
-    top: 280,
-    left: 60,
-  },
-  tinyMushroom3: {
-    position: 'absolute',
-    top: 1050,
-    left: 40,
-  },
-  leafDecor1: {
-    position: 'absolute',
-    top: -10,
-    right: -15,
-    transform: [{ rotate: '25deg' }],
-  },
-  leafDecor2: {
-    position: 'absolute',
-    top: -8,
-    left: -12,
-    transform: [{ rotate: '-30deg' }],
-  },
-  leafDecor3: {
-    position: 'absolute',
-    bottom: 10,
-    left: -10,
-    transform: [{ rotate: '45deg' }],
-  },
-  grassDecor: {
-    flexDirection: 'row',
-    marginTop: 5,
-    alignItems: 'flex-end',
-  },
-  grass: {
-    width: 2,
-    height: 15,
-    backgroundColor: '#A8C9A0',
-    borderRadius: 1,
-  },
-  stoneDecor: {
-    flexDirection: 'row',
-    marginTop: 8,
-    alignItems: 'flex-end',
-  },
-  stone: {
-    width: 12,
-    height: 10,
-    backgroundColor: '#B8B8A8',
-    borderRadius: 6,
-  },
-  mushroomContainer: {
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  mushroomCap: {
-    backgroundColor: '#E85D5D',
-    borderTopLeftRadius: 100,
-    borderTopRightRadius: 100,
-    borderBottomLeftRadius: 8,
-    borderBottomRightRadius: 8,
-    position: 'relative',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.2,
-    shadowRadius: 3,
-    elevation: 3,
-  },
-  spot: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 100,
-    position: 'absolute',
-  },
-  mushroomStem: {
-    backgroundColor: '#F5E6D3',
-    borderRadius: 8,
-    marginTop: -2,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 2,
-    elevation: 1,
-  },
-  mushroomFace: {
-    position: 'absolute',
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  eye: {
-    backgroundColor: '#2D3E2D',
-    borderRadius: 100,
-  },
-  smile: {
-    position: 'absolute',
-    height: 2,
-    backgroundColor: '#2D3E2D',
-    borderRadius: 2,
-  },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingVertical: 16,
-    paddingHorizontal: 16,
-    marginTop: 40,
-    borderBottomWidth: 2,
-    borderBottomColor: 'rgba(123, 160, 91, 0.15)',
-    shadowColor: '#7BA05B',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.12,
-    shadowRadius: 8,
-    elevation: 5,
-    zIndex: 10,
-  },
-  headerTitle: {
-    fontSize: 20,
-    fontWeight: '800',
-    color: '#2D3E2D',
-    flex: 1,
-    textAlign: 'center',
-    letterSpacing: 0.5,
-  },
-  content: {
-    flex: 1,
-    zIndex: 2,
-  },
-  contentWrapper: {
-    padding: 16,
-  },
-  contentWrapperWeb: {
-    maxWidth: 1200,
-    alignSelf: 'center',
-    width: '100%',
-    paddingHorizontal: 40,
-    paddingVertical: 32,
-  },
-  heroSection: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    borderRadius: 20,
-    padding: 24,
-    marginBottom: 32,
-    shadowColor: '#7BA05B',
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.25,
-    shadowRadius: 12,
-    elevation: 8,
-    overflow: 'hidden',
-  },
-  heroGlow: {
-    position: 'absolute',
-    top: -50,
-    right: -50,
-    width: 150,
-    height: 150,
-    borderRadius: 75,
-    backgroundColor: 'rgba(255,255,255,0.15)',
-    opacity: 0.6,
-  },
-  logoContainer: {
-    width: 100,
-    height: 100,
-    borderRadius: 50,
-    backgroundColor: 'rgba(255, 255, 255, 0.95)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderWidth: 4,
-    borderColor: 'rgba(255, 255, 255, 0.5)',
-    marginRight: 24,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.2,
-    shadowRadius: 6,
-    elevation: 4,
-  },
-  heroText: {
-    flex: 1,
-  },
-  appTitle: {
-    fontSize: 36,
-    fontWeight: '900',
-    color: '#FFFFFF',
-    letterSpacing: 1,
-    marginBottom: 6,
-    textShadowColor: 'rgba(0, 0, 0, 0.25)',
-    textShadowOffset: { width: 0, height: 2 },
-    textShadowRadius: 4,
-  },
-  appVersion: {
-    fontSize: 14,
-    color: 'rgba(255, 255, 255, 0.85)',
-    fontWeight: '600',
-    marginBottom: 8,
-  },
-  tagline: {
-    fontSize: 15,
-    color: 'rgba(255, 255, 255, 0.95)',
-    fontWeight: '600',
-    fontStyle: 'italic',
-    lineHeight: 22,
-  },
-  descriptionCard: {
-    backgroundColor: 'rgba(255, 255, 255, 0.95)',
-    borderRadius: 20,
-    padding: 24,
-    marginBottom: 32,
-    borderLeftWidth: 5,
-    borderLeftColor: '#7BA05B',
-    shadowColor: '#7BA05B',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.15,
-    shadowRadius: 8,
-    elevation: 5,
-  },
-  cardHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-    marginBottom: 12,
-  },
-  cardHeaderText: {
-    fontSize: 18,
-    fontWeight: '800',
-    color: '#6B7C61',
-    letterSpacing: 0.3,
-  },
-  descriptionText: {
-    fontSize: 15,
-    color: '#555',
-    lineHeight: 24,
-    fontWeight: '500',
-  },
-  featuresGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 16,
-  },
-  featuresGridWeb: {
-    gap: 20,
-  },
-  featureCard: {
-    flex: 1,
-    minWidth: '47%',
-    backgroundColor: 'rgba(255, 255, 255, 0.95)',
-    borderRadius: 18,
-    padding: 20,
-    alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.12,
-    shadowRadius: 8,
-    elevation: 5,
-    borderWidth: 1,
-    borderColor: 'rgba(123, 160, 91, 0.1)',
-  },
-  featureIcon: {
-    width: 60,
-    height: 60,
-    borderRadius: 30,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 14,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.2,
-    shadowRadius: 4,
-    elevation: 3,
-    overflow: 'hidden',
-  },
-  shimmerEffect: {
-    position: 'absolute',
-    width: 30,
-    height: '100%',
-    backgroundColor: 'rgba(255,255,255,0.3)',
-    transform: [{ skewX: '-20deg' }],
-  },
-  featureCardTitle: {
-    fontSize: 14,
-    fontWeight: '800',
-    color: '#2D3E2D',
-    textAlign: 'center',
-    letterSpacing: 0.3,
-  },
-  vmContainer: {
-    gap: 20,
-  },
-  vmContainerWeb: {
-    flexDirection: 'row',
-    gap: 24,
-  },
-  vmCompactCard: {
-    backgroundColor: 'rgba(255, 255, 255, 0.95)',
-    borderRadius: 20,
-    padding: 28,
-    flexDirection: 'column',
-    gap: 18,
-    borderWidth: 2,
-    borderColor: 'rgba(123, 160, 91, 0.2)',
-    shadowColor: '#7BA05B',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.15,
-    shadowRadius: 8,
-    elevation: 5,
-  },
-  vmCompactCardWeb: {
-    flex: 1,
-  },
-  vmCompactIcon: {
-    width: 64,
-    height: 64,
-    borderRadius: 32,
-    justifyContent: 'center',
-    alignItems: 'center',
-    alignSelf: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.2,
-    shadowRadius: 6,
-    elevation: 4,
-  },
-  vmCompactContent: {
-    flex: 1,
-  },
-  vmCompactTitle: {
-    fontSize: 22,
-    fontWeight: '800',
-    color: '#2D3E2D',
-    marginBottom: 12,
-    textAlign: 'center',
-    letterSpacing: 0.5,
-  },
-  vmCompactText: {
-    fontSize: 15,
-    color: '#555',
-    lineHeight: 24,
-    textAlign: 'justify',
-  },
-  section: {
-    marginBottom: 32,
-  },
-  sectionHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-    marginBottom: 20,
-  },
-  sectionTitle: {
-    fontSize: 20,
-    fontWeight: '800',
-    color: '#6B7C61',
-    letterSpacing: 0.5,
-  },
-  teamGrid: {
-    gap: 0,
-    marginBottom: 24,
-  },
-  teamGridWeb: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 20,
-  },
-
-  // ─── Team Card: Web (horizontal row, large image) ───────────────────────────
-  teamCompactCard: {
-    backgroundColor: 'rgba(255, 255, 255, 0.95)',
-    borderRadius: 28,
-    padding: 32,
-    flexDirection: 'row',
-    gap: 24,
-    borderWidth: 3,
-    borderColor: 'rgba(123, 160, 91, 0.3)',
-    shadowColor: '#7BA05B',
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.18,
-    shadowRadius: 12,
-    elevation: 6,
-  },
-  teamCompactCardWeb: {
-    flex: 1,
-    minWidth: 360,
-  },
-
-  // ─── Team Card: Mobile (vertical column, centered) ──────────────────────────
-  teamCompactCardMobile: {
-    flexDirection: 'column',
-    alignItems: 'center',
-    padding: 16,
-    gap: 10,
-    borderRadius: 20,
-  },
-
-  adviserCardCompact: {
-    backgroundColor: 'rgba(255, 248, 240, 0.98)',
-    borderColor: '#FFB74D',
-    borderWidth: 3,
-    shadowColor: '#FFB74D',
-    shadowOpacity: 0.2,
-  },
-  technicalAdviserCardCompact: {
-    backgroundColor: 'rgba(240, 248, 255, 0.98)',
-    borderColor: '#4DA6FF',
-    borderWidth: 3,
-    shadowColor: '#4DA6FF',
-    shadowOpacity: 0.2,
-  },
-
-  // Web image
-  teamImageContainer: {
-    width: 150,
-    height: 150,
-  },
-  teamImage: {
-    width: 150,
-    height: 150,
-    borderRadius: 75,
-    borderWidth: 5,
-    borderColor: '#7BA05B',
-  },
-  teamImagePlaceholder: {
-    width: 150,
-    height: 150,
-    borderRadius: 75,
-    backgroundColor: '#E8E4DE',
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderWidth: 5,
-    borderColor: '#6B7C61',
-  },
-
-  // Mobile image (smaller, centered)
-  teamImageContainerMobile: {
-    width: 80,
-    height: 80,
-  },
-  teamImageMobile: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    borderWidth: 3,
-    borderColor: '#7BA05B',
-  },
-  teamImagePlaceholderMobile: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    backgroundColor: '#E8E4DE',
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderWidth: 3,
-    borderColor: '#6B7C61',
-  },
-
-  // Web info
-  teamInfo: {
-    flex: 1,
-    justifyContent: 'center',
-  },
-  teamName: {
-    fontSize: 20,
-    fontWeight: '800',
-    color: '#2D3E2D',
-    marginBottom: 8,
-    letterSpacing: 0.3,
-  },
-  teamEmail: {
-    fontSize: 15,
-    color: '#7BA05B',
-    marginBottom: 12,
-    fontStyle: 'italic',
-    fontWeight: '500',
-  },
-
-  // Mobile info overrides
-  teamInfoMobile: {
-    flex: undefined,
-    alignItems: 'center',
-  },
-  teamNameMobile: {
-    fontSize: 13,
-    textAlign: 'center',
-    marginBottom: 4,
-  },
-  teamEmailMobile: {
-    fontSize: 10,
-    textAlign: 'center',
-    marginBottom: 8,
-  },
-
-  teamBadge: {
-    backgroundColor: '#7BA05B',
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    borderRadius: 16,
-    alignSelf: 'flex-start',
-  },
-  teamBadgeMobile: {
-    alignSelf: 'center',
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-  },
-  technicalAdviserBadge: {
-    backgroundColor: '#4DA6FF',
-  },
-  teamRole: {
-    fontSize: 13,
-    color: '#FFFFFF',
-    fontWeight: '800',
-    textTransform: 'uppercase',
-    letterSpacing: 1,
-  },
-
-  advisersSection: {
-    marginTop: 32,
-  },
-  advisersContainer: {
-    gap: 20,
-  },
-  advisersContainerWeb: {
-    flexDirection: 'row',
-    gap: 20,
-  },
-  adviserCompact: {
-    flex: 1,
-  },
-  adviserLabel: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: '#FF9800',
-    marginBottom: 12,
-    textAlign: 'left',
-    letterSpacing: 1,
-    textTransform: 'uppercase',
-  },
-  technicalAdviserLabel: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: '#4DA6FF',
-    marginBottom: 12,
-    textAlign: 'left',
-    letterSpacing: 1,
-    textTransform: 'uppercase',
-  },
-  techGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 12,
-  },
-  techChip: {
-    backgroundColor: 'rgba(255, 255, 255, 0.9)',
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    borderRadius: 20,
-    borderWidth: 2,
-    borderColor: '#7BA05B',
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  techChipText: {
-    fontSize: 13,
-    color: '#6B7C61',
-    fontWeight: '700',
-  },
-  bottomSection: {
-    gap: 20,
-    marginBottom: 32,
-  },
-  bottomSectionWeb: {
-    flexDirection: 'row',
-    gap: 24,
-  },
-  disclaimerCompact: {
-    backgroundColor: 'rgba(255, 243, 224, 0.98)',
-    padding: 24,
-    borderRadius: 18,
-    flexDirection: 'row',
-    gap: 16,
-    borderWidth: 3,
-    borderColor: '#FFB74D',
-    shadowColor: '#FF9800',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.2,
-    shadowRadius: 8,
-    elevation: 5,
-  },
-  disclaimerWeb: {
-    flex: 1,
-  },
-  disclaimerContent: {
-    flex: 1,
-  },
-  disclaimerTitle: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: '#D84315',
-    marginBottom: 6,
-  },
-  disclaimerText: {
-    fontSize: 14,
-    color: '#555',
-    lineHeight: 20,
-  },
-  contactCompact: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-    paddingVertical: 20,
-    paddingHorizontal: 24,
-    backgroundColor: 'rgba(255, 255, 255, 0.95)',
-    borderRadius: 18,
-    borderWidth: 2,
-    borderColor: '#7BA05B',
-    shadowColor: '#7BA05B',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.15,
-    shadowRadius: 8,
-    elevation: 4,
-  },
-  contactWeb: {
-    flex: 1,
-  },
-  contactText: {
-    fontSize: 15,
-    color: '#6B7C61',
-    fontWeight: '700',
-    flex: 1,
-  },
-  footer: {
-    paddingVertical: 24,
-    borderTopWidth: 2,
-    borderTopColor: '#E8E4DE',
-    alignItems: 'center',
-    backgroundColor: 'rgba(245, 243, 239, 0.95)',
-    borderRadius: 16,
-    marginTop: 16,
-  },
-  footerText: {
-    fontSize: 14,
-    color: '#6B7C61',
-    fontWeight: '700',
-    marginBottom: 6,
-  },
-  footerSubtext: {
-    fontSize: 13,
-    color: '#999',
-    fontWeight: '500',
-  },
-});

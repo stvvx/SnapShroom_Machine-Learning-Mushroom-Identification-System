@@ -1,316 +1,201 @@
 import { Image as ExpoImage } from 'expo-image';
-import { TouchableOpacity, StyleSheet, Alert, ScrollView, View, Dimensions, Animated, Linking, Platform, Image as RNImage } from 'react-native';
+import {
+  TouchableOpacity,
+  Alert,
+  ScrollView,
+  View,
+  Dimensions,
+  Animated,
+  Linking,
+  Platform,
+  Image as RNImage,
+  StatusBar,
+} from 'react-native';
 import { ThemedText } from '@/components/themed-text';
-import { ThemedView } from '@/components/themed-view';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { testConnection } from '@/utils/api';
 import { useState, useEffect, useRef } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { LinearGradient } from 'expo-linear-gradient';
-import { BlurView } from 'expo-blur';
 import HamburgerMenu from '@/components/HamburgerMenu';
 import NotificationDropdown from '@/components/NotificationDropdown';
-import { styles } from '../styles/index.styles';
 
 const { width, height } = Dimensions.get('window');
 const isWeb = Platform.OS === 'web';
-const isSmallScreen = width < 768;
 
-// Enhanced color palette - More eye-relaxing
-const COLORS = {
-  // Primary greens - softer, more natural
-  sage: '#9CAF88',
-  moss: '#7D9B6E',
-  forest: '#5F7C52',
-  olive: '#4A6244',
-  
-  // Accent colors
-  cream: '#FAF8F3',
-  sand: '#F5F1E8',
-  terracotta: '#E89B7C',
-  coral: '#F4A896',
-  
-  // Neutrals
-  charcoal: '#3F4941',
-  stone: '#8B9388',
-  cloud: '#E8EBE6',
-  white: '#FFFFFF',
-  
-  // Status
-  success: '#81C995',
-  warning: '#F4B860',
-  danger: '#E88B7C',
+// ─── DESIGN TOKENS ────────────────────────────────────────────────────────────
+const C = {
+  dark:       '#1A2318',   // near-black green
+  forest:     '#2D4A2A',   // deep forest
+  moss:       '#4A7C47',   // mid green
+  sage:       '#7FAB6E',   // soft sage
+  cream:      '#F8F5EE',   // warm off-white
+  sand:       '#EFE8D8',   // sandy tan
+  amber:      '#C8873A',   // warm amber accent
+  coral:      '#D96B4E',   // coral mushroom
+  white:      '#FFFFFF',
+  stone:      '#8A9288',
+  mist:       '#E4EAE1',
 };
 
-// Spacing system
-const SPACING = {
-  xs: 4,
-  sm: 8,
-  md: 12,
-  lg: 16,
-  xl: 20,
-  xxl: 28,
-  xxxl: 40,
-};
+const SP = { xs: 4, sm: 8, md: 12, lg: 16, xl: 24, xxl: 40, xxxl: 64 };
 
-// Hero carousel images
+// ─── HERO SLIDES ──────────────────────────────────────────────────────────────
 const HERO_SLIDES = [
   { uri: 'https://upload.wikimedia.org/wikipedia/commons/0/08/Copelandia_cyanescens.jpg' },
   { uri: 'https://images.unsplash.com/photo-1528518290605-1fcc8dcca204?q=80&w=1200&auto=format&fit=crop' },
-  { uri: 'https://cdn.wallpapersafari.com/72/31/UXdKZD.jpg' },
-  { uri: 'https://wallpaperaccess.com/full/85562.jpg' },
+  { uri: 'https://picturemushroom.com/wiki-image/1080/154052496900227108.jpeg' },
+  { uri: 'https://picturemushroom.com/wiki-image/1080/153988458937843728.jpeg' },
 ];
 
-// ============ DECORATIVE MUSHROOM COMPONENTS ============
-
-// Cartoon Mushroom SVG Component
-const CartoonMushroom = ({ 
-  size = 60, 
-  color = COLORS.sage, 
-  capColor = COLORS.coral,
-  spots = true,
-  style = {} 
-}: { 
-  size?: number; 
-  color?: string; 
-  capColor?: string;
-  spots?: boolean;
-  style?: any;
-}) => {
+// ─── MUSHROOM HERO PRODUCT VISUAL ─────────────────────────────────────────────
+const MushroomHeroVisual = ({ overrideSize }: { overrideSize?: number } = {}) => {
   const floatAnim = useRef(new Animated.Value(0)).current;
+  const glowAnim = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
     Animated.loop(
       Animated.sequence([
-        Animated.timing(floatAnim, {
-          toValue: 1,
-          duration: 2000 + Math.random() * 1000,
-          useNativeDriver: true,
-        }),
-        Animated.timing(floatAnim, {
-          toValue: 0,
-          duration: 2000 + Math.random() * 1000,
-          useNativeDriver: true,
-        }),
+        Animated.timing(floatAnim, { toValue: 1, duration: 2800, useNativeDriver: true }),
+        Animated.timing(floatAnim, { toValue: 0, duration: 2800, useNativeDriver: true }),
+      ])
+    ).start();
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(glowAnim, { toValue: 1, duration: 2000, useNativeDriver: true }),
+        Animated.timing(glowAnim, { toValue: 0, duration: 2000, useNativeDriver: true }),
       ])
     ).start();
   }, []);
 
+  const heroSize = overrideSize ?? (isWeb ? Math.min(width * 0.38, 480) : width * 0.72);
+
   return (
     <Animated.View
-      style={[
-        {
-          width: size,
-          height: size * 1.2,
-          justifyContent: 'flex-end',
-          alignItems: 'center',
-          transform: [
-            {
-              translateY: floatAnim.interpolate({
-                inputRange: [0, 1],
-                outputRange: [0, -8],
-              }),
-            },
-          ],
-        },
-        style,
-      ]}
+      style={{
+        width: heroSize,
+        height: heroSize * 1.15,
+        alignItems: 'center',
+        justifyContent: 'center',
+        transform: [{ translateY: floatAnim.interpolate({ inputRange: [0, 1], outputRange: [0, -18] }) }],
+      }}
     >
-      {/* Mushroom Cap */}
-      <View
-        style={{
-          width: size * 0.85,
-          height: size * 0.6,
-          backgroundColor: capColor,
-          borderRadius: size * 0.5,
-          borderBottomLeftRadius: size * 0.3,
-          borderBottomRightRadius: size * 0.3,
-          shadowColor: '#000',
-          shadowOffset: { width: 0, height: 4 },
-          shadowOpacity: 0.15,
-          shadowRadius: 8,
-          elevation: 4,
-          borderWidth: 2,
-          borderColor: 'rgba(255, 255, 255, 0.3)',
-          overflow: 'visible',
-        }}
-      >
-        {/* Cap spots */}
-        {spots && (
-          <>
-            <View
-              style={{
-                position: 'absolute',
-                width: size * 0.15,
-                height: size * 0.15,
-                borderRadius: size * 0.075,
-                backgroundColor: 'rgba(255, 255, 255, 0.7)',
-                top: '25%',
-                left: '20%',
-              }}
-            />
-            <View
-              style={{
-                position: 'absolute',
-                width: size * 0.12,
-                height: size * 0.12,
-                borderRadius: size * 0.06,
-                backgroundColor: 'rgba(255, 255, 255, 0.7)',
-                top: '40%',
-                right: '25%',
-              }}
-            />
-            <View
-              style={{
-                position: 'absolute',
-                width: size * 0.1,
-                height: size * 0.1,
-                borderRadius: size * 0.05,
-                backgroundColor: 'rgba(255, 255, 255, 0.7)',
-                top: '15%',
-                right: '35%',
-              }}
-            />
-          </>
-        )}
-        
-        {/* Cute face */}
-        <View style={{ position: 'absolute', bottom: '15%', left: 0, right: 0, alignItems: 'center' }}>
-          <View style={{ flexDirection: 'row', gap: size * 0.12 }}>
-            {/* Eyes */}
-            <View
-              style={{
-                width: size * 0.08,
-                height: size * 0.08,
-                borderRadius: size * 0.04,
-                backgroundColor: 'rgba(0, 0, 0, 0.6)',
-              }}
-            />
-            <View
-              style={{
-                width: size * 0.08,
-                height: size * 0.08,
-                borderRadius: size * 0.04,
-                backgroundColor: 'rgba(0, 0, 0, 0.6)',
-              }}
-            />
-          </View>
-          {/* Smile */}
-          <View
-            style={{
-              width: size * 0.15,
-              height: size * 0.06,
-              borderBottomLeftRadius: size * 0.075,
-              borderBottomRightRadius: size * 0.075,
-              borderWidth: 1.5,
-              borderColor: 'rgba(0, 0, 0, 0.5)',
-              borderTopWidth: 0,
-              marginTop: size * 0.05,
-            }}
-          />
-        </View>
-      </View>
-
-      {/* Mushroom Stem */}
-      <View
-        style={{
-          width: size * 0.35,
-          height: size * 0.7,
-          backgroundColor: color,
-          borderRadius: size * 0.2,
-          marginTop: -size * 0.1,
-          shadowColor: '#000',
-          shadowOffset: { width: 0, height: 2 },
-          shadowOpacity: 0.1,
-          shadowRadius: 4,
-          elevation: 2,
-          borderWidth: 2,
-          borderColor: 'rgba(255, 255, 255, 0.4)',
-        }}
-      >
-        {/* Stem texture */}
-        <View
-          style={{
-            position: 'absolute',
-            width: '80%',
-            height: 2,
-            backgroundColor: 'rgba(0, 0, 0, 0.1)',
-            top: '30%',
-            left: '10%',
-            borderRadius: 1,
-          }}
-        />
-        <View
-          style={{
-            position: 'absolute',
-            width: '70%',
-            height: 2,
-            backgroundColor: 'rgba(0, 0, 0, 0.1)',
-            top: '50%',
-            left: '15%',
-            borderRadius: 1,
-          }}
-        />
-      </View>
-
-      {/* Shadow */}
-      <View
+      {/* Glow halo */}
+      <Animated.View
         style={{
           position: 'absolute',
-          bottom: 0,
-          width: size * 0.5,
-          height: size * 0.08,
-          backgroundColor: 'rgba(0, 0, 0, 0.1)',
-          borderRadius: size * 0.25,
-          transform: [{ scaleY: 0.3 }],
+          width: heroSize * 0.75,
+          height: heroSize * 0.75,
+          borderRadius: heroSize * 0.375,
+          backgroundColor: C.sage,
+          opacity: glowAnim.interpolate({ inputRange: [0, 1], outputRange: [0.08, 0.22] }),
+          transform: [{ scale: glowAnim.interpolate({ inputRange: [0, 1], outputRange: [0.9, 1.15] }) }],
+        }}
+      />
+      {/* Mushroom cap */}
+      <View
+        style={{
+          width: heroSize * 0.72,
+          height: heroSize * 0.48,
+          backgroundColor: C.coral,
+          borderRadius: heroSize * 0.5,
+          borderBottomLeftRadius: heroSize * 0.25,
+          borderBottomRightRadius: heroSize * 0.25,
+          alignItems: 'center',
+          justifyContent: 'flex-end',
+          paddingBottom: SP.md,
+          shadowColor: '#000',
+          shadowOffset: { width: 0, height: 20 },
+          shadowOpacity: 0.3,
+          shadowRadius: 30,
+          elevation: 12,
+          overflow: 'hidden',
+        }}
+      >
+        {/* Sheen overlay */}
+        <LinearGradient
+          colors={['rgba(255,255,255,0.25)', 'transparent']}
+          style={{ position: 'absolute', top: 0, left: 0, right: 0, height: '55%', borderRadius: heroSize * 0.5 }}
+        />
+        {/* Spots */}
+        {[
+          { top: '18%', left: '18%', size: 0.1 },
+          { top: '32%', right: '20%', size: 0.08 },
+          { top: '12%', right: '38%', size: 0.07 },
+          { top: '45%', left: '32%', size: 0.06 },
+        ].map((spot, i) => (
+          <View
+            key={i}
+            style={{
+              position: 'absolute',
+              width: heroSize * spot.size,
+              height: heroSize * spot.size,
+              borderRadius: heroSize * spot.size * 0.5,
+              backgroundColor: 'rgba(255,255,255,0.5)',
+              top: spot.top as any,
+              left: (spot as any).left,
+              right: (spot as any).right,
+            }}
+          />
+        ))}
+        {/* Face */}
+        <View style={{ flexDirection: 'row', gap: heroSize * 0.08, marginBottom: SP.sm }}>
+          {[0, 1].map(i => (
+            <View key={i} style={{ width: heroSize * 0.055, height: heroSize * 0.06, borderRadius: 999, backgroundColor: 'rgba(0,0,0,0.55)' }} />
+          ))}
+        </View>
+        <View
+          style={{
+            width: heroSize * 0.14,
+            height: heroSize * 0.05,
+            borderBottomLeftRadius: 99,
+            borderBottomRightRadius: 99,
+            borderWidth: 2,
+            borderColor: 'rgba(0,0,0,0.45)',
+            borderTopWidth: 0,
+          }}
+        />
+      </View>
+      {/* Stem */}
+      <View
+        style={{
+          width: heroSize * 0.28,
+          height: heroSize * 0.52,
+          backgroundColor: '#E8D5B0',
+          borderRadius: heroSize * 0.16,
+          marginTop: -SP.sm,
+          shadowColor: '#000',
+          shadowOffset: { width: 0, height: 10 },
+          shadowOpacity: 0.2,
+          shadowRadius: 16,
+          elevation: 6,
+          overflow: 'hidden',
+        }}
+      >
+        <LinearGradient
+          colors={['rgba(255,255,255,0.3)', 'transparent']}
+          style={{ position: 'absolute', top: 0, left: 0, width: '40%', height: '100%', borderRadius: 99 }}
+        />
+      </View>
+      {/* Shadow puddle */}
+      <View
+        style={{
+          width: heroSize * 0.55,
+          height: heroSize * 0.06,
+          backgroundColor: 'rgba(0,0,0,0.25)',
+          borderRadius: 999,
+          marginTop: -SP.xs,
+          transform: [{ scaleY: 0.35 }],
         }}
       />
     </Animated.View>
   );
 };
 
-// Mushroom Cluster Decoration
-const MushroomCluster = ({ position = 'left' }: { position?: 'left' | 'right' }) => {
-  return (
-    <View
-      style={{
-        position: 'absolute',
-        [position]: -20,
-        bottom: 20,
-        opacity: 0.6,
-      }}
-    >
-      <View style={{ flexDirection: 'row', alignItems: 'flex-end', gap: 8 }}>
-        <CartoonMushroom size={40} capColor={COLORS.terracotta} color={COLORS.sage} />
-        <CartoonMushroom size={50} capColor={COLORS.coral} color={COLORS.moss} spots={false} />
-        <CartoonMushroom size={35} capColor={COLORS.terracotta} color={COLORS.sage} />
-      </View>
-    </View>
-  );
-};
-
-// Floating Spores Animation
-const FloatingSpores = () => {
-  const spores = Array.from({ length: 12 }, (_, i) => ({
-    id: i,
-    delay: i * 300,
-    x: Math.random() * width,
-    duration: 3000 + Math.random() * 2000,
-  }));
-
-  return (
-    <View style={{ position: 'absolute', width: '100%', height: '100%', overflow: 'hidden' }}>
-      {spores.map((spore) => (
-        <FloatingSpore key={spore.id} delay={spore.delay} x={spore.x} duration={spore.duration} />
-      ))}
-    </View>
-  );
-};
-
-const FloatingSpore = ({ delay, x, duration }: { delay: number; x: number; duration: number }) => {
+// ─── FLOATING SPORES ──────────────────────────────────────────────────────────
+const Spore = ({ x, delay, duration }: { x: number; delay: number; duration: number }) => {
   const animY = useRef(new Animated.Value(0)).current;
-  const animX = useRef(new Animated.Value(0)).current;
   const opacity = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
@@ -318,34 +203,13 @@ const FloatingSpore = ({ delay, x, duration }: { delay: number; x: number; durat
       Animated.sequence([
         Animated.delay(delay),
         Animated.parallel([
-          Animated.timing(animY, {
-            toValue: -height,
-            duration: duration,
-            useNativeDriver: true,
-          }),
+          Animated.timing(animY, { toValue: -height * 0.8, duration, useNativeDriver: true }),
           Animated.sequence([
-            Animated.timing(opacity, {
-              toValue: 0.6,
-              duration: duration * 0.1,
-              useNativeDriver: true,
-            }),
-            Animated.timing(opacity, {
-              toValue: 0,
-              duration: duration * 0.9,
-              useNativeDriver: true,
-            }),
+            Animated.timing(opacity, { toValue: 0.5, duration: duration * 0.15, useNativeDriver: true }),
+            Animated.timing(opacity, { toValue: 0, duration: duration * 0.85, useNativeDriver: true }),
           ]),
-          Animated.timing(animX, {
-            toValue: Math.random() * 40 - 20,
-            duration: duration,
-            useNativeDriver: true,
-          }),
         ]),
-        Animated.timing(animY, {
-          toValue: 0,
-          duration: 0,
-          useNativeDriver: true,
-        }),
+        Animated.timing(animY, { toValue: 0, duration: 0, useNativeDriver: true }),
       ])
     ).start();
   }, []);
@@ -355,893 +219,534 @@ const FloatingSpore = ({ delay, x, duration }: { delay: number; x: number; durat
       style={{
         position: 'absolute',
         left: x,
-        bottom: 0,
-        width: 4,
-        height: 4,
-        borderRadius: 2,
-        backgroundColor: COLORS.sage,
-        opacity: opacity,
-        transform: [{ translateY: animY }, { translateX: animX }],
+        bottom: '15%',
+        width: 5,
+        height: 5,
+        borderRadius: 3,
+        backgroundColor: C.sage,
+        opacity,
+        transform: [{ translateY: animY }],
       }}
     />
   );
 };
 
-// ============ ANIMATED FEATURE ICONS ============
-
-// Machine Learning Recognition Icon
-const MachineLearningIcon = () => {
-  const pulseAnim = useRef(new Animated.Value(1)).current;
-  const glowAnim = useRef(new Animated.Value(0)).current;
-
-  useEffect(() => {
-    Animated.loop(
-      Animated.sequence([
-        Animated.parallel([
-          Animated.timing(pulseAnim, {
-            toValue: 1.15,
-            duration: 1500,
-            useNativeDriver: true,
-          }),
-          Animated.timing(glowAnim, {
-            toValue: 1,
-            duration: 1500,
-            useNativeDriver: true,
-          }),
-        ]),
-        Animated.parallel([
-          Animated.timing(pulseAnim, {
-            toValue: 1,
-            duration: 1500,
-            useNativeDriver: true,
-          }),
-          Animated.timing(glowAnim, {
-            toValue: 0,
-            duration: 1500,
-            useNativeDriver: true,
-          }),
-        ]),
-      ])
-    ).start();
-  }, []);
-
+const FloatingSpores = () => {
+  const spores = Array.from({ length: 10 }, (_, i) => ({
+    id: i,
+    x: (width / 10) * i + Math.random() * 30,
+    delay: i * 400,
+    duration: 4000 + Math.random() * 2000,
+  }));
   return (
-    <View style={styles.iconWrapper}>
-      {/* Outer glow */}
-      <Animated.View
-        style={[
-          styles.iconGlow,
-          {
-            backgroundColor: COLORS.sage,
-            opacity: glowAnim.interpolate({
-              inputRange: [0, 1],
-              outputRange: [0.1, 0.3],
-            }),
-            transform: [
-              {
-                scale: glowAnim.interpolate({
-                  inputRange: [0, 1],
-                  outputRange: [0.9, 1.3],
-                }),
-              },
-            ],
-          },
-        ]}
-      />
-
-      {/* Main icon */}
-      <Animated.View style={{ transform: [{ scale: pulseAnim }] }}>
-        <View style={[styles.iconContainer, { backgroundColor: `${COLORS.sage}20` }]}>
-          <Ionicons name="analytics" size={40} color={COLORS.forest} />
-        </View>
-      </Animated.View>
-
-      {/* Decorative mushroom */}
-      <View style={{ position: 'absolute', bottom: -10, right: -10 }}>
-        <CartoonMushroom size={30} capColor={COLORS.coral} color={COLORS.sage} />
-      </View>
+    <View style={{ position: 'absolute', inset: 0, overflow: 'hidden', pointerEvents: 'none' } as any}>
+      {spores.map(s => <Spore key={s.id} x={s.x} delay={s.delay} duration={s.duration} />)}
     </View>
   );
 };
 
-// Safety Shield Icon
-const SafetyIcon = () => {
-  const checkAnim = useRef(new Animated.Value(0)).current;
+// ─── STAT PILL ────────────────────────────────────────────────────────────────
+const StatPill = ({ icon, value, label }: { icon: string; value: string; label: string }) => (
+  <View
+    style={{
+      flexDirection: 'row',
+      alignItems: 'center',
+      backgroundColor: 'rgba(255,255,255,0.1)',
+      borderRadius: 999,
+      paddingVertical: SP.sm,
+      paddingHorizontal: SP.lg,
+      gap: SP.sm,
+      borderWidth: 1,
+      borderColor: 'rgba(255,255,255,0.15)',
+    }}
+  >
+    <Ionicons name={icon as any} size={18} color={C.sage} />
+    <View>
+      <ThemedText style={{ color: C.white, fontSize: 15, fontWeight: '700' }}>{value}</ThemedText>
+      <ThemedText style={{ color: 'rgba(255,255,255,0.6)', fontSize: 11 }}>{label}</ThemedText>
+    </View>
+  </View>
+);
 
-  useEffect(() => {
-    Animated.loop(
-      Animated.sequence([
-        Animated.spring(checkAnim, {
-          toValue: 1,
-          friction: 4,
-          tension: 50,
-          useNativeDriver: true,
-        }),
-        Animated.delay(2000),
-        Animated.timing(checkAnim, {
-          toValue: 0,
-          duration: 500,
-          useNativeDriver: true,
-        }),
-        Animated.delay(1000),
-      ])
-    ).start();
-  }, []);
-
+// ─── FEATURE CARD ─────────────────────────────────────────────────────────────
+const FeatureCard = ({
+  icon, title, desc, accent,
+}: { icon: string; title: string; desc: string; accent: string }) => {
+  const scaleAnim = useRef(new Animated.Value(1)).current;
   return (
-    <View style={styles.iconWrapper}>
-      <View style={[styles.iconContainer, { backgroundColor: `${COLORS.forest}20` }]}>
-        <Ionicons name="shield-checkmark" size={40} color={COLORS.forest} />
-      </View>
-
-      {/* Animated checkmark */}
+    <TouchableOpacity
+      activeOpacity={0.9}
+      onPressIn={() => Animated.spring(scaleAnim, { toValue: 0.96, useNativeDriver: true, friction: 6 }).start()}
+      onPressOut={() => Animated.spring(scaleAnim, { toValue: 1, useNativeDriver: true, friction: 6 }).start()}
+      style={{ flex: 1, minWidth: isWeb ? 200 : '100%' }}
+    >
       <Animated.View
         style={{
-          position: 'absolute',
-          opacity: checkAnim,
-          transform: [
-            {
-              scale: checkAnim.interpolate({
-                inputRange: [0, 0.5, 1],
-                outputRange: [0, 1.3, 1],
-              }),
-            },
-          ],
+          transform: [{ scale: scaleAnim }],
+          backgroundColor: C.white,
+          borderRadius: 20,
+          padding: SP.xl,
+          shadowColor: C.dark,
+          shadowOffset: { width: 0, height: 8 },
+          shadowOpacity: 0.08,
+          shadowRadius: 20,
+          elevation: 4,
+          borderWidth: 1,
+          borderColor: C.mist,
         }}
       >
-        <Ionicons name="checkmark-circle" size={28} color={COLORS.success} />
-      </Animated.View>
-
-      {/* Decorative mushroom */}
-      <View style={{ position: 'absolute', bottom: -10, left: -10 }}>
-        <CartoonMushroom size={30} capColor={COLORS.terracotta} color={COLORS.moss} spots={false} />
-      </View>
-    </View>
-  );
-};
-
-// Species Database Icon
-const SpeciesIcon = () => {
-  const rotateAnim = useRef(new Animated.Value(0)).current;
-
-  useEffect(() => {
-    Animated.loop(
-      Animated.timing(rotateAnim, {
-        toValue: 1,
-        duration: 8000,
-        useNativeDriver: true,
-      })
-    ).start();
-  }, []);
-
-  const rotate = rotateAnim.interpolate({
-    inputRange: [0, 1],
-    outputRange: ['0deg', '360deg'],
-  });
-
-  return (
-    <View style={styles.iconWrapper}>
-      <Animated.View style={{ transform: [{ rotate }] }}>
-        <View style={[styles.iconContainer, { backgroundColor: `${COLORS.moss}20` }]}>
-          <Ionicons name="library" size={40} color={COLORS.forest} />
+        <View
+          style={{
+            width: 52,
+            height: 52,
+            borderRadius: 14,
+            backgroundColor: `${accent}18`,
+            alignItems: 'center',
+            justifyContent: 'center',
+            marginBottom: SP.md,
+          }}
+        >
+          <Ionicons name={icon as any} size={26} color={accent} />
         </View>
+        <ThemedText style={{ fontSize: 17, fontWeight: '700', color: C.dark, marginBottom: SP.sm }}>
+          {title}
+        </ThemedText>
+        <ThemedText style={{ fontSize: 14, color: C.stone, lineHeight: 21 }}>{desc}</ThemedText>
       </Animated.View>
-
-      {/* Decorative mushrooms */}
-      <View style={{ position: 'absolute', top: -10, right: -10 }}>
-        <CartoonMushroom size={25} capColor={COLORS.coral} color={COLORS.sage} />
-      </View>
-      <View style={{ position: 'absolute', bottom: -10, right: -10 }}>
-        <CartoonMushroom size={25} capColor={COLORS.terracotta} color={COLORS.moss} spots={false} />
-      </View>
-    </View>
+    </TouchableOpacity>
   );
 };
 
-// Feature cards with enhanced animated icons
-const FEATURES = [
-  {
-    id: 1,
-    IconComponent: MachineLearningIcon,
-    title: 'Machine Learning',
-    description: 'SnapShroom instantly identifies mushroom species using advanced ML algorithms',
-    color: COLORS.sage,
-  },
-  {
-    id: 2,
-    IconComponent: SafetyIcon,
-    title: 'Safety First',
-    description: 'Comprehensive safety information and warnings for every identified species',
-    color: COLORS.forest,
-  },
-  {
-    id: 3,
-    IconComponent: SpeciesIcon,
-    title: '10+ Species',
-    description: 'Explore detailed profiles of various mushroom species with scientific data',
-    color: COLORS.moss,
-  },
-];
+// ─── STEP ROW ─────────────────────────────────────────────────────────────────
+const StepRow = ({ number, icon, title, desc }: { number: string; icon: string; title: string; desc: string }) => (
+  <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: SP.lg, marginBottom: SP.xl }}>
+    <View
+      style={{
+        width: 48,
+        height: 48,
+        borderRadius: 14,
+        backgroundColor: C.forest,
+        alignItems: 'center',
+        justifyContent: 'center',
+        flexShrink: 0,
+      }}
+    >
+      <ThemedText style={{ color: C.sage, fontSize: 20, fontWeight: '800' }}>{number}</ThemedText>
+    </View>
+    <View style={{ flex: 1 }}>
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: SP.sm, marginBottom: SP.xs }}>
+        <Ionicons name={icon as any} size={18} color={C.moss} />
+        <ThemedText style={{ fontSize: 17, fontWeight: '700', color: C.dark }}>{title}</ThemedText>
+      </View>
+      <ThemedText style={{ fontSize: 14, color: C.stone, lineHeight: 22 }}>{desc}</ThemedText>
+    </View>
+  </View>
+);
 
-// Enhanced Step Card
-const StepCard = ({ step, index }: { step: { number: string; title: string; description: string; icon: string }; index: number }) => {
-  const scaleAnim = useRef(new Animated.Value(0)).current;
+// ─── RESOURCE CARD ────────────────────────────────────────────────────────────
+const ResourceCard = ({ icon, color, bg, title, desc, url }: any) => (
+  <TouchableOpacity
+    onPress={() => Linking.openURL(url)}
+    style={{
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: SP.md,
+      backgroundColor: C.white,
+      borderRadius: 14,
+      padding: SP.lg,
+      borderWidth: 1,
+      borderColor: C.mist,
+      flex: 1,
+      minWidth: isWeb ? 260 : '100%',
+    }}
+    activeOpacity={0.8}
+  >
+    <View style={{ width: 44, height: 44, borderRadius: 12, backgroundColor: bg, alignItems: 'center', justifyContent: 'center' }}>
+      <Ionicons name={icon} size={22} color={color} />
+    </View>
+    <View style={{ flex: 1 }}>
+      <ThemedText style={{ fontSize: 15, fontWeight: '700', color: C.dark }}>{title}</ThemedText>
+      <ThemedText style={{ fontSize: 12, color: C.stone, marginTop: 2 }}>{desc}</ThemedText>
+    </View>
+    <Ionicons name="arrow-forward" size={16} color={C.stone} />
+  </TouchableOpacity>
+);
+
+// ─── MUSHROOM INFOGRAPHICS ────────────────────────────────────────────────────
+
+const FactsTab = ({ isWide }: { isWide: boolean }) => {
   const floatAnim = useRef(new Animated.Value(0)).current;
-
   useEffect(() => {
-    const delay = index * 300;
-
-    Animated.sequence([
-      Animated.delay(delay),
-      Animated.spring(scaleAnim, {
-        toValue: 1,
-        friction: 8,
-        tension: 50,
-        useNativeDriver: true,
-      }),
-    ]).start();
-
     Animated.loop(
       Animated.sequence([
-        Animated.delay(delay + 1000),
-        Animated.timing(floatAnim, {
-          toValue: 1,
-          duration: 2500,
-          useNativeDriver: true,
-        }),
-        Animated.timing(floatAnim, {
-          toValue: 0,
-          duration: 2500,
-          useNativeDriver: true,
-        }),
+        Animated.timing(floatAnim, { toValue: 1, duration: 3000, useNativeDriver: true }),
+        Animated.timing(floatAnim, { toValue: 0, duration: 3000, useNativeDriver: true }),
       ])
     ).start();
   }, []);
 
-  const getCapColor = (stepNumber: string) => {
-    switch (stepNumber) {
-      case '1':
-        return COLORS.coral;
-      case '2':
-        return COLORS.terracotta;
-      case '3':
-        return COLORS.sage;
-      default:
-        return COLORS.moss;
-    }
-  };
+  const facts = [
+    { id: 1, icon: 'globe-outline',       title: '5.1M+ Species',       stat: '91%',   subtext: 'Undiscovered',       color: '#7FAB6E', desc: 'Estimated fungal species on Earth' },
+    { id: 2, icon: 'git-network-outline', title: 'Underground Network',  stat: '2,385', subtext: 'Acres in Oregon',    color: '#4A7C47', desc: 'Mycelium can span thousands of acres' },
+    { id: 3, icon: 'time-outline',        title: 'Ancient Organisms',    stat: '1.3B',  subtext: 'Years old',          color: '#2D4A2A', desc: 'Fungi predate plants by millions of years' },
+    { id: 4, icon: 'medical-outline',     title: 'Medical Marvels',      stat: '40+',   subtext: 'Pharmaceuticals',    color: '#5A7A52', desc: 'Medicines derived from fungi' },
+    { id: 5, icon: 'flashlight-outline',  title: "Nature's Nightlights", stat: '80+',   subtext: 'Glowing species',    color: '#C8873A', desc: 'Bioluminescent mushroom species' },
+    { id: 6, icon: 'pulse-outline',       title: 'Fungal Intelligence',  stat: '50',    subtext: 'Neuron-like signals', color: '#D96B4E', desc: 'Can solve mazes and make decisions' },
+  ];
 
   return (
-    <Animated.View
-      style={[
-        styles.stepCard,
-        {
-          opacity: scaleAnim,
-          transform: [
-            { scale: scaleAnim },
-            {
-              translateY: floatAnim.interpolate({
-                inputRange: [0, 1],
-                outputRange: [0, -10],
-              }),
-            },
-          ],
-        },
-      ]}
-    >
-      <View style={styles.stepMushroomContainer}>
-        <CartoonMushroom size={100} capColor={getCapColor(step.number)} color={COLORS.moss} />
-      </View>
-
-      <View style={styles.stepContent}>
-        <View style={styles.stepNumberBadge}>
-          <ThemedText style={styles.stepNumberText}>{step.number}</ThemedText>
-        </View>
-        <View style={styles.stepIconContainer}>
-          <Ionicons name={step.icon as any} size={32} color={COLORS.forest} />
-        </View>
-        <ThemedText style={styles.stepTitle}>{step.title}</ThemedText>
-        <ThemedText style={styles.stepDescription}>{step.description}</ThemedText>
-      </View>
-    </Animated.View>
+    <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: SP.md }}>
+      {facts.map((fact, index) => (
+        <Animated.View
+          key={fact.id}
+          style={{
+            flex: 1,
+            minWidth: isWide ? 160 : '45%',
+            transform: [{ translateY: floatAnim.interpolate({ inputRange: [0, 1], outputRange: [0, index % 2 === 0 ? -6 : 6] }) }],
+          }}
+        >
+          <View style={{
+            backgroundColor: C.white,
+            borderRadius: 16,
+            padding: SP.lg,
+            borderWidth: 1,
+            borderColor: C.mist,
+            shadowColor: C.dark,
+            shadowOffset: { width: 0, height: 4 },
+            shadowOpacity: 0.06,
+            shadowRadius: 12,
+            elevation: 2,
+          }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: SP.sm }}>
+              <View style={{ width: 40, height: 40, borderRadius: 12, backgroundColor: `${fact.color}18`, alignItems: 'center', justifyContent: 'center' }}>
+                <Ionicons name={fact.icon as any} size={20} color={fact.color} />
+              </View>
+              <View style={{ alignItems: 'flex-end' }}>
+                <ThemedText style={{ fontSize: 22, fontWeight: '900', color: fact.color, lineHeight: 26 }}>{fact.stat}</ThemedText>
+                <ThemedText style={{ fontSize: 10, color: C.stone, fontWeight: '600' }}>{fact.subtext}</ThemedText>
+              </View>
+            </View>
+            <ThemedText style={{ fontSize: 13, fontWeight: '800', color: C.dark, marginBottom: 2 }}>{fact.title}</ThemedText>
+            <ThemedText style={{ fontSize: 11, color: C.stone, lineHeight: 16 }}>{fact.desc}</ThemedText>
+          </View>
+        </Animated.View>
+      ))}
+    </View>
   );
 };
-// ============ PART 2: MUSHROOM INFOGRAPHICS SECTION ============
 
-// CONTINUE FROM PART 1...
+const AnatomyTab = ({ isWide }: { isWide: boolean }) => {
+  const parts = [
+    { id: 1, name: 'Cap (Pileus)',    desc: 'Umbrella-shaped top protecting gills',       icon: 'umbrella-outline',      color: '#7FAB6E', features: ['Protects spores', 'Various shapes', 'Color = species'] },
+    { id: 2, name: 'Gills (Lamellae)',desc: 'Thin structures under cap producing spores', icon: 'reorder-four-outline',  color: '#4A7C47', features: ['Spore production', 'Radial pattern', 'Color varies'] },
+    { id: 3, name: 'Stem (Stipe)',    desc: 'Supports cap and transports nutrients',      icon: 'remove-outline',        color: '#2D4A2A', features: ['Structural support', 'Nutrient transport', 'May have ring'] },
+    { id: 4, name: 'Mycelium',        desc: 'Underground network of thread-like cells',   icon: 'git-network-outline',   color: '#5A7A52', features: ['Absorbs nutrients', 'Massive networks', 'Main organism'] },
+    { id: 5, name: 'Volva',           desc: 'Cup-like structure at base of some species', icon: 'wine-outline',          color: '#C8873A', features: ['Protective cup', 'Found in Amanitas', 'Key ID feature'] },
+    { id: 6, name: 'Spores',          desc: 'Microscopic reproductive units',             icon: 'water-outline',         color: '#D96B4E', features: ['Billions produced', 'Wind-dispersed', 'ID tool'] },
+  ];
+  return (
+    <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: SP.md }}>
+      {parts.map(part => (
+        <View key={part.id} style={{
+          flex: 1,
+          minWidth: isWide ? 200 : '46%',
+          backgroundColor: C.white,
+          borderRadius: 16,
+          padding: SP.lg,
+          borderWidth: 1,
+          borderColor: C.mist,
+        }}>
+          <View style={{ width: 44, height: 44, borderRadius: 12, backgroundColor: `${part.color}18`, alignItems: 'center', justifyContent: 'center', marginBottom: SP.sm }}>
+            <Ionicons name={part.icon as any} size={22} color={part.color} />
+          </View>
+          <ThemedText style={{ fontSize: 13, fontWeight: '800', color: C.dark, marginBottom: 4 }}>{part.name}</ThemedText>
+          <ThemedText style={{ fontSize: 11, color: C.stone, lineHeight: 16, marginBottom: SP.sm }}>{part.desc}</ThemedText>
+          <View style={{ gap: 4 }}>
+            {part.features.map((f, i) => (
+              <View key={i} style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                <View style={{ width: 5, height: 5, borderRadius: 3, backgroundColor: part.color }} />
+                <ThemedText style={{ fontSize: 11, color: part.color, fontWeight: '600' }}>{f}</ThemedText>
+              </View>
+            ))}
+          </View>
+        </View>
+      ))}
+    </View>
+  );
+};
 
-const MushroomInfographics = () => {
-  const [activeTab, setActiveTab] = useState('facts');
-  const containerAnim = useRef(new Animated.Value(0)).current;
+const TypesTab = ({ isWide }: { isWide: boolean }) => {
+  const types = [
+    { id: 1, name: 'Edible',     desc: 'Safe for human consumption',         examples: ['Button', 'Portobello', 'Shiitake', 'Oyster'], color: '#4CAF50', icon: 'restaurant-outline', safety: 'Verified Safe' },
+    { id: 2, name: 'Medicinal',  desc: 'Used in traditional medicine',        examples: ['Reishi', 'Turkey Tail', "Lion's Mane", 'Cordyceps'], color: '#4A7C47', icon: 'medical-outline',     safety: 'Therapeutic' },
+    { id: 3, name: 'Narcotic',   desc: 'Contain psychoactive compounds',      examples: ['Psilocybe', 'Amanita Muscaria', 'Liberty Cap'], color: '#2D4A2A', icon: 'eye-outline',          safety: 'Controlled' },
+    { id: 4, name: 'Poisonous',  desc: 'Toxic or deadly if consumed',         examples: ['Death Cap', 'Destroying Angel', 'False Morel'], color: '#E53935', icon: 'skull-outline',        safety: 'Dangerous' },
+    { id: 5, name: 'Scavenging', desc: 'Decompose dead organic matter',       examples: ['Shaggy Mane', 'Ink Cap', 'Parasol'],          color: '#5A7A52', icon: 'reload-circle-outline', safety: 'Ecosystem Role' },
+    { id: 6, name: 'Symbiotic',  desc: 'Live in harmony with plant roots',    examples: ['Chanterelle', 'Porcini', 'Truffle', 'Morel'], color: '#C8873A', icon: 'git-branch-outline',   safety: 'Symbiotic' },
+  ];
+  return (
+    <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: SP.md }}>
+      {types.map(t => (
+        <View key={t.id} style={{
+          flex: 1,
+          minWidth: isWide ? 200 : '46%',
+          borderRadius: 16,
+          overflow: 'hidden',
+          borderWidth: 1,
+          borderColor: `${t.color}30`,
+        }}>
+          <View style={{ backgroundColor: `${t.color}12`, padding: SP.md, flexDirection: 'row', alignItems: 'center', gap: SP.sm }}>
+            <View style={{ width: 38, height: 38, borderRadius: 10, backgroundColor: `${t.color}22`, alignItems: 'center', justifyContent: 'center' }}>
+              <Ionicons name={t.icon as any} size={20} color={t.color} />
+            </View>
+            <View style={{ flex: 1 }}>
+              <ThemedText style={{ fontSize: 14, fontWeight: '800', color: t.color }}>{t.name}</ThemedText>
+              <ThemedText style={{ fontSize: 10, color: C.stone, fontWeight: '600' }}>{t.safety}</ThemedText>
+            </View>
+          </View>
+          <View style={{ backgroundColor: C.white, padding: SP.md }}>
+            <ThemedText style={{ fontSize: 11, color: C.stone, marginBottom: SP.sm, lineHeight: 16 }}>{t.desc}</ThemedText>
+            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 4 }}>
+              {t.examples.map((ex, i) => (
+                <View key={i} style={{ backgroundColor: `${t.color}10`, paddingHorizontal: 8, paddingVertical: 3, borderRadius: 8 }}>
+                  <ThemedText style={{ fontSize: 10, color: t.color, fontWeight: '700' }}>{ex}</ThemedText>
+                </View>
+              ))}
+            </View>
+          </View>
+        </View>
+      ))}
+    </View>
+  );
+};
 
+const SafetyTab = ({ isWide }: { isWide: boolean }) => {
+  const pulseAnim = useRef(new Animated.Value(1)).current;
   useEffect(() => {
-    Animated.spring(containerAnim, {
-      toValue: 1,
-      friction: 8,
-      tension: 40,
-      useNativeDriver: true,
-    }).start();
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(pulseAnim, { toValue: 1.03, duration: 1000, useNativeDriver: true }),
+        Animated.timing(pulseAnim, { toValue: 1, duration: 1000, useNativeDriver: true }),
+      ])
+    ).start();
   }, []);
 
+  const rules = [
+    { id: 1, rule: 'Never Eat Raw',    desc: 'Many edible mushrooms are toxic when raw',    icon: 'ban-outline',              severity: 'high',     tips: ['Always cook thoroughly', 'Destroys toxins', 'Improves digestion'] },
+    { id: 2, rule: 'Positive ID',      desc: '100% certainty required before consumption',  icon: 'checkmark-circle-outline', severity: 'critical', tips: ['Use multiple sources', 'Check all features', 'Compare look-alikes'] },
+    { id: 3, rule: 'Start Small',      desc: 'Test tolerance with small amounts first',      icon: 'thermometer-outline',      severity: 'medium',   tips: ['¼ portion first', 'Wait 24 hours', 'Watch for reactions'] },
+    { id: 4, rule: 'Avoid Alcohol',    desc: 'Never mix mushrooms with alcohol',             icon: 'wine-outline',             severity: 'high',     tips: ['48-hour gap', 'Inhibits digestion', 'Increases toxicity'] },
+    { id: 5, rule: 'Know Look-alikes', desc: 'Study poisonous species in your area',         icon: 'eye-outline',              severity: 'critical', tips: ['Learn deadly species', 'Note differences', 'When in doubt, out'] },
+    { id: 6, rule: 'Document Finds',   desc: 'Take photos and notes for expert review',      icon: 'camera-outline',           severity: 'medium',   tips: ['Multiple angles', 'Include habitat', 'Note spore print'] },
+  ];
+
+  const severityColor = (s: string) => s === 'critical' ? '#E53935' : s === 'high' ? '#D96B4E' : '#C8873A';
+
   return (
-    <Animated.View
-      style={[
-        styles.infographicsSection,
-        {
-          opacity: containerAnim,
-          transform: [
-            {
-              translateY: containerAnim.interpolate({
-                inputRange: [0, 1],
-                outputRange: [50, 0],
-              }),
-            },
-          ],
-        },
-      ]}
-    >
-      {/* Decorative mushrooms */}
-      <View style={{ position: 'absolute', top: 20, right: 20, opacity: 0.15 }}>
-        <CartoonMushroom size={80} capColor={COLORS.coral} color={COLORS.sage} />
-      </View>
-      <View style={{ position: 'absolute', bottom: 40, left: 20, opacity: 0.15 }}>
-        <CartoonMushroom size={60} capColor={COLORS.terracotta} color={COLORS.moss} spots={false} />
+    <View>
+      <Animated.View style={{
+        transform: [{ scale: pulseAnim }],
+        backgroundColor: '#FFF3F3',
+        borderRadius: 14,
+        padding: SP.lg,
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: SP.md,
+        borderWidth: 1,
+        borderColor: '#FFCDD2',
+        marginBottom: SP.lg,
+      }}>
+        <Ionicons name="warning-outline" size={28} color="#E53935" />
+        <View style={{ flex: 1 }}>
+          <ThemedText style={{ fontSize: 13, fontWeight: '800', color: '#C62828' }}>FOR EDUCATIONAL PURPOSES ONLY</ThemedText>
+          <ThemedText style={{ fontSize: 11, color: '#E53935', marginTop: 2 }}>Never consume wild mushrooms without expert verification</ThemedText>
+        </View>
+      </Animated.View>
+
+      <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: SP.md }}>
+        {rules.map(rule => {
+          const sc = severityColor(rule.severity);
+          return (
+            <View key={rule.id} style={{
+              flex: 1,
+              minWidth: isWide ? 200 : '46%',
+              backgroundColor: C.white,
+              borderRadius: 16,
+              padding: SP.lg,
+              borderWidth: 1,
+              borderColor: `${sc}25`,
+            }}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: SP.sm, marginBottom: SP.sm }}>
+                <View style={{ width: 38, height: 38, borderRadius: 10, backgroundColor: `${sc}15`, alignItems: 'center', justifyContent: 'center' }}>
+                  <Ionicons name={rule.icon as any} size={20} color={sc} />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <ThemedText style={{ fontSize: 13, fontWeight: '800', color: C.dark }}>{rule.rule}</ThemedText>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 2 }}>
+                    <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: sc }} />
+                    <ThemedText style={{ fontSize: 9, color: sc, fontWeight: '700', letterSpacing: 0.5 }}>{rule.severity.toUpperCase()}</ThemedText>
+                  </View>
+                </View>
+              </View>
+              <ThemedText style={{ fontSize: 11, color: C.stone, lineHeight: 16, marginBottom: SP.sm }}>{rule.desc}</ThemedText>
+              {rule.tips.map((tip, i) => (
+                <View key={i} style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 3 }}>
+                  <View style={{ width: 4, height: 4, borderRadius: 2, backgroundColor: sc }} />
+                  <ThemedText style={{ fontSize: 11, color: C.dark, fontWeight: '600' }}>{tip}</ThemedText>
+                </View>
+              ))}
+            </View>
+          );
+        })}
       </View>
 
-      <View style={styles.sectionHeader}>
-        <View style={styles.sectionBadge}>
-          <Ionicons name="book-outline" size={14} color={COLORS.forest} style={{ marginRight: 6 }} />
-          <ThemedText style={styles.sectionLabel}>MYCOLOGY 101</ThemedText>
+      {/* Emergency box */}
+      <View style={{
+        backgroundColor: '#FFF8E1',
+        borderRadius: 16,
+        padding: SP.lg,
+        marginTop: SP.lg,
+        borderWidth: 1,
+        borderColor: '#FFE082',
+      }}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: SP.sm, marginBottom: SP.md }}>
+          <Ionicons name="alert-circle" size={22} color="#F57F17" />
+          <ThemedText style={{ fontSize: 14, fontWeight: '800', color: '#E65100' }}>In Case of Poisoning</ThemedText>
         </View>
-        <ThemedText style={styles.sectionTitle}>Mushroom Mastery</ThemedText>
-        <ThemedText style={styles.sectionDescription}>
+        {['Call Poison Control Immediately', 'Save Mushroom Sample', 'Go to Emergency Room'].map((step, i) => (
+          <View key={i} style={{ flexDirection: 'row', alignItems: 'center', gap: SP.md, marginBottom: SP.sm }}>
+            <View style={{ width: 28, height: 28, borderRadius: 8, backgroundColor: '#F57F17', alignItems: 'center', justifyContent: 'center' }}>
+              <ThemedText style={{ color: C.white, fontSize: 13, fontWeight: '900' }}>{i + 1}</ThemedText>
+            </View>
+            <ThemedText style={{ fontSize: 13, fontWeight: '600', color: '#E65100' }}>{step}</ThemedText>
+          </View>
+        ))}
+      </View>
+    </View>
+  );
+};
+
+const MushroomInfographics = ({ isWide }: { isWide: boolean }) => {
+  const [activeTab, setActiveTab] = useState('facts');
+
+  const tabs = [
+    { key: 'facts',   label: 'Fun Facts', icon: 'sparkles-outline' },
+    { key: 'anatomy', label: 'Anatomy',   icon: 'fitness-outline' },
+    { key: 'types',   label: 'Types',     icon: 'albums-outline' },
+    { key: 'safety',  label: 'Safety',    icon: 'alert-circle-outline' },
+  ];
+
+  return (
+    <View style={{
+      marginHorizontal: isWide ? SP.xxxl : 0,
+      marginBottom: SP.xxxl,
+      backgroundColor: C.sand,
+      borderRadius: isWide ? 28 : 0,
+      padding: isWide ? SP.xxxl : SP.xl,
+      overflow: 'hidden',
+    }}>
+      {/* Section header */}
+      <View style={{ alignItems: 'center', marginBottom: SP.xl }}>
+        <View style={{
+          flexDirection: 'row', alignItems: 'center', gap: SP.sm,
+          backgroundColor: `${C.moss}18`, paddingHorizontal: SP.lg, paddingVertical: SP.sm,
+          borderRadius: 999, marginBottom: SP.md,
+        }}>
+          <Ionicons name="book-outline" size={14} color={C.moss} />
+          <ThemedText style={{ color: C.moss, fontSize: 12, fontWeight: '700', letterSpacing: 2, textTransform: 'uppercase' }}>
+            Mycology 101
+          </ThemedText>
+        </View>
+        <ThemedText style={{ color: C.dark, fontSize: isWide ? 36 : 26, fontWeight: '900', letterSpacing: -0.8, textAlign: 'center' }}>
+          Mushroom Mastery
+        </ThemedText>
+        <ThemedText style={{ color: C.stone, fontSize: 15, textAlign: 'center', marginTop: SP.sm, maxWidth: 400 }}>
           Essential knowledge about the fascinating world of fungi
         </ThemedText>
       </View>
 
-      {/* Tab Navigation */}
-      <View style={styles.tabContainer}>
-        {[
-          { key: 'facts', label: 'Fun Facts', icon: 'sparkles-outline' },
-          { key: 'anatomy', label: 'Anatomy', icon: 'fitness-outline' },
-          { key: 'types', label: 'Types', icon: 'albums-outline' },
-          { key: 'safety', label: 'Safety', icon: 'alert-circle-outline' }
-        ].map((tab) => (
+      {/* Tab bar */}
+      <View style={{
+        flexDirection: 'row',
+        backgroundColor: C.mist,
+        borderRadius: 14,
+        padding: 4,
+        marginBottom: SP.xl,
+        gap: 4,
+      }}>
+        {tabs.map(tab => (
           <TouchableOpacity
             key={tab.key}
-            style={[styles.tabButton, activeTab === tab.key && styles.activeTabButton]}
             onPress={() => setActiveTab(tab.key)}
+            style={{
+              flex: 1,
+              flexDirection: 'row',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: SP.xs,
+              paddingVertical: SP.sm,
+              paddingHorizontal: SP.sm,
+              borderRadius: 10,
+              backgroundColor: activeTab === tab.key ? C.forest : 'transparent',
+            }}
           >
-            <Ionicons 
-              name={tab.icon as any} 
-              size={16} 
-              color={activeTab === tab.key ? COLORS.white : COLORS.stone} 
-              style={{ marginRight: 4 }}
-            />
-            <ThemedText style={[styles.tabText, activeTab === tab.key && styles.activeTabText]}>
+            <Ionicons name={tab.icon as any} size={14} color={activeTab === tab.key ? C.white : C.stone} />
+            <ThemedText style={{
+              fontSize: 12,
+              fontWeight: '700',
+              color: activeTab === tab.key ? C.white : C.stone,
+            }}>
               {tab.label}
             </ThemedText>
           </TouchableOpacity>
         ))}
       </View>
 
-      {/* Content Area */}
-      <View style={styles.contentArea}>
-        {activeTab === 'facts' && <FactsTab />}
-        {activeTab === 'anatomy' && <AnatomyTab />}
-        {activeTab === 'types' && <TypesTab />}
-        {activeTab === 'safety' && <SafetyTab />}
-      </View>
-    </Animated.View>
-  );
-};
-
-// Fun Facts Tab
-const FactsTab = () => {
-  const floatAnim = useRef(new Animated.Value(0)).current;
-
-  useEffect(() => {
-    Animated.loop(
-      Animated.sequence([
-        Animated.timing(floatAnim, {
-          toValue: 1,
-          duration: 3000,
-          useNativeDriver: true,
-        }),
-        Animated.timing(floatAnim, {
-          toValue: 0,
-          duration: 3000,
-          useNativeDriver: true,
-        }),
-      ])
-    ).start();
-  }, []);
-
-  const facts = [
-    {
-      id: 1,
-      icon: 'globe-outline',
-      title: '5.1M+ Species',
-      description: 'Estimated fungal species on Earth',
-      color: COLORS.sage,
-      stat: '91%',
-      subtext: 'Undiscovered',
-    },
-    {
-      id: 2,
-      icon: 'git-network-outline',
-      title: 'Underground',
-      description: 'Mycelium can span thousands of acres',
-      color: COLORS.moss,
-      stat: '2,385',
-      subtext: 'Acres in Oregon',
-    },
-    {
-      id: 3,
-      icon: 'time-outline',
-      title: 'Ancient Organisms',
-      description: 'Fungi predate plants by millions of years',
-      color: COLORS.forest,
-      stat: '1.3B',
-      subtext: 'Years old',
-    },
-    {
-      id: 4,
-      icon: 'medical-outline',
-      title: 'Medical Marvels',
-      description: 'Medicines derived from fungi',
-      color: COLORS.olive,
-      stat: '40+',
-      subtext: 'Pharmaceuticals',
-    },
-    {
-      id: 5,
-      icon: 'flashlight-outline',
-      title: "Nature's Nightlights",
-      description: 'Bioluminescent mushroom species',
-      color: COLORS.terracotta,
-      stat: '80+',
-      subtext: 'Glowing species',
-    },
-    {
-      id: 6,
-      icon: 'pulse-outline',
-      title: 'Fungal Intelligence',
-      description: 'Can solve mazes and make decisions',
-      color: COLORS.coral,
-      stat: '50',
-      subtext: 'Neuron-like signals',
-    },
-  ];
-
-  return (
-    <View style={styles.tabContent}>
-      <View style={styles.factsGrid}>
-        {facts.map((fact, index) => (
-          <Animated.View
-            key={fact.id}
-            style={[
-              styles.factCard,
-              {
-                transform: [
-                  {
-                    translateY: floatAnim.interpolate({
-                      inputRange: [0, 1],
-                      outputRange: [0, index % 2 === 0 ? -5 : 5],
-                    }),
-                  },
-                ],
-              },
-            ]}
-          >
-            <View style={[styles.factCardInner, { backgroundColor: COLORS.white }]}>
-              <View style={[styles.factIconContainer, { backgroundColor: `${fact.color}15` }]}>
-                <Ionicons name={fact.icon as any} size={28} color={fact.color} />
-              </View>
-              <View style={styles.factStats}>
-                <ThemedText style={[styles.factStat, { color: fact.color }]}>{fact.stat}</ThemedText>
-                <ThemedText style={[styles.factSubtext, { color: COLORS.stone }]}>{fact.subtext}</ThemedText>
-              </View>
-              <ThemedText style={styles.factCardTitle}>{fact.title}</ThemedText>
-              <ThemedText style={styles.factCardDescription}>{fact.description}</ThemedText>
-            </View>
-          </Animated.View>
-        ))}
-      </View>
+      {/* Content */}
+      {activeTab === 'facts'   && <FactsTab  isWide={isWide} />}
+      {activeTab === 'anatomy' && <AnatomyTab isWide={isWide} />}
+      {activeTab === 'types'   && <TypesTab  isWide={isWide} />}
+      {activeTab === 'safety'  && <SafetyTab isWide={isWide} />}
     </View>
   );
 };
 
-// Anatomy Tab
-const AnatomyTab = () => {
-  const [parts] = useState([
-    {
-      id: 1,
-      name: 'Cap (Pileus)',
-      description: 'The umbrella-shaped top that protects gills',
-      icon: 'umbrella-outline',
-      color: COLORS.sage,
-      features: ['Protects spores', 'Various shapes', 'Color indicates species'],
-    },
-    {
-      id: 2,
-      name: 'Gills (Lamellae)',
-      description: 'Thin structures under cap producing spores',
-      icon: 'reorder-four-outline',
-      color: COLORS.moss,
-      features: ['Spore production', 'Radial pattern', 'Color varies'],
-    },
-    {
-      id: 3,
-      name: 'Stem (Stipe)',
-      description: 'Supports the cap and transports nutrients',
-      icon: 'remove-outline',
-      color: COLORS.forest,
-      features: ['Structural support', 'Nutrient transport', 'May have ring'],
-    },
-    {
-      id: 4,
-      name: 'Mycelium',
-      description: 'Underground network of thread-like cells',
-      icon: 'git-network-outline',
-      color: COLORS.olive,
-      features: ['Absorbs nutrients', 'Massive networks', 'Main organism'],
-    },
-    {
-      id: 5,
-      name: 'Volva',
-      description: 'Cup-like structure at base of some mushrooms',
-      icon: 'wine-outline',
-      color: COLORS.terracotta,
-      features: ['Protective cup', 'Found in Amanitas', 'Important ID feature'],
-    },
-    {
-      id: 6,
-      name: 'Spores',
-      description: 'Microscopic reproductive units',
-      icon: 'water-outline',
-      color: COLORS.coral,
-      features: ['Billions produced', 'Wind-dispersed', 'Species identification'],
-    },
-  ]);
-
-  return (
-    <View style={styles.tabContent}>
-      <View style={styles.anatomyContainer}>
-        {/* Large decorative mushroom */}
-        <View style={styles.diagramContainer}>
-          <CartoonMushroom size={120} capColor={COLORS.coral} color={COLORS.sage} />
-          <ThemedText style={styles.diagramLabel}>Mushroom Anatomy</ThemedText>
-        </View>
-
-        <View style={styles.partsGrid}>
-          {parts.map((part) => (
-            <View key={part.id} style={styles.partCard}>
-              <View style={[styles.partIconContainer, { backgroundColor: `${part.color}15` }]}>
-                <Ionicons name={part.icon as any} size={28} color={part.color} />
-              </View>
-              <ThemedText style={styles.partName}>{part.name}</ThemedText>
-              <ThemedText style={styles.partDescription}>{part.description}</ThemedText>
-              <View style={styles.featuresContainer}>
-                {part.features.map((feature, idx) => (
-                  <View key={idx} style={[styles.featureBadge, { backgroundColor: `${part.color}10` }]}>
-                    <ThemedText style={[styles.featureText, { color: part.color }]}>• {feature}</ThemedText>
-                  </View>
-                ))}
-              </View>
-            </View>
-          ))}
-        </View>
-      </View>
-    </View>
-  );
-};
-
-// Types Tab
-const TypesTab = () => {
-  const [mushroomTypes] = useState([
-    {
-      id: 1,
-      name: 'Edible',
-      description: 'Safe for human consumption',
-      examples: ['Button', 'Portobello', 'Shiitake', 'Oyster'],
-      color: COLORS.success,
-      icon: 'restaurant-outline',
-      safety: 'Verified Safe',
-    },
-    {
-      id: 2,
-      name: 'Medicinal',
-      description: 'Used in traditional medicine',
-      examples: ['Reishi', 'Turkey Tail', "Lion's Mane", 'Cordyceps'],
-      color: COLORS.moss,
-      icon: 'medical-outline',
-      safety: 'Therapeutic',
-    },
-    {
-      id: 3,
-      name: 'Narcotic',
-      description: 'Contain psychoactive compounds',
-      examples: ['Psilocybe', 'Amanita Muscaria', 'Liberty Cap'],
-      color: COLORS.forest,
-      icon: 'eye-outline',
-      safety: 'Controlled Use',
-    },
-    {
-      id: 4,
-      name: 'Poisonous',
-      description: 'Toxic or deadly if consumed',
-      examples: ['Death Cap', 'Destroying Angel', 'False Morel'],
-      color: COLORS.danger,
-      icon: 'skull-outline',
-      safety: 'Dangerous',
-    },
-    {
-      id: 5,
-      name: 'Scavenging',
-      description: 'Decompose dead organic matter',
-      examples: ['Shaggy Mane', 'Ink Cap', 'Parasol'],
-      color: COLORS.olive,
-      icon: 'reload-circle-outline',
-      safety: 'Ecosystem Role',
-    },
-    {
-      id: 6,
-      name: 'Fungal',
-      description: 'Symbiotic with plant roots',
-      examples: ['Chanterelle', 'Porcini', 'Truffle', 'Morel'],
-      color: COLORS.terracotta,
-      icon: 'git-branch-outline',
-      safety: 'Symbiotic',
-    },
-  ]);
-
-  const scaleAnim = useRef(new Animated.Value(0)).current;
-
-  useEffect(() => {
-    Animated.spring(scaleAnim, {
-      toValue: 1,
-      friction: 8,
-      tension: 40,
-      useNativeDriver: true,
-    }).start();
-  }, []);
-
-  return (
-    <Animated.View style={[styles.tabContent, { transform: [{ scale: scaleAnim }] }]}>
-      <View style={styles.typesGrid}>
-        {mushroomTypes.map((type) => (
-          <View key={type.id} style={styles.typeCard}>
-            <View style={[styles.typeCardHeader, { backgroundColor: `${type.color}15` }]}>
-              <View style={[styles.typeIconContainer, { backgroundColor: `${type.color}25` }]}>
-                <Ionicons name={type.icon as any} size={32} color={type.color} />
-              </View>
-              <View style={{ flex: 1 }}>
-                <ThemedText style={[styles.typeName, { color: type.color }]}>{type.name}</ThemedText>
-                <ThemedText style={[styles.typeSafety, { color: COLORS.stone }]}>{type.safety}</ThemedText>
-              </View>
-            </View>
-
-            <View style={styles.typeCardBody}>
-              <ThemedText style={styles.typeDescription}>{type.description}</ThemedText>
-
-              <View style={styles.examplesContainer}>
-                <ThemedText style={styles.examplesTitle}>Common Examples:</ThemedText>
-                <View style={styles.examplesGrid}>
-                  {type.examples.map((example, idx) => (
-                    <View key={idx} style={[styles.exampleBadge, { backgroundColor: `${type.color}10` }]}>
-                      <ThemedText style={[styles.exampleText, { color: type.color }]}>{example}</ThemedText>
-                    </View>
-                  ))}
-                </View>
-              </View>
-            </View>
-          </View>
-        ))}
-      </View>
-    </Animated.View>
-  );
-};
-
-// Safety Tab
-const SafetyTab = () => {
-  const [safetyRules] = useState([
-    {
-      id: 1,
-      rule: 'Never Eat Raw',
-      description: 'Many edible mushrooms are toxic when raw',
-      icon: 'ban-outline',
-      severity: 'high',
-      tips: ['Always cook thoroughly', 'Destroys toxins', 'Improves digestion'],
-    },
-    {
-      id: 2,
-      rule: 'Positive ID',
-      description: '100% certainty before consumption',
-      icon: 'checkmark-circle-outline',
-      severity: 'critical',
-      tips: ['Use multiple sources', 'Check all features', 'Compare with look-alikes'],
-    },
-    {
-      id: 3,
-      rule: 'Start Small',
-      description: 'Test tolerance with small amounts first',
-      icon: 'thermometer-outline',
-      severity: 'medium',
-      tips: ['¼ portion first', 'Wait 24 hours', 'Watch for reactions'],
-    },
-    {
-      id: 4,
-      rule: 'Avoid Alcohol',
-      description: 'Never mix with alcohol consumption',
-      icon: 'wine-outline',
-      severity: 'high',
-      tips: ['48-hour gap', 'Inhibits digestion', 'Increases toxicity'],
-    },
-    {
-      id: 5,
-      rule: 'Know Look-alikes',
-      description: 'Study poisonous species in your area',
-      icon: 'eye-outline',
-      severity: 'critical',
-      tips: ['Learn deadly species', 'Note differences', 'When in doubt, throw out'],
-    },
-    {
-      id: 6,
-      rule: 'Document Findings',
-      description: 'Take photos and notes for expert review',
-      icon: 'camera-outline',
-      severity: 'medium',
-      tips: ['Multiple angles', 'Include habitat', 'Note spore print'],
-    },
-  ]);
-
-  const pulseAnim = useRef(new Animated.Value(1)).current;
-
-  useEffect(() => {
-    Animated.loop(
-      Animated.sequence([
-        Animated.timing(pulseAnim, {
-          toValue: 1.05,
-          duration: 1000,
-          useNativeDriver: true,
-        }),
-        Animated.timing(pulseAnim, {
-          toValue: 1,
-          duration: 1000,
-          useNativeDriver: true,
-        }),
-      ])
-    ).start();
-  }, []);
-
-  const getSeverityColor = (severity: string) => {
-    switch (severity) {
-      case 'critical':
-        return COLORS.danger;
-      case 'high':
-        return COLORS.terracotta;
-      case 'medium':
-        return COLORS.warning;
-      default:
-        return COLORS.moss;
-    }
-  };
-
-  return (
-    <View style={styles.tabContent}>
-      {/* Warning Banner */}
-      <Animated.View style={[styles.warningBanner, { transform: [{ scale: pulseAnim }] }]}>
-        <Ionicons name="warning-outline" size={32} color={COLORS.danger} />
-        <View style={styles.warningContent}>
-          <ThemedText style={styles.warningTitle}>FOR EDUCATIONAL PURPOSES ONLY</ThemedText>
-          <ThemedText style={styles.warningText}>Never consume wild mushrooms without expert verification</ThemedText>
-        </View>
-      </Animated.View>
-
-      <View style={styles.safetyGrid}>
-        {safetyRules.map((rule) => {
-          const severityColor = getSeverityColor(rule.severity);
-          return (
-            <View key={rule.id} style={styles.safetyCard}>
-              <View style={styles.safetyCardHeader}>
-                <View style={[styles.ruleIconContainer, { backgroundColor: `${severityColor}15` }]}>
-                  <Ionicons name={rule.icon as any} size={28} color={severityColor} />
-                </View>
-                <View style={styles.ruleInfo}>
-                  <ThemedText style={styles.ruleName}>{rule.rule}</ThemedText>
-                  <View style={[styles.severityBadge, { backgroundColor: `${severityColor}15` }]}>
-                    <View style={[styles.severityDot, { backgroundColor: severityColor }]} />
-                    <ThemedText style={[styles.severityText, { color: severityColor }]}>
-                      {rule.severity.toUpperCase()} PRIORITY
-                    </ThemedText>
-                  </View>
-                </View>
-              </View>
-
-              <ThemedText style={styles.ruleDescription}>{rule.description}</ThemedText>
-
-              <View style={styles.tipsContainer}>
-                <ThemedText style={styles.tipsTitle}>Key Tips:</ThemedText>
-                {rule.tips.map((tip, idx) => (
-                  <View key={idx} style={styles.tipItem}>
-                    <View style={[styles.tipDot, { backgroundColor: severityColor }]} />
-                    <ThemedText style={styles.tipText}>{tip}</ThemedText>
-                  </View>
-                ))}
-              </View>
-            </View>
-          );
-        })}
-      </View>
-
-      {/* Emergency Info */}
-      <View style={styles.emergencyContainer}>
-        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', marginBottom: SPACING.md }}>
-          <Ionicons name="alert-circle" size={24} color="#92400E" style={{ marginRight: 8 }} />
-          <ThemedText style={styles.emergencyTitle}>In Case of Poisoning:</ThemedText>
-        </View>
-        <View style={styles.emergencySteps}>
-          <View style={styles.emergencyStep}>
-            <View style={styles.emergencyNumber}>
-              <ThemedText style={styles.stepNumberText}>1</ThemedText>
-            </View>
-            <ThemedText style={styles.stepText}>Call Poison Control Immediately</ThemedText>
-          </View>
-          <View style={styles.emergencyStep}>
-            <View style={styles.emergencyNumber}>
-              <ThemedText style={styles.stepNumberText}>2</ThemedText>
-            </View>
-            <ThemedText style={styles.stepText}>Save Mushroom Sample</ThemedText>
-          </View>
-          <View style={styles.emergencyStep}>
-            <View style={styles.emergencyNumber}>
-              <ThemedText style={styles.stepNumberText}>3</ThemedText>
-            </View>
-            <ThemedText style={styles.stepText}>Go to Emergency Room</ThemedText>
-          </View>
-        </View>
-      </View>
-    </View>
-  );
-};
-// ============ PART 3: MAIN COMPONENT ============
-
-// CONTINUE FROM PART 2...
-
+// ─── MAIN COMPONENT ───────────────────────────────────────────────────────────
 export default function LandingPage() {
   const router = useRouter();
+  const [currentSlide, setCurrentSlide] = useState(0);
   const [connectionStatus, setConnectionStatus] = useState<'idle' | 'testing' | 'connected' | 'failed'>('idle');
   const [connectionMessage, setConnectionMessage] = useState('');
   const { user, isLoading: authLoading, logout } = useAuth();
   const isLoggedIn = !!user;
 
-  const [currentSlide, setCurrentSlide] = useState(0);
   const fadeAnim = useRef(new Animated.Value(1)).current;
   const scrollY = useRef(new Animated.Value(0)).current;
+  const heroTextAnim = useRef(new Animated.Value(0)).current;
+  const heroVisualAnim = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
+    // Entrance animations
+    Animated.stagger(200, [
+      Animated.timing(heroTextAnim, { toValue: 1, duration: 700, useNativeDriver: true }),
+      Animated.timing(heroVisualAnim, { toValue: 1, duration: 700, useNativeDriver: true }),
+    ]).start();
+
+    // Hero carousel
     const interval = setInterval(() => {
-      Animated.timing(fadeAnim, {
-        toValue: 0,
-        duration: 500,
-        useNativeDriver: true,
-      }).start(() => {
-        setCurrentSlide((prev) => (prev + 1) % HERO_SLIDES.length);
-        Animated.timing(fadeAnim, {
-          toValue: 1,
-          duration: 500,
-          useNativeDriver: true,
-        }).start();
+      Animated.timing(fadeAnim, { toValue: 0, duration: 500, useNativeDriver: true }).start(() => {
+        setCurrentSlide(prev => (prev + 1) % HERO_SLIDES.length);
+        Animated.timing(fadeAnim, { toValue: 1, duration: 500, useNativeDriver: true }).start();
       });
     }, 5000);
-
     return () => clearInterval(interval);
   }, []);
 
-  const handleLoginPress = () => {
-    router.push('/(auth)/login');
-  };
+  const headerBg = scrollY.interpolate({
+    inputRange: [0, 120],
+    outputRange: ['rgba(26,35,24,0)', 'rgba(26,35,24,0.97)'],
+    extrapolate: 'clamp',
+  });
 
   const handleCameraPress = () => {
     if (!isLoggedIn) {
@@ -1252,10 +757,6 @@ export default function LandingPage() {
       return;
     }
     router.push('/(tabs)/camera');
-  };
-
-  const handleInfoPress = () => {
-    router.push('/(tabs)/about');
   };
 
   const handleTestConnection = async () => {
@@ -1272,421 +773,816 @@ export default function LandingPage() {
     }
   };
 
-  const headerOpacity = scrollY.interpolate({
-    inputRange: [0, 100],
-    outputRange: [0, 1],
-    extrapolate: 'clamp',
-  });
-
   if (authLoading) {
     return (
-      <View style={styles.loadingContainer}>
-        <View style={styles.loadingContent}>
-          <CartoonMushroom size={100} capColor={COLORS.coral} color={COLORS.sage} />
-          <ThemedText style={styles.loadingText}>Loading SnapShroom...</ThemedText>
-        </View>
+      <View style={{ flex: 1, backgroundColor: C.dark, alignItems: 'center', justifyContent: 'center' }}>
+        <MushroomHeroVisual />
+        <ThemedText style={{ color: C.sage, fontSize: 18, marginTop: SP.xl, fontWeight: '600' }}>
+          Loading SnapShroom...
+        </ThemedText>
       </View>
     );
   }
 
+  // Layout is responsive: on web/wide screens use side-by-side, on mobile stack
+  const isWide = isWeb && width >= 768;
+
   return (
-    <View style={styles.container}>
-      {/* Floating spores background */}
+    <View style={{ flex: 1, backgroundColor: C.cream }}>
+      <StatusBar barStyle="light-content" />
       <FloatingSpores />
 
-      {/* Floating Header */}
+      {/* ── FLOATING NAVBAR ── */}
       <Animated.View
-        style={[
-          styles.floatingHeader,
-          {
-            backgroundColor: headerOpacity.interpolate({
-              inputRange: [0, 1],
-              outputRange: ['rgba(250, 248, 243, 0)', 'rgba(250, 248, 243, 0.98)'],
-            }),
-          },
-        ]}
+        style={{
+          position: 'absolute',
+          top: 0,
+          left: 0,
+          right: 0,
+          zIndex: 100,
+          backgroundColor: headerBg,
+          paddingTop: Platform.OS === 'ios' ? 50 : Platform.OS === 'android' ? 32 : 0,
+        }}
       >
-        <View style={styles.headerContent}>
+        <View
+          style={{
+            flexDirection: 'row',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            paddingHorizontal: isWide ? SP.xxxl : SP.xl,
+            paddingVertical: SP.md,
+          }}
+        >
+          {/* Left: hamburger or spacer */}
           {isLoggedIn ? (
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+            <View style={{ flexDirection: 'row', gap: SP.sm, alignItems: 'center' }}>
               <HamburgerMenu />
-              <NotificationDropdown iconColor={COLORS.forest} />
+              <NotificationDropdown iconColor={C.sage} />
             </View>
-          ) : (
-            <View style={{ width: 40 }} />
-          )}
-          <View style={styles.logoContainer}>
-            <Ionicons name="leaf" size={24} color={COLORS.forest} />
-            <ThemedText style={styles.logoText}>SnapShroom</ThemedText>
+          ) : <View style={{ width: 40 }} />}
+
+          {/* Center: logo */}
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: SP.sm }}>
+            <View style={{ width: 32, height: 32, borderRadius: 10, backgroundColor: C.moss, alignItems: 'center', justifyContent: 'center' }}>
+              <Ionicons name="leaf" size={18} color={C.white} />
+            </View>
+            <ThemedText style={{ color: C.white, fontSize: 20, fontWeight: '800', letterSpacing: -0.5 }}>
+              SnapShroom
+            </ThemedText>
           </View>
+
+          {/* Right: auth */}
           {!isLoggedIn ? (
-            <TouchableOpacity style={styles.loginButton} onPress={handleLoginPress}>
-              <LinearGradient colors={[COLORS.sage, COLORS.forest]} style={styles.loginButtonGradient}>
-                <Ionicons name="log-in" size={14} color={COLORS.white} />
-                <ThemedText style={styles.loginButtonText}>Login</ThemedText>
-              </LinearGradient>
+            <TouchableOpacity
+              onPress={() => router.push('/(auth)/login')}
+              style={{
+                backgroundColor: C.moss,
+                paddingHorizontal: SP.lg,
+                paddingVertical: SP.sm,
+                borderRadius: 999,
+                flexDirection: 'row',
+                alignItems: 'center',
+                gap: SP.xs,
+              }}
+            >
+              <Ionicons name="log-in-outline" size={16} color={C.white} />
+              <ThemedText style={{ color: C.white, fontSize: 14, fontWeight: '700' }}>Login</ThemedText>
             </TouchableOpacity>
-          ) : (
-            <View style={{ width: 40 }} />
-          )}
+          ) : <View style={{ width: 40 }} />}
         </View>
       </Animated.View>
 
       <Animated.ScrollView
-        style={styles.scrollView}
         showsVerticalScrollIndicator={false}
         onScroll={Animated.event([{ nativeEvent: { contentOffset: { y: scrollY } } }], { useNativeDriver: false })}
         scrollEventThrottle={16}
       >
-        {/* Hero Section */}
-        <View style={styles.heroSection}>
-          <Animated.View style={[styles.heroImageContainer, { opacity: fadeAnim }]}>
+
+        {/* ══════════════════════════════════════════
+            HERO SECTION — Dark forest background,
+            text left / mushroom right (like café ref)
+        ══════════════════════════════════════════ */}
+        <View style={{ backgroundColor: C.dark, minHeight: isWide ? height * 0.88 : height * 0.92, overflow: 'hidden' }}>
+          {/* BG image */}
+          <Animated.View style={{ position: 'absolute', inset: 0, opacity: fadeAnim }}>
             {isWeb ? (
-              <RNImage source={HERO_SLIDES[currentSlide]} style={styles.heroImage} resizeMode="cover" />
-            ) : (
-              <ExpoImage
+              <RNImage
                 source={HERO_SLIDES[currentSlide]}
-                style={styles.heroImage}
-                contentFit="cover"
-                transition={500}
+                style={{ width: '100%', height: '100%' }}
+                resizeMode="cover"
               />
+            ) : (
+              <ExpoImage source={HERO_SLIDES[currentSlide]} style={{ flex: 1 }} contentFit="cover" />
             )}
             <LinearGradient
-              colors={['rgba(0,0,0,0)', 'rgba(0,0,0,0.3)', 'rgba(63, 73, 65, 0.85)']}
-              style={styles.heroGradient}
+              colors={[
+                'rgba(26,35,24,0.88)',
+                'rgba(26,35,24,0.72)',
+                'rgba(26,35,24,0.55)',
+                'rgba(26,35,24,0.80)',
+              ]}
+              style={{ position: 'absolute', inset: 0 }}
             />
           </Animated.View>
 
-          <View style={styles.heroContent}>
-            <View style={styles.welcomeBadge}>
-              <Ionicons 
-                name={isLoggedIn ? 'person-circle-outline' : 'sparkles-outline'} 
-                size={18} 
-                color={COLORS.white} 
+          {/* Hero content row */}
+          <View
+            style={{
+              flex: 1,
+              flexDirection: isWide ? 'row' : 'column',
+              alignItems: isWide ? 'center' : 'flex-start',
+              justifyContent: isWide ? 'space-between' : 'flex-end',
+              paddingTop: isWide ? 100 : 80,
+              paddingHorizontal: isWide ? SP.xxxl : SP.xl,
+              paddingBottom: isWide ? SP.xxxl : SP.xl,
+              minHeight: isWide ? height * 0.88 : height * 0.72,
+            }}
+          >
+            {/* Left text block */}
+            <Animated.View
+              style={{
+                flex: isWide ? 1 : undefined,
+                maxWidth: isWide ? 520 : '100%',
+                opacity: heroTextAnim,
+                transform: [{ translateX: heroTextAnim.interpolate({ inputRange: [0, 1], outputRange: [-40, 0] }) }],
+              }}
+            >
+              {/* Badge */}
+              <View
+                style={{
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  gap: SP.sm,
+                  marginBottom: SP.lg,
+                }}
+              >
+                <View style={{ width: 28, height: 2, backgroundColor: C.amber }} />
+                <ThemedText
+                  style={{
+                    color: C.amber,
+                    fontSize: 12,
+                    fontWeight: '700',
+                    letterSpacing: 2.5,
+                    textTransform: 'uppercase',
+                  }}
+                >
+                  {isLoggedIn
+                    ? `Welcome back, ${user?.name || user?.username || 'Explorer'}`
+                    : 'Machine Learning Powered'}
+                </ThemedText>
+              </View>
+
+              {/* On mobile: title + mushroom side by side */}
+              <View style={{ flexDirection: 'row', alignItems: 'flex-end', gap: SP.md, marginBottom: SP.xl }}>
+                <ThemedText
+                  style={{
+                    color: C.white,
+                    fontSize: isWide ? 58 : 38,
+                    fontWeight: '900',
+                    lineHeight: isWide ? 66 : 46,
+                    letterSpacing: -1.5,
+                    flex: isWide ? undefined : 1,
+                  }}
+                >
+                  Discover &{'\n'}Identify{'\n'}
+                  <ThemedText style={{ color: C.sage }}>Mushrooms</ThemedText>
+                </ThemedText>
+
+                {/* Mushroom visual — beside title on mobile, separate column on web */}
+                {!isWide && (
+                  <Animated.View
+                    style={{
+                      opacity: heroVisualAnim,
+                      transform: [{ translateY: heroVisualAnim.interpolate({ inputRange: [0, 1], outputRange: [20, 0] }) }],
+                      marginBottom: SP.sm,
+                    }}
+                  >
+                    <MushroomHeroVisual overrideSize={width * 0.38} />
+                  </Animated.View>
+                )}
+              </View>
+
+              <ThemedText
+                style={{
+                  color: 'rgba(255,255,255,0.65)',
+                  fontSize: isWide ? 17 : 15,
+                  lineHeight: 26,
+                  marginBottom: SP.xxl,
+                  maxWidth: 420,
+                }}
+              >
+                Point. Snap. Identify. Get detailed species info, safety warnings, and scientific data — instantly.
+              </ThemedText>
+
+              {/* CTA Buttons */}
+              <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: SP.md }}>
+                <TouchableOpacity
+                  onPress={isLoggedIn ? handleCameraPress : () => router.push('/(auth)/login')}
+                  style={{
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    gap: SP.sm,
+                    backgroundColor: C.sage,
+                    paddingHorizontal: SP.xl,
+                    paddingVertical: SP.lg,
+                    borderRadius: 14,
+                  }}
+                >
+                  <Ionicons name={isLoggedIn ? 'camera' : 'person'} size={20} color={C.dark} />
+                  <ThemedText style={{ color: C.dark, fontSize: 16, fontWeight: '800' }}>
+                    {isLoggedIn ? 'Start Identifying' : 'Get Started Free'}
+                  </ThemedText>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  onPress={() => router.push('/(tabs)/about')}
+                  style={{
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    gap: SP.sm,
+                    borderWidth: 1.5,
+                    borderColor: 'rgba(255,255,255,0.3)',
+                    paddingHorizontal: SP.xl,
+                    paddingVertical: SP.lg,
+                    borderRadius: 14,
+                  }}
+                >
+                  <ThemedText style={{ color: C.white, fontSize: 16, fontWeight: '700' }}>About Us</ThemedText>
+                  <Ionicons name="arrow-forward" size={16} color={C.white} />
+                </TouchableOpacity>
+              </View>
+
+              {/* Slide dots */}
+              <View style={{ flexDirection: 'row', gap: SP.sm, marginTop: SP.xxl }}>
+                {HERO_SLIDES.map((_, i) => (
+                  <View
+                    key={i}
+                    style={{
+                      width: i === currentSlide ? 24 : 8,
+                      height: 8,
+                      borderRadius: 4,
+                      backgroundColor: i === currentSlide ? C.sage : 'rgba(255,255,255,0.25)',
+                    }}
+                  />
+                ))}
+              </View>
+            </Animated.View>
+
+            {/* Right: mushroom product visual — web only */}
+            {isWide && (
+              <Animated.View
+                style={{
+                  opacity: heroVisualAnim,
+                  transform: [{ translateY: heroVisualAnim.interpolate({ inputRange: [0, 1], outputRange: [30, 0] }) }],
+                  alignItems: 'center',
+                }}
+              >
+                <MushroomHeroVisual />
+              </Animated.View>
+            )}
+          </View>
+
+          {/* Brushstroke transition — SVG-shaped bottom mask */}
+          <View
+            style={{
+              height: isWide ? 80 : 60,
+              backgroundColor: C.cream,
+              borderTopLeftRadius: isWide ? 60 : 40,
+              borderTopRightRadius: isWide ? 60 : 40,
+              overflow: 'hidden',
+            }}
+          >
+            <LinearGradient
+              colors={[C.dark, C.cream]}
+              style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 40 }}
+            />
+          </View>
+        </View>
+
+        {/* ══════════════════════════════════════════
+            STATS BAR
+        ══════════════════════════════════════════ */}
+        <View
+          style={{
+            backgroundColor: C.forest,
+            flexDirection: isWide ? 'row' : 'column',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: 0,
+            marginHorizontal: isWide ? SP.xxxl : SP.xl,
+            borderRadius: 20,
+            marginTop: -SP.xxl,
+            marginBottom: SP.xxl,
+            shadowColor: C.dark,
+            shadowOffset: { width: 0, height: 12 },
+            shadowOpacity: 0.2,
+            shadowRadius: 24,
+            elevation: 8,
+            overflow: 'hidden',
+          }}
+        >
+          {[
+            { icon: 'leaf-outline', value: '10 Species', label: 'In Database' },
+            { icon: 'analytics-outline', value: 'ML-Powered', label: 'Identification' },
+            { icon: 'shield-checkmark-outline', value: 'Safety First', label: 'Approach' },
+            { icon: 'people-outline', value: 'Community', label: 'Verified Data' },
+          ].map((stat, i, arr) => (
+            <View
+              key={i}
+              style={{
+                flex: isWide ? 1 : undefined,
+                width: isWide ? undefined : '100%',
+                paddingVertical: SP.xl,
+                paddingHorizontal: SP.xl,
+                alignItems: 'center',
+                flexDirection: 'row',
+                gap: SP.md,
+                borderRightWidth: isWide && i < arr.length - 1 ? 1 : 0,
+                borderBottomWidth: !isWide && i < arr.length - 1 ? 1 : 0,
+                borderColor: 'rgba(255,255,255,0.1)',
+              }}
+            >
+              <View
+                style={{
+                  width: 44,
+                  height: 44,
+                  borderRadius: 12,
+                  backgroundColor: `${C.sage}25`,
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }}
+              >
+                <Ionicons name={stat.icon as any} size={22} color={C.sage} />
+              </View>
+              <View>
+                <ThemedText style={{ color: C.white, fontSize: 16, fontWeight: '800' }}>{stat.value}</ThemedText>
+                <ThemedText style={{ color: 'rgba(255,255,255,0.5)', fontSize: 12 }}>{stat.label}</ThemedText>
+              </View>
+            </View>
+          ))}
+        </View>
+
+        {/* ══════════════════════════════════════════
+            SPLIT SECTION — like the café "telecast" section
+            Video-placeholder left / copy right
+        ══════════════════════════════════════════ */}
+        <View
+          style={{
+            flexDirection: isWide ? 'row' : 'column',
+            alignItems: 'stretch',
+            gap: SP.xl,
+            paddingHorizontal: isWide ? SP.xxxl : SP.xl,
+            marginBottom: SP.xxxl,
+          }}
+        >
+          {/* Left: image card */}
+          <View
+            style={{
+              flex: isWide ? 1.1 : undefined,
+              height: isWide ? 360 : 240,
+              borderRadius: 24,
+              overflow: 'hidden',
+              backgroundColor: C.forest,
+            }}
+          >
+            {isWeb ? (
+              <RNImage
+                source={{ uri: 'https://picturemushroom.com/wiki-image/1080/153988458937843728.jpeg' }}
+                style={{ width: '100%', height: '100%' }}
+                resizeMode="cover"
               />
-              <ThemedText style={styles.welcomeText} numberOfLines={1}>
-                {isLoggedIn ? `Welcome, ${user?.name || user?.username || 'Explorer'}` : 'Discover the World of Fungi'}
+            ) : (
+              <ExpoImage
+                source={{ uri: 'https://picturemushroom.com/wiki-image/1080/153988458937843728.jpeg' }}
+                style={{ flex: 1 }}
+                contentFit="cover"
+              />
+            )}
+            <LinearGradient
+              colors={['transparent', 'rgba(26,35,24,0.55)']}
+              style={{ position: 'absolute', inset: 0 }}
+            />
+            {/* Play-button overlay */}
+            <View style={{ position: 'absolute', inset: 0, alignItems: 'center', justifyContent: 'center' }}>
+              <View
+                style={{
+                  width: 60,
+                  height: 60,
+                  borderRadius: 30,
+                  borderWidth: 2,
+                  borderColor: C.amber,
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }}
+              >
+                <Ionicons name="camera" size={28} color={C.amber} />
+              </View>
+            </View>
+          </View>
+
+          {/* Right: copy */}
+          <View style={{ flex: 1, justifyContent: 'center', paddingVertical: isWide ? 0 : SP.lg }}>
+            <ThemedText
+              style={{ color: C.amber, fontSize: 12, fontWeight: '700', letterSpacing: 2, textTransform: 'uppercase', marginBottom: SP.md }}
+            >
+              ML-Powered Recognition
+            </ThemedText>
+            <ThemedText style={{ color: C.dark, fontSize: isWide ? 38 : 28, fontWeight: '900', lineHeight: isWide ? 46 : 36, marginBottom: SP.lg, letterSpacing: -1 }}>
+              Identify Any{'\n'}Mushroom Instantly
+            </ThemedText>
+            <ThemedText style={{ color: C.stone, fontSize: 15, lineHeight: 24, marginBottom: SP.xl }}>
+              Our machine learning model has been trained on thousands of species photographs, giving you accurate, real-time identification with safety information you can trust.
+            </ThemedText>
+
+            <TouchableOpacity
+              onPress={isLoggedIn ? handleCameraPress : () => router.push('/(auth)/login')}
+              style={{
+                flexDirection: 'row',
+                alignItems: 'center',
+                gap: SP.sm,
+                alignSelf: 'flex-start',
+                backgroundColor: C.forest,
+                paddingHorizontal: SP.xl,
+                paddingVertical: SP.md,
+                borderRadius: 12,
+              }}
+            >
+              <Ionicons name="camera-outline" size={18} color={C.white} />
+              <ThemedText style={{ color: C.white, fontSize: 15, fontWeight: '700' }}>
+                {isLoggedIn ? 'Open Camera' : 'Try It Free'}
+              </ThemedText>
+            </TouchableOpacity>
+          </View>
+        </View>
+
+        {/* ══════════════════════════════════════════
+            MUSHROOM INFOGRAPHICS
+        ══════════════════════════════════════════ */}
+        <MushroomInfographics isWide={isWide} />
+
+        {/* ══════════════════════════════════════════
+            FEATURES GRID
+        ══════════════════════════════════════════ */}
+        <View style={{ paddingHorizontal: isWide ? SP.xxxl : SP.xl, marginBottom: SP.xxxl }}>
+          {/* Section header */}
+          <View style={{ alignItems: 'center', marginBottom: SP.xxl }}>
+            <View
+              style={{
+                flexDirection: 'row',
+                alignItems: 'center',
+                gap: SP.sm,
+                backgroundColor: `${C.moss}15`,
+                paddingHorizontal: SP.lg,
+                paddingVertical: SP.sm,
+                borderRadius: 999,
+                marginBottom: SP.md,
+              }}
+            >
+              <Ionicons name="star-outline" size={14} color={C.moss} />
+              <ThemedText style={{ color: C.moss, fontSize: 12, fontWeight: '700', letterSpacing: 2, textTransform: 'uppercase' }}>
+                Features
+              </ThemedText>
+            </View>
+            <ThemedText style={{ color: C.dark, fontSize: isWide ? 36 : 26, fontWeight: '900', letterSpacing: -0.8, textAlign: 'center' }}>
+              Why Choose SnapShroom
+            </ThemedText>
+            <ThemedText style={{ color: C.stone, fontSize: 15, textAlign: 'center', marginTop: SP.sm, maxWidth: 400 }}>
+              Advanced ML meets comprehensive mushroom knowledge
+            </ThemedText>
+          </View>
+
+          <View
+            style={{
+              flexDirection: isWide ? 'row' : 'column',
+              gap: SP.lg,
+              flexWrap: isWide ? 'wrap' : 'nowrap',
+            }}
+          >
+            <FeatureCard
+              icon="analytics"
+              title="ML Recognition"
+              desc="Instantly identifies mushroom species using advanced machine learning algorithms trained on thousands of images."
+              accent={C.moss}
+            />
+            <FeatureCard
+              icon="shield-checkmark"
+              title="Safety First"
+              desc="Comprehensive safety warnings, toxicity levels, and expert-verified information for every identified species."
+              accent={C.forest}
+            />
+            <FeatureCard
+              icon="library"
+              title="10+ Species"
+              desc="Detailed profiles with scientific classifications, habitat info, and culinary or medicinal uses."
+              accent={C.amber}
+            />
+          </View>
+        </View>
+
+        {/* ══════════════════════════════════════════
+            HOW IT WORKS
+        ══════════════════════════════════════════ */}
+        <View
+          style={{
+            backgroundColor: C.sand,
+            marginHorizontal: isWide ? SP.xxxl : 0,
+            borderRadius: isWide ? 28 : 0,
+            padding: isWide ? SP.xxxl : SP.xl,
+            marginBottom: SP.xxxl,
+          }}
+        >
+          <View
+            style={{
+              flexDirection: isWide ? 'row' : 'column',
+              gap: SP.xxxl,
+              alignItems: isWide ? 'flex-start' : 'stretch',
+            }}
+          >
+            {/* Section title */}
+            <View style={{ flex: isWide ? 0.4 : undefined }}>
+              <View
+                style={{
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  gap: SP.sm,
+                  backgroundColor: `${C.moss}18`,
+                  paddingHorizontal: SP.md,
+                  paddingVertical: SP.xs,
+                  borderRadius: 999,
+                  alignSelf: 'flex-start',
+                  marginBottom: SP.md,
+                }}
+              >
+                <Ionicons name="bulb-outline" size={14} color={C.moss} />
+                <ThemedText style={{ color: C.moss, fontSize: 12, fontWeight: '700', letterSpacing: 2, textTransform: 'uppercase' }}>
+                  How It Works
+                </ThemedText>
+              </View>
+              <ThemedText style={{ color: C.dark, fontSize: isWide ? 36 : 26, fontWeight: '900', letterSpacing: -0.8, lineHeight: isWide ? 44 : 34, marginBottom: SP.lg }}>
+                Three Simple{'\n'}Steps
+              </ThemedText>
+              <ThemedText style={{ color: C.stone, fontSize: 15, lineHeight: 24 }}>
+                From mushroom to identification in under 10 seconds. No expertise needed.
               </ThemedText>
             </View>
 
-            <ThemedText style={styles.heroTitle}>
-              Discover & Identify{'\n'}Mushrooms with SnapShroom
-            </ThemedText>
-
-            <ThemedText style={styles.heroSubtitle}>
-              Machine Learning-powered mushroom identification for enthusiasts and foragers
-            </ThemedText>
-
-            <View style={styles.heroActions}>
-              {isLoggedIn ? (
-                <TouchableOpacity style={styles.primaryButton} onPress={handleCameraPress}>
-                  <LinearGradient colors={[COLORS.sage, COLORS.forest]} style={styles.buttonGradient}>
-                    <Ionicons name="camera" size={20} color={COLORS.white} />
-                    <ThemedText style={styles.primaryButtonText}>Start Identifying</ThemedText>
-                  </LinearGradient>
-                </TouchableOpacity>
-              ) : (
-                <TouchableOpacity style={styles.primaryButton} onPress={handleLoginPress}>
-                  <LinearGradient colors={[COLORS.sage, COLORS.forest]} style={styles.buttonGradient}>
-                    <Ionicons name="person" size={20} color={COLORS.white} />
-                    <ThemedText style={styles.primaryButtonText}>Get Started</ThemedText>
-                  </LinearGradient>
-                </TouchableOpacity>
-              )}
-
-              <TouchableOpacity style={styles.secondaryButton} onPress={handleInfoPress}>
-                <ThemedText style={styles.secondaryButtonText}>About Us</ThemedText>
-                <Ionicons name="arrow-forward" size={16} color={COLORS.white} />
-              </TouchableOpacity>
+            {/* Steps */}
+            <View style={{ flex: 1 }}>
+              <StepRow
+                number="1"
+                icon="camera-outline"
+                title="Take a Photo"
+                desc="Capture clear images of the mushroom from multiple angles for best accuracy."
+              />
+              <StepRow
+                number="2"
+                icon="analytics-outline"
+                title="ML Analysis"
+                desc="Our algorithm instantly analyses morphology, color patterns, and habitat context."
+              />
+              <StepRow
+                number="3"
+                icon="book-outline"
+                title="Learn & Explore"
+                desc="Get detailed species info, safety ratings, and related educational content."
+              />
             </View>
-
-            {/* Slide Indicators */}
-            <View style={styles.slideIndicators}>
-              {HERO_SLIDES.map((_, index) => (
-                <View key={index} style={[styles.indicator, currentSlide === index && styles.activeIndicator]} />
-              ))}
-            </View>
-          </View>
-
-          {/* Decorative mushrooms in hero */}
-          <View style={{ position: 'absolute', bottom: 80, left: 20, opacity: 0.3 }}>
-            <CartoonMushroom size={60} capColor={COLORS.coral} color={COLORS.sage} />
-          </View>
-          <View style={{ position: 'absolute', bottom: 60, right: 30, opacity: 0.3 }}>
-            <CartoonMushroom size={50} capColor={COLORS.terracotta} color={COLORS.moss} spots={false} />
           </View>
         </View>
 
-        {/* Stats Bar */}
-        <View style={styles.statsBar}>
-          <View style={styles.statItem}>
-            <Ionicons name="leaf-outline" size={28} color={COLORS.forest} />
-            <ThemedText style={styles.statNumber}>10</ThemedText>
-            <ThemedText style={styles.statLabel}>Species</ThemedText>
-          </View>
-          <View style={styles.statDivider} />
-          <View style={styles.statItem}>
-            <Ionicons name="analytics-outline" size={28} color={COLORS.forest} />
-            <ThemedText style={styles.statNumber}>ML-Powered</ThemedText>
-            <ThemedText style={styles.statLabel}>Identification</ThemedText>
-          </View>
-          <View style={styles.statDivider} />
-          <View style={styles.statItem}>
-            <Ionicons name="shield-checkmark-outline" size={28} color={COLORS.forest} />
-            <ThemedText style={styles.statNumber}>Safety</ThemedText>
-            <ThemedText style={styles.statLabel}>First Approach</ThemedText>
-          </View>
-        </View>
-
-        {/* Mushroom Resources Section */}
-        <View style={styles.resourcesSection}>
-          <View style={styles.sectionHeader}>
-            <View style={styles.sectionBadge}>
-              <Ionicons name="library-outline" size={14} color={COLORS.forest} style={{ marginRight: 6 }} />
-              <ThemedText style={styles.sectionLabel}>RESOURCES</ThemedText>
+        {/* ══════════════════════════════════════════
+            RESOURCES SECTION
+        ══════════════════════════════════════════ */}
+        <View style={{ paddingHorizontal: isWide ? SP.xxxl : SP.xl, marginBottom: SP.xxxl }}>
+          <View style={{ alignItems: 'center', marginBottom: SP.xxl }}>
+            <View
+              style={{
+                flexDirection: 'row',
+                alignItems: 'center',
+                gap: SP.sm,
+                backgroundColor: `${C.amber}15`,
+                paddingHorizontal: SP.lg,
+                paddingVertical: SP.sm,
+                borderRadius: 999,
+                marginBottom: SP.md,
+              }}
+            >
+              <Ionicons name="library-outline" size={14} color={C.amber} />
+              <ThemedText style={{ color: C.amber, fontSize: 12, fontWeight: '700', letterSpacing: 2, textTransform: 'uppercase' }}>
+                Resources
+              </ThemedText>
             </View>
-            <ThemedText style={styles.sectionTitle}>Learn More About Mushrooms</ThemedText>
-            <ThemedText style={styles.sectionDescription}>
-              Explore trusted sources to deepen your mycology knowledge
+            <ThemedText style={{ color: C.dark, fontSize: isWide ? 36 : 26, fontWeight: '900', letterSpacing: -0.8, textAlign: 'center' }}>
+              Learn More
             </ThemedText>
           </View>
 
-          <View style={styles.resourcesGrid}>
-            <TouchableOpacity
-              style={styles.resourceCard}
-              onPress={() => Linking.openURL('https://www.mushroomexpert.com/')}
-            >
-              <View style={[styles.resourceIcon, { backgroundColor: '#E8F5E9' }]}>
-                <Ionicons name="book" size={24} color="#4CAF50" />
-              </View>
-              <View style={styles.resourceContent}>
-                <ThemedText style={styles.resourceTitle}>MushroomExpert</ThemedText>
-                <ThemedText style={styles.resourceDesc}>Comprehensive identification guides & photos</ThemedText>
-              </View>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={styles.resourceCard}
-              onPress={() => Linking.openURL('https://www.inaturalist.org/taxa/47170-Fungi')}
-            >
-              <View style={[styles.resourceIcon, { backgroundColor: '#FFF3E0' }]}>
-                <Ionicons name="globe" size={24} color="#FF9800" />
-              </View>
-              <View style={styles.resourceContent}>
-                <ThemedText style={styles.resourceTitle}>iNaturalist Fungi</ThemedText>
-                <ThemedText style={styles.resourceDesc}>Community-powered species observations</ThemedText>
-              </View>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={styles.resourceCard}
-              onPress={() => Linking.openURL('https://www.mykoweb.com/')}
-            >
-              <View style={[styles.resourceIcon, { backgroundColor: '#E3F2FD' }]}>
-                <Ionicons name="camera" size={24} color="#2196F3" />
-              </View>
-              <View style={styles.resourceContent}>
-                <ThemedText style={styles.resourceTitle}>MykoWeb</ThemedText>
-                <ThemedText style={styles.resourceDesc}>California fungi photo gallery & info</ThemedText>
-              </View>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={styles.resourceCard}
-              onPress={() => Linking.openURL('https://www.first-nature.com/fungi/')}
-            >
-              <View style={[styles.resourceIcon, { backgroundColor: '#F3E5F5' }]}>
-                <Ionicons name="leaf" size={24} color="#9C27B0" />
-              </View>
-              <View style={styles.resourceContent}>
-                <ThemedText style={styles.resourceTitle}>First Nature</ThemedText>
-                <ThemedText style={styles.resourceDesc}>UK & European fungi identification</ThemedText>
-              </View>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={styles.resourceCard}
-              onPress={() => Linking.openURL('https://www.shroomery.org/')}
-            >
-              <View style={[styles.resourceIcon, { backgroundColor: '#ECEFF1' }]}>
-                <Ionicons name="people" size={24} color="#607D8B" />
-              </View>
-              <View style={styles.resourceContent}>
-                <ThemedText style={styles.resourceTitle}>Shroomery</ThemedText>
-                <ThemedText style={styles.resourceDesc}>Active mycology community & forums</ThemedText>
-              </View>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={styles.resourceCard}
-              onPress={() => Linking.openURL('https://namyco.org/')}
-            >
-              <View style={[styles.resourceIcon, { backgroundColor: '#E8F5E9' }]}>
-                <Ionicons name="school" size={24} color="#388E3C" />
-              </View>
-              <View style={styles.resourceContent}>
-                <ThemedText style={styles.resourceTitle}>NAMA</ThemedText>
-                <ThemedText style={styles.resourceDesc}>North American Mycological Association</ThemedText>
-              </View>
-            </TouchableOpacity>
+          <View
+            style={{
+              flexDirection: isWide ? 'row' : 'column',
+              flexWrap: isWide ? 'wrap' : 'nowrap',
+              gap: SP.md,
+            }}
+          >
+            <ResourceCard icon="book" color="#4CAF50" bg="#E8F5E9" title="MushroomExpert" desc="Comprehensive identification guides" url="https://www.mushroomexpert.com/" />
+            <ResourceCard icon="globe" color="#FF9800" bg="#FFF3E0" title="iNaturalist Fungi" desc="Community-powered observations" url="https://www.inaturalist.org/taxa/47170-Fungi" />
+            <ResourceCard icon="camera" color="#2196F3" bg="#E3F2FD" title="MykoWeb" desc="California fungi photo gallery" url="https://www.mykoweb.com/" />
+            <ResourceCard icon="leaf" color="#9C27B0" bg="#F3E5F5" title="First Nature" desc="UK & European fungi ID" url="https://www.first-nature.com/fungi/" />
+            <ResourceCard icon="people" color="#607D8B" bg="#ECEFF1" title="Shroomery" desc="Active mycology community" url="https://www.shroomery.org/" />
+            <ResourceCard icon="school" color="#388E3C" bg="#E8F5E9" title="NAMA" desc="North American Mycological Assoc." url="https://namyco.org/" />
           </View>
         </View>
 
-        {/* Mushroom Infographics Section */}
-        <MushroomInfographics />
-
-        {/* Features Section */}
-        <View style={styles.featuresSection}>
-          {/* Decorative mushroom cluster */}
-          <MushroomCluster position="left" />
-
-          <View style={styles.sectionHeader}>
-            <View style={styles.sectionBadge}>
-              <Ionicons name="star-outline" size={14} color={COLORS.forest} style={{ marginRight: 6 }} />
-              <ThemedText style={styles.sectionLabel}>FEATURES</ThemedText>
-            </View>
-            <ThemedText style={styles.sectionTitle}>Why Choose SnapShroom</ThemedText>
-            <ThemedText style={styles.sectionDescription}>
-              Advanced Machine Learning meets comprehensive mushroom knowledge
-            </ThemedText>
-          </View>
-
-          <View style={styles.featuresGrid}>
-            {FEATURES.map((feature, index) => {
-              const IconComponent = feature.IconComponent;
-              return (
-                <View key={feature.id} style={styles.featureCard}>
-                  <IconComponent />
-                  <ThemedText style={styles.featureTitle}>{feature.title}</ThemedText>
-                  <ThemedText style={styles.featureDescription}>{feature.description}</ThemedText>
-                </View>
-              );
-            })}
-          </View>
-
-          {/* Decorative mushroom cluster */}
-          <MushroomCluster position="right" />
-        </View>
-
-        {/* How It Works Section */}
-        <View style={styles.howItWorksSection}>
-          <View style={styles.sectionHeader}>
-            <View style={styles.sectionBadge}>
-              <Ionicons name="bulb-outline" size={14} color={COLORS.forest} style={{ marginRight: 6 }} />
-              <ThemedText style={styles.sectionLabel}>HOW IT WORKS</ThemedText>
-            </View>
-            <ThemedText style={styles.sectionTitle}>Three Simple Steps</ThemedText>
-          </View>
-
-          <View style={styles.stepsContainer}>
-            {[
-              {
-                number: '1',
-                title: 'Take a Photo',
-                description: 'Capture clear images of the mushroom from multiple angles for best results',
-                icon: 'camera-outline',
-              },
-              {
-                number: '2',
-                title: 'Machine Learning Analysis',
-                description: 'Our ML algorithm instantly analyzes and identifies the species',
-                icon: 'analytics-outline',
-              },
-              {
-                number: '3',
-                title: 'Learn & Explore',
-                description: 'Get detailed information, safety tips, and scientific data',
-                icon: 'book-outline',
-              },
-            ].map((step, index) => (
-              <StepCard key={step.number} step={step} index={index} />
-            ))}
-          </View>
-        </View>
-
-        {/* Call to Action Section */}
+        {/* ══════════════════════════════════════════
+            CTA — Only for logged-out users
+        ══════════════════════════════════════════ */}
         {!isLoggedIn && (
-          <View style={styles.ctaSection}>
-            <View style={styles.ctaCard}>
-              <View style={styles.ctaMushroomLeft}>
-                <CartoonMushroom size={80} capColor={COLORS.coral} color={COLORS.sage} />
+          <View style={{ paddingHorizontal: isWide ? SP.xxxl : SP.xl, marginBottom: SP.xxxl }}>
+            <View
+              style={{
+                backgroundColor: C.forest,
+                borderRadius: 28,
+                padding: isWide ? SP.xxxl : SP.xxl,
+                alignItems: 'center',
+                overflow: 'hidden',
+              }}
+            >
+              <LinearGradient
+                colors={[`${C.moss}40`, 'transparent']}
+                style={{ position: 'absolute', top: 0, left: 0, right: 0, height: '60%' }}
+              />
+              <View
+                style={{
+                  width: 72,
+                  height: 72,
+                  borderRadius: 20,
+                  backgroundColor: `${C.sage}25`,
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  marginBottom: SP.lg,
+                }}
+              >
+                <Ionicons name="rocket-outline" size={36} color={C.sage} />
               </View>
-              <View style={styles.ctaMushroomRight}>
-                <CartoonMushroom size={70} capColor={COLORS.terracotta} color={COLORS.moss} spots={false} />
-              </View>
-
-              <View style={styles.ctaContent}>
-                <Ionicons name="rocket-outline" size={48} color={COLORS.white} />
-                <ThemedText style={styles.ctaTitle}>Ready to Start Your Mushroom Journey?</ThemedText>
-                <ThemedText style={styles.ctaDescription}>
-                  Join thousands of mushroom enthusiasts who use SnapShroom to safely identify and learn about fungi
-                </ThemedText>
-                <TouchableOpacity style={styles.ctaButton} onPress={handleLoginPress}>
-                  <View style={styles.ctaButtonInner}>
-                    <Ionicons name="rocket" size={20} color={COLORS.forest} />
-                    <ThemedText style={styles.ctaButtonText}>Create Free Account</ThemedText>
-                  </View>
-                </TouchableOpacity>
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                  <Ionicons name="checkmark-circle" size={16} color="rgba(255, 255, 255, 0.8)" />
-                  <ThemedText style={styles.ctaNote}>No credit card required • Free forever</ThemedText>
-                </View>
+              <ThemedText
+                style={{
+                  color: C.white,
+                  fontSize: isWide ? 36 : 24,
+                  fontWeight: '900',
+                  textAlign: 'center',
+                  letterSpacing: -0.8,
+                  marginBottom: SP.md,
+                  maxWidth: 400,
+                }}
+              >
+                Ready to Start Your Mushroom Journey?
+              </ThemedText>
+              <ThemedText
+                style={{
+                  color: 'rgba(255,255,255,0.6)',
+                  fontSize: 15,
+                  textAlign: 'center',
+                  lineHeight: 24,
+                  marginBottom: SP.xxl,
+                  maxWidth: 380,
+                }}
+              >
+                Join thousands of foragers who use SnapShroom to safely identify and learn about fungi.
+              </ThemedText>
+              <TouchableOpacity
+                onPress={() => router.push('/(auth)/login')}
+                style={{
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  gap: SP.sm,
+                  backgroundColor: C.sage,
+                  paddingHorizontal: SP.xxl,
+                  paddingVertical: SP.lg,
+                  borderRadius: 14,
+                }}
+              >
+                <Ionicons name="rocket" size={20} color={C.dark} />
+                <ThemedText style={{ color: C.dark, fontSize: 16, fontWeight: '800' }}>Create Free Account</ThemedText>
+              </TouchableOpacity>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: SP.sm, marginTop: SP.lg }}>
+                <Ionicons name="checkmark-circle" size={16} color={`${C.sage}99`} />
+                <ThemedText style={{ color: `${C.sage}99`, fontSize: 13 }}>No credit card required • Free forever</ThemedText>
               </View>
             </View>
           </View>
         )}
 
-        {/* Safety Notice */}
-        <View style={styles.safetySection}>
-          <View style={styles.safetyCard}>
-            <Ionicons name="warning-outline" size={40} color="#92400E" />
-            <View style={styles.safetyContent}>
-              <ThemedText style={styles.safetyTitle}>Safety First</ThemedText>
-              <ThemedText style={styles.safetyText}>
-                Never consume any mushroom based solely on app identification. Always consult multiple sources and
-                experts before consuming wild mushrooms. This app is for educational purposes only.
+        {/* ══════════════════════════════════════════
+            SAFETY NOTICE
+        ══════════════════════════════════════════ */}
+        <View style={{ paddingHorizontal: isWide ? SP.xxxl : SP.xl, marginBottom: SP.xxxl }}>
+          <View
+            style={{
+              backgroundColor: '#FEF9EE',
+              borderRadius: 20,
+              padding: SP.xl,
+              flexDirection: 'row',
+              gap: SP.lg,
+              alignItems: 'flex-start',
+              borderWidth: 1,
+              borderColor: '#F5E4A8',
+            }}
+          >
+            <View
+              style={{
+                width: 48,
+                height: 48,
+                borderRadius: 14,
+                backgroundColor: '#FFF3CD',
+                alignItems: 'center',
+                justifyContent: 'center',
+                flexShrink: 0,
+              }}
+            >
+              <Ionicons name="warning-outline" size={24} color="#92400E" />
+            </View>
+            <View style={{ flex: 1 }}>
+              <ThemedText style={{ color: '#92400E', fontSize: 15, fontWeight: '800', marginBottom: SP.xs }}>
+                Safety First
+              </ThemedText>
+              <ThemedText style={{ color: '#78350F', fontSize: 14, lineHeight: 22 }}>
+                Never consume any mushroom based solely on app identification. Always consult multiple sources and experts before consuming wild mushrooms. This app is for educational purposes only.
               </ThemedText>
             </View>
           </View>
         </View>
 
-        {/* System Status */}
+        {/* ══════════════════════════════════════════
+            SYSTEM STATUS (logged-in only)
+        ══════════════════════════════════════════ */}
         {isLoggedIn && (
-          <View style={styles.systemSection}>
-            <View style={styles.systemCard}>
-              <View style={styles.systemHeader}>
-                <View style={styles.systemTitleContainer}>
-                  <Ionicons name="hardware-chip-outline" size={24} color={COLORS.charcoal} />
-                  <ThemedText style={styles.systemTitle}>System Status</ThemedText>
+          <View style={{ paddingHorizontal: isWide ? SP.xxxl : SP.xl, marginBottom: SP.xxxl }}>
+            <View
+              style={{
+                backgroundColor: C.white,
+                borderRadius: 20,
+                padding: SP.xl,
+                borderWidth: 1,
+                borderColor: C.mist,
+              }}
+            >
+              <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: SP.md }}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: SP.sm }}>
+                  <Ionicons name="hardware-chip-outline" size={22} color={C.forest} />
+                  <ThemedText style={{ color: C.dark, fontSize: 16, fontWeight: '700' }}>System Status</ThemedText>
                 </View>
                 <View
-                  style={[
-                    styles.statusBadge,
-                    connectionStatus === 'connected' && styles.statusConnected,
-                    connectionStatus === 'failed' && styles.statusFailed,
-                  ]}
+                  style={{
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    gap: SP.xs,
+                    paddingHorizontal: SP.md,
+                    paddingVertical: SP.xs,
+                    borderRadius: 999,
+                    backgroundColor:
+                      connectionStatus === 'connected' ? '#E8F5E9' :
+                      connectionStatus === 'failed' ? '#FFEBEE' : C.mist,
+                  }}
                 >
                   <View
-                    style={[
-                      styles.statusDot,
-                      connectionStatus === 'connected' && styles.dotConnected,
-                      connectionStatus === 'failed' && styles.dotFailed,
-                    ]}
+                    style={{
+                      width: 8,
+                      height: 8,
+                      borderRadius: 4,
+                      backgroundColor:
+                        connectionStatus === 'connected' ? '#4CAF50' :
+                        connectionStatus === 'failed' ? '#F44336' : C.stone,
+                    }}
                   />
-                  <ThemedText style={styles.statusText}>
+                  <ThemedText
+                    style={{
+                      fontSize: 12,
+                      fontWeight: '700',
+                      color:
+                        connectionStatus === 'connected' ? '#2E7D32' :
+                        connectionStatus === 'failed' ? '#C62828' : C.stone,
+                    }}
+                  >
                     {connectionStatus === 'connected' ? 'Online' : connectionStatus === 'failed' ? 'Offline' : 'Ready'}
                   </ThemedText>
                 </View>
               </View>
 
-              {connectionMessage ? <ThemedText style={styles.systemMessage}>{connectionMessage}</ThemedText> : null}
+              {connectionMessage ? (
+                <ThemedText style={{ color: C.stone, fontSize: 13, marginBottom: SP.md }}>{connectionMessage}</ThemedText>
+              ) : null}
 
               <TouchableOpacity
-                style={styles.testButton}
                 onPress={handleTestConnection}
                 disabled={connectionStatus === 'testing'}
+                style={{
+                  backgroundColor: C.forest,
+                  paddingVertical: SP.md,
+                  borderRadius: 12,
+                  alignItems: 'center',
+                }}
               >
-                <ThemedText style={styles.testButtonText}>
+                <ThemedText style={{ color: C.white, fontSize: 14, fontWeight: '700' }}>
                   {connectionStatus === 'testing' ? 'Testing...' : 'Test Connection'}
                 </ThemedText>
               </TouchableOpacity>
@@ -1694,26 +1590,41 @@ export default function LandingPage() {
           </View>
         )}
 
-        {/* Footer */}
-        <View style={styles.footer}>
-          <View style={styles.footerContent}>
-            <View style={styles.footerBrand}>
-              <Ionicons name="leaf" size={48} color={COLORS.white} />
-              <ThemedText style={styles.footerTitle}>SnapShroom</ThemedText>
-              <ThemedText style={styles.footerTagline}>Machine Learning-Powered Mushroom Identification</ThemedText>
+        {/* ══════════════════════════════════════════
+            FOOTER
+        ══════════════════════════════════════════ */}
+        <View style={{ backgroundColor: C.dark, paddingVertical: SP.xxxl, paddingHorizontal: isWide ? SP.xxxl : SP.xl }}>
+          <View style={{ alignItems: 'center', marginBottom: SP.xxl }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: SP.md, marginBottom: SP.md }}>
+              <View
+                style={{
+                  width: 48,
+                  height: 48,
+                  borderRadius: 14,
+                  backgroundColor: C.moss,
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }}
+              >
+                <Ionicons name="leaf" size={26} color={C.white} />
+              </View>
+              <ThemedText style={{ color: C.white, fontSize: 28, fontWeight: '900', letterSpacing: -1 }}>
+                SnapShroom
+              </ThemedText>
             </View>
-
-            <View style={styles.footerMushroomRow}>
-              <CartoonMushroom size={40} capColor={COLORS.coral} color={COLORS.sage} />
-              <CartoonMushroom size={45} capColor={COLORS.terracotta} color={COLORS.moss} spots={false} />
-              <CartoonMushroom size={40} capColor={COLORS.coral} color={COLORS.sage} />
-            </View>
-
-            <ThemedText style={styles.copyright}>© 2026 SnapShroom. All rights reserved.</ThemedText>
+            <ThemedText style={{ color: 'rgba(255,255,255,0.45)', fontSize: 14, textAlign: 'center', maxWidth: 340 }}>
+              Machine Learning-Powered Mushroom Identification
+            </ThemedText>
           </View>
+
+          <View style={{ height: 1, backgroundColor: 'rgba(255,255,255,0.08)', marginBottom: SP.xl }} />
+
+          <ThemedText style={{ color: 'rgba(255,255,255,0.3)', fontSize: 13, textAlign: 'center' }}>
+            © 2026 SnapShroom. All rights reserved.
+          </ThemedText>
         </View>
+
       </Animated.ScrollView>
     </View>
   );
 }
-
