@@ -234,7 +234,7 @@ export default function HistoryScreen() {
         <View style={styles.scanInfo}>
           <View style={styles.scanHeader}>
             <ThemedText style={styles.mushroomName}>
-              {scan.mushroom_type || 'Unknown Mushroom'}
+              {scan.mushroom_type || 'No Mushroom Detected'}
             </ThemedText>
             <View style={styles.scanHeaderRight}>
               <ThemedText style={styles.scanDate}>{formatDate(scan.created_at)}</ThemedText>
@@ -328,7 +328,7 @@ export default function HistoryScreen() {
         {/* Card body */}
         <View style={webStyles.cardBody}>
           <Text style={webStyles.cardTitle} numberOfLines={1}>
-            {scan.mushroom_type || 'Unknown Mushroom'}
+            {scan.mushroom_type || 'No Mushroom Detected'}
           </Text>
           <Text style={webStyles.cardDate}>{formatDate(scan.created_at)}</Text>
 
