@@ -82,7 +82,7 @@ export default function LoginScreen() {
       });
 
       showToast('Google login successful!', 'success');
-      router.replace('/(tabs)');
+      router.replace('/');
     } catch (err: any) {
       Alert.alert('Google Login Error', err.message);
     } finally {
@@ -106,7 +106,7 @@ export default function LoginScreen() {
     try {
       await login({ email, password });
       showToast('Login successful!', 'success');
-      router.replace('/(tabs)');
+      router.replace('/');
     } catch (err: any) {
       const code: string = err?.code || '';
       if (code === 'email_not_verified') {
@@ -124,7 +124,7 @@ export default function LoginScreen() {
   };
 
   const handleGuestLogin = () => {
-    router.replace('/(tabs)');
+    router.replace('/');
   };
 
   const navigateToSignUp = () => {

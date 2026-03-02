@@ -86,7 +86,7 @@ export default function RegisterScreen() {
       });
 
       showToast('Account created successfully with Google!', 'success');
-      router.replace('/(tabs)');
+      router.replace('/');
     } catch (err: any) {
       Alert.alert('Google Sign Up Error', err.message);
     } finally {
@@ -140,7 +140,7 @@ export default function RegisterScreen() {
       Alert.alert('Success', 'Account created successfully', [
         {
           text: 'Continue',
-          onPress: () => router.replace('/(tabs)'),
+          onPress: () => router.replace('/'),
         },
       ]);
     } catch (err: any) {
