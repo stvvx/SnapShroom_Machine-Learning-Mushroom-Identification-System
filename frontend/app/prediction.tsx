@@ -318,13 +318,13 @@ export default function PredictionScreen() {
             scientific_name: '',
             confidence: confidence,
             metadata: {
-              edible: label ? !['Death Cap', 'False Morel', 'Jack O Lantern Mushroom', 'Funeral Bell', 'Red Cage Fungus'].includes(label) : null,
+              edible: label ? !['Death Cap', 'False Morel', 'Jack O Lantern Mushroom', 'Funeral Bell Mushroom', 'Red Cage Fungus'].includes(label) : null,
               habitat: '',
               season_month: ''
             }
           },
           toxicity: {
-            edible: label ? !['Death Cap', 'False Morel', 'Jack O Lantern Mushroom', 'Funeral Bell', 'Red Cage Fungus'].includes(label) : null,
+            edible: label ? !['Death Cap', 'False Morel', 'Jack O Lantern Mushroom', 'Funeral Bell Mushroom', 'Red Cage Fungus'].includes(label) : null,
             toxicity_status: toxicityLevel === 'DANGEROUS' ? 'POISONOUS' : 'EDIBLE',
             confidence: confidence,
             warning: toxicityLevel === 'DANGEROUS' ? '⚠️ DANGEROUS - Do not consume!' : null
