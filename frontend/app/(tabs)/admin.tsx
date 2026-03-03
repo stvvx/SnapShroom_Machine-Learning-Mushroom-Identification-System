@@ -34,31 +34,52 @@ import {
   buildOverviewReport,
 } from '@/components/pdf-reports';
 
-/* ─── Design Tokens ─── */
-const COLORS = {
-  forest:      '#1A2E1A',
-  forestMid:   '#2D4A2D',
-  moss:        '#4A6741',
-  sage:        '#7A9E74',
-  mint:        '#A8C5A0',
-  cream:       '#F8F5EE',
-  parchment:   '#EDE8DD',
-  spore:       '#D4C9B0',
-  mushCap:     '#C17B3F',
-  mushGill:    '#E8A96A',
-  mushStem:    '#F0D4A8',
-  toxicRed:    '#C94040',
-  safeGreen:   '#3A8C5C',
-  unknownGray: '#8A8A8A',
-  white:       '#FFFFFF',
-  textDark:    '#1A2E1A',
-  textMid:     '#4A6741',
-  textLight:   '#7A9E74',
-  shadow:      'rgba(26,46,26,0.10)',
-  border:      'rgba(74,103,65,0.12)',
+/* ─────────────────────────────────────────────────────────────────────────────
+   DESIGN TOKENS  — aligned with LandingPage / AboutPage
+───────────────────────────────────────────────────────────────────────────── */
+const C = {
+  dark:    '#1A2318',
+  forest:  '#2D4A2A',
+  moss:    '#4A7C47',
+  sage:    '#7FAB6E',
+  cream:   '#F8F5EE',
+  sand:    '#EFE8D8',
+  amber:   '#C8873A',
+  coral:   '#D96B4E',
+  white:   '#FFFFFF',
+  stone:   '#8A9288',
+  mist:    '#E4EAE1',
+  success: '#3A8C5C',
+  danger:  '#C94040',
 };
 
-/* ─── Types ─── */
+/* Legacy alias — keeps all existing COLORS.xxx references inside chart configs working */
+const COLORS = {
+  forest:      C.dark,
+  forestMid:   C.forest,
+  moss:        C.moss,
+  sage:        C.sage,
+  mint:        '#A8C5A0',
+  cream:       C.cream,
+  parchment:   C.sand,
+  spore:       C.mist,
+  mushCap:     C.amber,
+  mushGill:    '#E8A96A',
+  mushStem:    '#F0D4A8',
+  toxicRed:    C.danger,
+  safeGreen:   C.success,
+  unknownGray: C.stone,
+  white:       C.white,
+  textDark:    C.dark,
+  textMid:     C.forest,
+  textLight:   C.stone,
+  shadow:      'rgba(26,46,26,0.10)',
+  border:      C.mist,
+};
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   TYPES  (unchanged)
+───────────────────────────────────────────────────────────────────────────── */
 interface MushroomAnalytics {
   total_scans: number;
   scans_last_30d: number;
@@ -92,7 +113,9 @@ interface User {
 }
 type Section = 'home' | 'users' | 'analytics';
 
-/* ─── Deactivation reasons ────────────────────────────────────────── */
+/* ─────────────────────────────────────────────────────────────────────────────
+   DEACTIVATION REASONS  (unchanged)
+───────────────────────────────────────────────────────────────────────────── */
 const DEACTIVATION_REASONS = [
   'Inactive for a long time',
   'Abusing camera or uploading inappropriate images/videos',
@@ -103,43 +126,61 @@ const DEACTIVATION_REASONS = [
   'Violating community guidelines or app policies',
 ];
 
-/* ─── Base chart config ─── */
+/* ─────────────────────────────────────────────────────────────────────────────
+   CHART CONFIGS  (colors updated to match design tokens)
+───────────────────────────────────────────────────────────────────────────── */
 const chartConfig = {
-  backgroundGradientFrom: COLORS.white,
-  backgroundGradientTo:   COLORS.white,
+  backgroundGradientFrom: C.white,
+  backgroundGradientTo:   C.white,
   decimalPlaces: 0,
-  color: (opacity = 1) => `rgba(74,103,65,${opacity})`,
-  labelColor:   () => COLORS.textMid,
-  propsForDots: { r: '4', strokeWidth: '2', stroke: COLORS.moss, fill: COLORS.white },
+  color: (opacity = 1) => `rgba(74,124,71,${opacity})`,
+  labelColor:   () => C.forest,
+  propsForDots: { r: '4', strokeWidth: '2', stroke: C.moss, fill: C.white },
   propsForBackgroundLines: {
     strokeDasharray: '4 4',
-    stroke: COLORS.border,
+    stroke: C.mist,
     strokeWidth: 1,
   },
-  fillShadowGradientFrom: COLORS.sage,
-  fillShadowGradientTo:   COLORS.white,
+  fillShadowGradientFrom:    C.sage,
+  fillShadowGradientTo:      C.white,
   fillShadowGradientOpacity: 0.15,
 };
 
 const mushroomChartConfig = {
   ...chartConfig,
-  color: (opacity = 1) => `rgba(193,123,63,${opacity})`,
-  fillShadowGradientFrom: COLORS.mushCap,
+  color: (opacity = 1) => `rgba(200,135,58,${opacity})`,
+  fillShadowGradientFrom:    C.amber,
   fillShadowGradientOpacity: 0.12,
 };
 
-/* ─── Reusable Components ─── */
-const SectionHeader = ({ title, subtitle, emoji }: { title: string; subtitle?: string; emoji?: string }) => (
-  <View style={s.sectionHeader}>
-    <View style={s.sectionHeaderLeft}>
-      {emoji && <Text style={s.sectionEmoji}>{emoji}</Text>}
-      <View>
-        <Text style={s.sectionTitle}>{title}</Text>
-        {subtitle && <Text style={s.sectionSubtitle}>{subtitle}</Text>}
+/* ─────────────────────────────────────────────────────────────────────────────
+   REUSABLE UI COMPONENTS  (visual redesign only — props/signatures unchanged)
+───────────────────────────────────────────────────────────────────────────── */
+
+/** Section header — now uses an Ionicons icon instead of emoji */
+const SectionHeader = ({ title, subtitle, emoji }: { title: string; subtitle?: string; emoji?: string }) => {
+  // Map the original emoji to a matching Ionicon name
+  const iconMap: Record<string, string> = {
+    '⚡': 'flash-outline', '📊': 'bar-chart-outline', '📈': 'trending-up-outline',
+    '👤': 'person-outline', '👥': 'people-outline', '🍄': 'leaf-outline',
+    '🏆': 'trophy-outline', '📄': 'document-text-outline', '🔍': 'scan-outline',
+    '📅': 'calendar-outline', '🎯': 'checkmark-done-outline',
+  };
+  const iconName = (emoji && iconMap[emoji]) ?? 'ellipse-outline';
+  return (
+    <View style={s.sectionHeader}>
+      <View style={s.sectionHeaderLeft}>
+        <View style={s.sectionIconWrap}>
+          <Ionicons name={iconName as any} size={13} color={C.moss} />
+        </View>
+        <View>
+          <Text style={s.sectionTitle}>{title}</Text>
+          {subtitle && <Text style={s.sectionSubtitle}>{subtitle}</Text>}
+        </View>
       </View>
     </View>
-  </View>
-);
+  );
+};
 
 const Card = ({ children, style, title, subtitle }: {
   children: React.ReactNode; style?: any; title?: string; subtitle?: string;
@@ -155,49 +196,70 @@ const Card = ({ children, style, title, subtitle }: {
   </View>
 );
 
+/** StatTile — emoji replaced with Ionicons icon */
 const StatTile = ({ emoji, value, label, accentColor, wide = false }: {
   emoji: string; value: string | number; label: string; accentColor: string; wide?: boolean;
-}) => (
-  <View style={[s.statTile, wide && s.statTileWide]}>
-    <View style={[s.statTileAccent, { backgroundColor: accentColor }]} />
-    <Text style={s.statTileEmoji}>{emoji}</Text>
-    <Text style={[s.statTileValue, { color: accentColor }]}>{value}</Text>
-    <Text style={s.statTileLabel}>{label}</Text>
-  </View>
-);
+}) => {
+  const iconMap: Record<string, string> = {
+    '👥': 'people-outline', '✅': 'checkmark-circle-outline', '🔍': 'scan-outline',
+    '📅': 'calendar-outline', '🛡️': 'shield-checkmark-outline', '🎯': 'checkmark-done-outline',
+    '📝': 'create-outline', '⭕': 'close-circle-outline', '⭐': 'star-outline',
+  };
+  const iconName = iconMap[emoji] ?? 'ellipse-outline';
+  return (
+    <View style={[s.statTile, wide && s.statTileWide]}>
+      <View style={[s.statTileTopBar, { backgroundColor: accentColor }]} />
+      <View style={[s.statTileIconWrap, { backgroundColor: `${accentColor}18` }]}>
+        <Ionicons name={iconName as any} size={20} color={accentColor} />
+      </View>
+      <Text style={[s.statTileValue, { color: accentColor }]}>{value}</Text>
+      <Text style={s.statTileLabel}>{label}</Text>
+    </View>
+  );
+};
 
+/** InlineStatRow — emoji replaced with Ionicons icon */
 const InlineStatRow = ({ items }: {
   items: { emoji: string; value: string | number; label: string; color: string }[];
-}) => (
-  <View style={s.inlineStatRow}>
-    {items.map((item, i) => (
-      <React.Fragment key={i}>
-        {i > 0 && <View style={s.inlineDivider} />}
-        <View style={s.inlineStat}>
-          <Text style={s.inlineStatEmoji}>{item.emoji}</Text>
-          <Text style={[s.inlineStatValue, { color: item.color }]}>{item.value}</Text>
-          <Text style={s.inlineStatLabel}>{item.label}</Text>
-        </View>
-      </React.Fragment>
-    ))}
-  </View>
-);
+}) => {
+  const iconMap: Record<string, string> = {
+    '🛡️': 'shield-checkmark-outline', '🎯': 'checkmark-done-outline',
+    '📝': 'create-outline', '👥': 'people-outline',
+  };
+  return (
+    <View style={s.inlineStatRow}>
+      {items.map((item, i) => {
+        const iconName = iconMap[item.emoji] ?? 'ellipse-outline';
+        return (
+          <React.Fragment key={i}>
+            {i > 0 && <View style={s.inlineDivider} />}
+            <View style={s.inlineStat}>
+              <View style={[s.inlineIconWrap, { backgroundColor: `${item.color}18` }]}>
+                <Ionicons name={iconName as any} size={18} color={item.color} />
+              </View>
+              <Text style={[s.inlineStatValue, { color: item.color }]}>{item.value}</Text>
+              <Text style={s.inlineStatLabel}>{item.label}</Text>
+            </View>
+          </React.Fragment>
+        );
+      })}
+    </View>
+  );
+};
 
 const RankItem = ({ rank, name, value, valueLabel = '' }: {
   rank: number; name: string; value: number; valueLabel?: string;
 }) => {
-  const rankColors     = [COLORS.mushCap, COLORS.sage, COLORS.spore];
-  const rankTextColors = [COLORS.white, COLORS.white, COLORS.textMid];
-  const bgColor  = rankColors[rank - 1]     ?? COLORS.parchment;
-  const txtColor = rankTextColors[rank - 1] ?? COLORS.textMid;
+  const rankColors = [C.amber, C.sage, C.stone];
+  const accent = rankColors[rank - 1] ?? C.mist;
   return (
     <View style={s.rankItem}>
-      <View style={[s.rankBadge, { backgroundColor: bgColor }]}>
-        <Text style={[s.rankBadgeText, { color: txtColor }]}>{rank}</Text>
+      <View style={[s.rankBadge, { backgroundColor: `${accent}20`, borderColor: `${accent}40`, borderWidth: 1 }]}>
+        <Text style={[s.rankBadgeText, { color: accent }]}>{rank}</Text>
       </View>
       <Text style={s.rankItemName} numberOfLines={1}>{name}</Text>
       <View style={s.rankItemRight}>
-        <Text style={s.rankItemCount}>{value}</Text>
+        <Text style={[s.rankItemCount, { color: C.forest }]}>{value}</Text>
         {valueLabel ? <Text style={s.rankItemUnit}>{valueLabel}</Text> : null}
       </View>
     </View>
@@ -207,58 +269,16 @@ const RankItem = ({ rank, name, value, valueLabel = '' }: {
 const ExportButton = ({ onPress, label, icon = 'document-text-outline' }: {
   onPress: () => void; label: string; icon?: string;
 }) => (
-  <TouchableOpacity style={s.exportBtn} onPress={onPress} activeOpacity={0.8}>
-    <Ionicons name={icon as any} size={15} color={COLORS.cream} />
+  <TouchableOpacity style={s.exportBtn} onPress={onPress} activeOpacity={0.85}>
+    <View style={s.exportBtnIcon}>
+      <Ionicons name={icon as any} size={16} color={C.white} />
+    </View>
     <Text style={s.exportBtnText}>{label}</Text>
-    <Ionicons name="arrow-forward" size={13} color={COLORS.mint} />
+    <Ionicons name="arrow-forward" size={14} color={`${C.white}80`} />
   </TouchableOpacity>
 );
 
-/* ─── PDF export ─── */
-const exportPDF = async (html: string, filename: string) => {
-  try {
-    Alert.alert('Generating PDF', 'Please wait…');
-
-    // Web: open HTML in a new window and trigger browser print (no native file APIs)
-    if (Platform.OS === 'web') {
-      const w = window.open('', '_blank');
-      if (!w) {
-        Alert.alert('Export Failed', 'Unable to open print preview (popup blocked).');
-        return;
-      }
-      w.document.write(html);
-      w.document.close();
-      w.focus();
-      setTimeout(() => w.print(), 600);
-      return;
-    }
-
-    // Native (iOS / Android): create PDF file and share/save
-    const { uri } = await Print.printToFileAsync({
-      html,
-      base64: false,
-      width: 595,
-      height: 842,
-      orientation: 'portrait',
-    });
-
-    // Dynamically import legacy file system API to preserve `getInfoAsync`
-    const FileSystem = (await import('expo-file-system/legacy')) as typeof import('expo-file-system/legacy');
-    const fileInfo = await FileSystem.getInfoAsync(uri);
-    if (!fileInfo.exists) throw new Error('PDF file was not created');
-
-    const canShare = await Sharing.isAvailableAsync();
-    if (canShare) {
-      await Sharing.shareAsync(uri, { mimeType: 'application/pdf', dialogTitle: `Save ${filename}`, UTI: 'com.adobe.pdf' });
-    } else {
-      Alert.alert('PDF Saved', `Report saved to:\n${uri}`);
-    }
-  } catch (err: any) {
-    Alert.alert('Export Failed', err?.message || 'Could not generate PDF.');
-  }
-};
-
-/* ─── FIX: Custom legend for ProgressChart (replaces built-in side legend) ─── */
+/* FIX: Custom legend for ProgressChart (unchanged logic) */
 const ProgressLegend = ({ items }: {
   items: { label: string; color: string; pct: number }[];
 }) => (
@@ -275,41 +295,54 @@ const ProgressLegend = ({ items }: {
   </View>
 );
 
-/* ════════════════════════════════════════════
+/* ─────────────────────────────────────────────────────────────────────────────
+   PDF EXPORT  (unchanged)
+───────────────────────────────────────────────────────────────────────────── */
+const exportPDF = async (html: string, filename: string) => {
+  try {
+    Alert.alert('Generating PDF', 'Please wait…');
+    if (Platform.OS === 'web') {
+      const w = window.open('', '_blank');
+      if (!w) { Alert.alert('Export Failed', 'Unable to open print preview (popup blocked).'); return; }
+      w.document.write(html); w.document.close(); w.focus();
+      setTimeout(() => w.print(), 600);
+      return;
+    }
+    const { uri } = await Print.printToFileAsync({ html, base64: false, width: 595, height: 842, orientation: 'portrait' });
+    const FileSystem = (await import('expo-file-system/legacy')) as typeof import('expo-file-system/legacy');
+    const fileInfo = await FileSystem.getInfoAsync(uri);
+    if (!fileInfo.exists) throw new Error('PDF file was not created');
+    const canShare = await Sharing.isAvailableAsync();
+    if (canShare) {
+      await Sharing.shareAsync(uri, { mimeType: 'application/pdf', dialogTitle: `Save ${filename}`, UTI: 'com.adobe.pdf' });
+    } else {
+      Alert.alert('PDF Saved', `Report saved to:\n${uri}`);
+    }
+  } catch (err: any) { Alert.alert('Export Failed', err?.message || 'Could not generate PDF.'); }
+};
+
+/* ═════════════════════════════════════════════════════════════════════════════
    MAIN COMPONENT
-════════════════════════════════════════════ */
+═════════════════════════════════════════════════════════════════════════════*/
 export default function AdminDashboard() {
   const { user, accessToken } = useAuth();
   const router = useRouter();
 
-  // ─── Responsive layout via hook (re-renders on rotation/resize) ───
   const { width: screenWidth } = useWindowDimensions();
   const IS_WIDE = screenWidth >= 768;
 
-  // Full-width chart (mobile): card has 16px padding each side, page 16px each side
-  const FULL_CHART_W  = screenWidth - 48 - 32; // page padding + card padding
-  // Half-width chart (web): two columns with 8px gap
-  const HALF_CHART_W  = Math.floor((screenWidth - 48 - 8) / 2) - 32;
-  // Which to use based on layout
-  const CHART_W       = IS_WIDE ? HALF_CHART_W : FULL_CHART_W;
-
-  // Bar column width per item:
-  // Mobile: 70px — rotated labels are diagonal so bars can be closer
-  // Web: 100px — two-line horizontal labels need more horizontal room
-  const BAR_ITEM_W = IS_WIDE ? 100 : 70;
-  // Mobile bar chart height — extra tall to give 45deg rotated labels room below bars
+  const FULL_CHART_W = screenWidth - 48 - 32;
+  const HALF_CHART_W = Math.floor((screenWidth - 48 - 8) / 2) - 32;
+  const CHART_W      = IS_WIDE ? HALF_CHART_W : FULL_CHART_W;
+  const BAR_ITEM_W   = IS_WIDE ? 100 : 70;
   const MOBILE_BAR_H = 300;
-  const WEB_BAR_H = 240;
+  const WEB_BAR_H    = 240;
 
-  // Inline styles for responsive rows
   const rowStyle  = { flexDirection: IS_WIDE ? 'row' as const : 'column' as const, gap: IS_WIDE ? 8 : 0, marginBottom: 16, alignItems: 'flex-start' as const };
   const halfStyle = { flex: IS_WIDE ? 1 : undefined, width: IS_WIDE ? undefined : '100%' as const, marginBottom: IS_WIDE ? 0 : 8 };
 
-  // Label strategy:
-  // Mobile: full label as-is, rotated 45deg so they never overlap
-  // Web: split near middle with \n so they stack on two lines
   const formatBarLabel = (label: string): string => {
-    if (!IS_WIDE) return label; // mobile: no modification, rotation handles overlap
+    if (!IS_WIDE) return label;
     if (label.length <= 9) return label;
     const mid = Math.floor(label.length / 2);
     let splitAt = label.lastIndexOf(' ', mid);
@@ -318,7 +351,6 @@ export default function AdminDashboard() {
     return label.slice(0, splitAt) + '\n' + label.slice(splitAt + 1);
   };
 
-  // safeBarData — builds chart-ready labels + auto-calculates chart width
   const safeBarData = (items: { label: string; value: number }[], max = 5) => {
     const filtered = items.filter(i => typeof i.value === 'number').slice(0, max);
     if (filtered.length === 0) return { labels: ['No data'], datasets: [{ data: [0] }], chartWidth: CHART_W };
@@ -329,7 +361,6 @@ export default function AdminDashboard() {
     };
   };
 
-  // Timeline labels
   const timelineLabels = (tl: { date: string; scans: number }[]) => {
     const step = IS_WIDE ? 4 : 3;
     return tl.map((t, i) => {
@@ -339,6 +370,7 @@ export default function AdminDashboard() {
     });
   };
 
+  /* ── State (unchanged) ── */
   const [currentSection, setCurrentSection] = useState<Section>('home');
   const [loading, setLoading]               = useState(false);
   const [refreshing, setRefreshing]         = useState(false);
@@ -349,6 +381,8 @@ export default function AdminDashboard() {
   const [showDeactivateModal, setShowDeactivateModal] = useState(false);
   const [pendingDeactivateUserId, setPendingDeactivateUserId] = useState<string | null>(null);
   const [selectedDeactivateReason, setSelectedDeactivateReason] = useState('');
+
+  /* ── All functions below are UNCHANGED ── */
 
   useEffect(() => {
     if (!user || user.role !== 'admin') {
@@ -369,9 +403,7 @@ export default function AdminDashboard() {
       if (res.data.success) setAnalytics(res.data.analytics);
     } catch (error: any) {
       if (error.response?.status === 401)
-        Alert.alert('Session Expired', 'Please log in again.', [
-          { text: 'Login', onPress: () => router.replace('/') },
-        ]);
+        Alert.alert('Session Expired', 'Please log in again.', [{ text: 'Login', onPress: () => router.replace('/') }]);
     }
   };
 
@@ -382,9 +414,7 @@ export default function AdminDashboard() {
       if (res.data.success) setUsers(res.data.users);
     } catch (error: any) {
       if (error.response?.status === 401)
-        Alert.alert('Session Expired', 'Please log in again.', [
-          { text: 'Login', onPress: () => router.replace('/') },
-        ]);
+        Alert.alert('Session Expired', 'Please log in again.', [{ text: 'Login', onPress: () => router.replace('/') }]);
     }
   };
 
@@ -408,19 +438,14 @@ export default function AdminDashboard() {
 
   const handleToggleUserStatus = async (userId: string, currentStatus: boolean) => {
     if (currentStatus) {
-      // Deactivating → show reason modal first
       setPendingDeactivateUserId(userId);
       setSelectedDeactivateReason('');
       setShowDeactivateModal(true);
     } else {
-      // Activating → proceed directly
       try {
         setAuthHeader();
         const res = await api.put(`/admin/users/${userId}/activate`);
-        if (res.data.success) {
-          Alert.alert('Success', res.data.message);
-          await loadUsers();
-        }
+        if (res.data.success) { Alert.alert('Success', res.data.message); await loadUsers(); }
       } catch (error: any) {
         Alert.alert('Error', error.response?.data?.message || 'Failed to activate user');
       }
@@ -438,13 +463,8 @@ export default function AdminDashboard() {
     setShowDeactivateModal(false);
     try {
       setAuthHeader();
-      const res = await api.put(`/admin/users/${pendingDeactivateUserId}/deactivate`, {
-        reason: selectedDeactivateReason,
-      });
-      if (res.data.success) {
-        Alert.alert('Success', res.data.message);
-        await loadUsers();
-      }
+      const res = await api.put(`/admin/users/${pendingDeactivateUserId}/deactivate`, { reason: selectedDeactivateReason });
+      if (res.data.success) { Alert.alert('Success', res.data.message); await loadUsers(); }
     } catch (error: any) {
       Alert.alert('Error', error.response?.data?.message || 'Failed to deactivate user');
     } finally {
@@ -458,13 +478,10 @@ export default function AdminDashboard() {
     const newIsAdmin  = currentRole === 'admin' ? 0 : 1;
     const newRole     = newIsAdmin === 1 ? 'admin' : 'user';
     const actionLabel = newIsAdmin === 1 ? 'Make Admin' : 'Make User';
-
     if (Platform.OS === 'web') {
-      // On web, use custom modal instead of window.confirm
       setPendingRoleChange({ userId, newRole: newRole, actionLabel });
       setIsConfirmingRole(true);
     } else {
-      // On native, use Alert.alert
       Alert.alert('Confirm Role Change', `${actionLabel}? This will change the role to ${newRole}.`, [
         { text: 'Cancel', style: 'cancel' },
         {
@@ -472,10 +489,7 @@ export default function AdminDashboard() {
           onPress: async () => {
             try {
               const res = await api.put(`/admin/users/${userId}/role`, { is_admin: newIsAdmin });
-              if (res.data.success) {
-                Alert.alert('Success', res.data.message);
-                await loadUsers();
-              }
+              if (res.data.success) { Alert.alert('Success', res.data.message); await loadUsers(); }
             } catch (error: any) {
               Alert.alert('Error', error.response?.data?.message || 'Failed to change role');
             }
@@ -490,13 +504,9 @@ export default function AdminDashboard() {
     setIsConfirmingRole(false);
     const { userId, newRole } = pendingRoleChange;
     const newIsAdmin = newRole === 'admin' ? 1 : 0;
-
     try {
       const res = await api.put(`/admin/users/${userId}/role`, { is_admin: newIsAdmin });
-      if (res.data.success) {
-        Alert.alert('Success', res.data.message);
-        await loadUsers();
-      }
+      if (res.data.success) { Alert.alert('Success', res.data.message); await loadUsers(); }
     } catch (error: any) {
       Alert.alert('Error', error.response?.data?.message || 'Failed to change role');
     }
@@ -516,32 +526,36 @@ export default function AdminDashboard() {
     );
   }
 
+  /* ── Loading / Empty (visual update only) ── */
   const renderLoading = (message: string) => (
     <View style={s.loadingContainer}>
-      <Text style={s.loadingIcon}>🍄</Text>
-      <ActivityIndicator size="large" color={COLORS.moss} style={{ marginTop: 12 }} />
+      <View style={s.loadingIconWrap}>
+        <Ionicons name="leaf" size={36} color={C.sage} />
+      </View>
+      <ActivityIndicator size="large" color={C.moss} style={{ marginTop: 16 }} />
       <Text style={s.loadingText}>{message}</Text>
     </View>
   );
 
   const renderEmpty = () => (
     <View style={s.emptyContainer}>
-      <Text style={{ fontSize: 56 }}>🍄</Text>
+      <View style={s.emptyIconWrap}>
+        <Ionicons name="analytics-outline" size={44} color={C.stone} />
+      </View>
       <Text style={s.emptyTitle}>No data yet</Text>
       <Text style={s.emptySubtitle}>Pull down to refresh</Text>
     </View>
   );
 
-  /* ════════════════════════════════════════════
-     HOME SECTION
-  ════════════════════════════════════════════ */
+  /* ═══════════════════════════════════════════
+     HOME SECTION  (logic unchanged, visual updated)
+  ═══════════════════════════════════════════ */
   const renderHome = () => {
     if (loading)    return renderLoading('Gathering spores…');
     if (!analytics) return renderEmpty();
 
     const { users: U, mushrooms: M, timeline } = analytics;
 
-    // FIX: progress chart data & legend items defined once, reused in both mobile and web
     const progressData = {
       labels: ['Active', 'Inactive', 'Admins'],
       data: [
@@ -551,63 +565,64 @@ export default function AdminDashboard() {
       ],
     };
     const progressLegendItems = [
-      { label: 'Active',   color: `rgba(58,140,92,1)`,   pct: progressData.data[0] },
-      { label: 'Inactive', color: `rgba(201,64,64,1)`,   pct: progressData.data[1] },
-      { label: 'Admins',   color: `rgba(74,103,65,1)`,   pct: progressData.data[2] },
+      { label: 'Active',   color: `rgba(58,140,92,1)`,  pct: progressData.data[0] },
+      { label: 'Inactive', color: `rgba(201,64,64,1)`,  pct: progressData.data[1] },
+      { label: 'Admins',   color: `rgba(74,124,71,1)`,  pct: progressData.data[2] },
     ];
     const progressChartConfig = {
       ...chartConfig,
       color: (opacity = 1, index?: number) => {
-        const colors = [`rgba(58,140,92,${opacity})`, `rgba(201,64,64,${opacity})`, `rgba(74,103,65,${opacity})`];
+        const colors = [`rgba(58,140,92,${opacity})`, `rgba(201,64,64,${opacity})`, `rgba(74,124,71,${opacity})`];
         return colors[index ?? 0] ?? colors[0];
       },
     };
 
     return (
       <View style={s.page}>
-
-        <View style={s.pageHeader}>
-          <View>
-            <Text style={s.pageHeaderEyebrow}>ADMIN DASHBOARD</Text>
-            <Text style={s.pageHeaderTitle}>Overview</Text>
-            <Text style={s.pageHeaderSub}>Forest index healthy · All systems normal</Text>
+        {/* Page hero */}
+        <View style={s.pageHero}>
+          <View style={s.pageHeroLeft}>
+            <Text style={s.pageHeroEyebrow}>ADMIN DASHBOARD</Text>
+            <Text style={s.pageHeroTitle}>Overview</Text>
+            <Text style={s.pageHeroSub}>Forest index healthy · All systems normal</Text>
           </View>
-          <Text style={{ fontSize: 44 }}>🍄</Text>
+          <View style={s.pageHeroIcon}>
+            <Ionicons name="leaf" size={30} color={C.sage} />
+          </View>
         </View>
 
         <SectionHeader title="Quick Actions" emoji="⚡" />
         <View style={s.quickRow}>
-          <TouchableOpacity style={[s.quickBtn, { backgroundColor: COLORS.forestMid }]} onPress={() => setCurrentSection('users')} activeOpacity={0.85}>
-            <Text style={s.quickBtnEmoji}>👥</Text>
+          <TouchableOpacity style={[s.quickBtn, { backgroundColor: C.forest }]} onPress={() => setCurrentSection('users')} activeOpacity={0.85}>
+            <View style={s.quickBtnIconWrap}><Ionicons name="people-outline" size={22} color={C.white} /></View>
             <Text style={s.quickBtnLabel}>Users</Text>
           </TouchableOpacity>
-          <TouchableOpacity style={[s.quickBtn, { backgroundColor: COLORS.moss }]} onPress={() => setCurrentSection('analytics')} activeOpacity={0.85}>
-            <Text style={s.quickBtnEmoji}>📊</Text>
+          <TouchableOpacity style={[s.quickBtn, { backgroundColor: C.moss }]} onPress={() => setCurrentSection('analytics')} activeOpacity={0.85}>
+            <View style={s.quickBtnIconWrap}><Ionicons name="bar-chart-outline" size={22} color={C.white} /></View>
             <Text style={s.quickBtnLabel}>Analytics</Text>
           </TouchableOpacity>
-          <TouchableOpacity style={[s.quickBtn, { backgroundColor: COLORS.mushCap }]} onPress={loadAnalytics} activeOpacity={0.85}>
-            <Text style={s.quickBtnEmoji}>🔄</Text>
+          <TouchableOpacity style={[s.quickBtn, { backgroundColor: C.amber }]} onPress={loadAnalytics} activeOpacity={0.85}>
+            <View style={s.quickBtnIconWrap}><Ionicons name="refresh-outline" size={22} color={C.white} /></View>
             <Text style={s.quickBtnLabel}>Refresh</Text>
           </TouchableOpacity>
         </View>
 
         <SectionHeader title="At a Glance" emoji="📊" />
         <View style={s.statGrid}>
-          <StatTile emoji="👥" value={U.total_users}    label="Total Users"  accentColor={COLORS.moss} />
-          <StatTile emoji="✅" value={U.active_users}   label="Active Users" accentColor={COLORS.safeGreen} />
-          <StatTile emoji="🔍" value={M.total_scans}    label="Total Scans"  accentColor={COLORS.mushCap} />
-          <StatTile emoji="📅" value={M.scans_last_30d} label="Scans (30d)"  accentColor={COLORS.sage} />
+          <StatTile emoji="👥" value={U.total_users}    label="Total Users"  accentColor={C.moss} />
+          <StatTile emoji="✅" value={U.active_users}   label="Active Users" accentColor={C.success} />
+          <StatTile emoji="🔍" value={M.total_scans}    label="Total Scans"  accentColor={C.amber} />
+          <StatTile emoji="📅" value={M.scans_last_30d} label="Scans (30d)"  accentColor={C.sage} />
         </View>
 
         <Card style={s.mb16}>
           <InlineStatRow items={[
-            { emoji: '🛡️', value: U.admin_count,                     label: 'Admins',    color: COLORS.moss },
-            { emoji: '🎯', value: `${M.detection_success_rate}%`,    label: 'Success',   color: COLORS.safeGreen },
-            { emoji: '📝', value: U.recent_registrations_30d ?? '—', label: 'New (30d)', color: COLORS.mushCap },
+            { emoji: '🛡️', value: U.admin_count,                     label: 'Admins',    color: C.moss },
+            { emoji: '🎯', value: `${M.detection_success_rate}%`,    label: 'Success',   color: C.success },
+            { emoji: '📝', value: U.recent_registrations_30d ?? '—', label: 'New (30d)', color: C.amber },
           ]} />
         </Card>
 
-        {/* ── Scan Timeline ── */}
         <SectionHeader title="Scan Timeline" subtitle="Daily scan activity" emoji="📈" />
         <View style={rowStyle}>
           <View style={halfStyle}>
@@ -615,10 +630,7 @@ export default function AdminDashboard() {
               {timeline && timeline.length > 0 ? (
                 <ScrollView horizontal showsHorizontalScrollIndicator={false}>
                   <LineChart
-                    data={{
-                      labels:   timelineLabels(timeline),
-                      datasets: [{ data: timeline.map(t => t.scans) }],
-                    }}
+                    data={{ labels: timelineLabels(timeline), datasets: [{ data: timeline.map(t => t.scans) }] }}
                     width={Math.max(CHART_W, timeline.length * (IS_WIDE ? 32 : 52))}
                     height={200}
                     chartConfig={mushroomChartConfig}
@@ -632,8 +644,6 @@ export default function AdminDashboard() {
               )}
             </Card>
           </View>
-
-          {/* On web: user breakdown right beside timeline */}
           {IS_WIDE && (
             <View style={halfStyle}>
               <Card style={s.mb0} title="User Breakdown" subtitle="Active · Inactive · Admins">
@@ -652,7 +662,6 @@ export default function AdminDashboard() {
           )}
         </View>
 
-        {/* FIX: On mobile, User Breakdown uses hideLegend + custom legend below */}
         {!IS_WIDE && (
           <>
             <SectionHeader title="User Breakdown" subtitle="Active · Inactive · Admins" emoji="👤" />
@@ -667,7 +676,6 @@ export default function AdminDashboard() {
                 style={s.chart}
                 hideLegend={true}
               />
-              {/* Custom legend below the chart so labels are fully visible */}
               <ProgressLegend items={progressLegendItems} />
             </Card>
           </>
@@ -681,26 +689,27 @@ export default function AdminDashboard() {
             icon="document-text-outline"
           />
         </Card>
-
       </View>
     );
   };
 
-  /* ════════════════════════════════════════════
-     USERS SECTION
-  ════════════════════════════════════════════ */
+  /* ═══════════════════════════════════════════
+     USERS SECTION  (logic unchanged, visual updated)
+  ═══════════════════════════════════════════ */
   const renderUsers = () => {
     if (loading) return renderLoading('Loading user mycelium…');
 
     return (
       <View style={s.page}>
-        <View style={s.pageHeader}>
-          <View>
-            <Text style={s.pageHeaderEyebrow}>USER DIRECTORY</Text>
-            <Text style={s.pageHeaderTitle}>{users.length} Members</Text>
-            <Text style={s.pageHeaderSub}>Manage roles and access control</Text>
+        <View style={s.pageHero}>
+          <View style={s.pageHeroLeft}>
+            <Text style={s.pageHeroEyebrow}>USER DIRECTORY</Text>
+            <Text style={s.pageHeroTitle}>{users.length} Members</Text>
+            <Text style={s.pageHeroSub}>Manage roles and access control</Text>
           </View>
-          <Text style={{ fontSize: 44 }}>👥</Text>
+          <View style={s.pageHeroIcon}>
+            <Ionicons name="people" size={30} color={C.sage} />
+          </View>
         </View>
 
         {users.length > 0 && (
@@ -721,19 +730,33 @@ export default function AdminDashboard() {
           scrollEnabled={false}
           renderItem={({ item }) => (
             <View style={s.userCard}>
+              {/* Coloured top stripe */}
+              <View style={[s.userCardStripe, { backgroundColor: item.role === 'admin' ? C.amber : C.sage }]} />
+
               <View style={s.userCardTop}>
-                <View style={[s.avatar, { backgroundColor: item.role === 'admin' ? COLORS.moss : COLORS.sage }]}>
-                  <Text style={s.avatarText}>{item.name.charAt(0).toUpperCase()}</Text>
+                {/* Avatar */}
+                <View style={[s.avatar, {
+                  backgroundColor: item.role === 'admin' ? `${C.amber}20` : `${C.moss}20`,
+                  borderColor:     item.role === 'admin' ? `${C.amber}45` : `${C.moss}45`,
+                }]}>
+                  <Text style={[s.avatarText, { color: item.role === 'admin' ? C.amber : C.moss }]}>
+                    {item.name.charAt(0).toUpperCase()}
+                  </Text>
                   {item.role === 'admin' && (
-                    <View style={s.avatarBadge}><Text style={{ fontSize: 8 }}>⭐</Text></View>
+                    <View style={s.avatarBadge}>
+                      <Ionicons name="star" size={8} color={C.white} />
+                    </View>
                   )}
                 </View>
+
                 <View style={s.userCardMeta}>
                   <View style={s.userCardNameRow}>
                     <Text style={s.userCardName} numberOfLines={1}>{item.name}</Text>
-                    <View style={[s.rolePill, { backgroundColor: item.role === 'admin' ? COLORS.forest : COLORS.parchment }]}>
-                      <Text style={[s.rolePillText, { color: item.role === 'admin' ? COLORS.cream : COLORS.textMid }]}>
-                        {item.role === 'admin' ? '⭐ Admin' : 'User'}
+                    <View style={[s.rolePill, {
+                      backgroundColor: item.role === 'admin' ? `${C.amber}18` : `${C.moss}12`,
+                    }]}>
+                      <Text style={[s.rolePillText, { color: item.role === 'admin' ? C.amber : C.moss }]}>
+                        {item.role === 'admin' ? 'Admin' : 'User'}
                       </Text>
                     </View>
                   </View>
@@ -741,11 +764,15 @@ export default function AdminDashboard() {
                   <Text style={s.userCardInfo}>@{item.username} · Joined {new Date(item.created_at).toLocaleDateString()}</Text>
                 </View>
               </View>
+
               <View style={s.userCardDivider} />
+
               <View style={s.userCardStatusRow}>
-                <View style={s.statusBadge}>
-                  <View style={[s.statusDot, { backgroundColor: item.is_active ? COLORS.safeGreen : COLORS.toxicRed }]} />
-                  <Text style={[s.statusLabel, { color: item.is_active ? COLORS.safeGreen : COLORS.toxicRed }]}>
+                <View style={[s.statusBadge, {
+                  backgroundColor: item.is_active ? `${C.success}12` : `${C.danger}12`,
+                }]}>
+                  <View style={[s.statusDot, { backgroundColor: item.is_active ? C.success : C.danger }]} />
+                  <Text style={[s.statusLabel, { color: item.is_active ? C.success : C.danger }]}>
                     {item.is_active ? 'Active' : 'Inactive'}
                   </Text>
                 </View>
@@ -753,25 +780,27 @@ export default function AdminDashboard() {
                   <Text style={s.lastLoginText}>Last login {new Date(item.last_login).toLocaleDateString()}</Text>
                 )}
               </View>
+
               <View style={s.userCardActions}>
                 <TouchableOpacity
                   style={[s.actionBtn, {
-                    backgroundColor: item.is_active ? 'rgba(201,64,64,0.08)' : 'rgba(58,140,92,0.08)',
-                    borderColor:     item.is_active ? 'rgba(201,64,64,0.2)'  : 'rgba(58,140,92,0.2)',
+                    backgroundColor: item.is_active ? `${C.danger}08`  : `${C.success}08`,
+                    borderColor:     item.is_active ? `${C.danger}25`  : `${C.success}25`,
                   }]}
                   onPress={() => handleToggleUserStatus(item.id, item.is_active)}
                   activeOpacity={0.8}
                 >
-                  <Ionicons name="power" size={14} color={item.is_active ? COLORS.toxicRed : COLORS.safeGreen} />
-                  <Text style={[s.actionBtnText, { color: item.is_active ? COLORS.toxicRed : COLORS.safeGreen }]}>
+                  <Ionicons name="power" size={14} color={item.is_active ? C.danger : C.success} />
+                  <Text style={[s.actionBtnText, { color: item.is_active ? C.danger : C.success }]}>
                     {item.is_active ? 'Deactivate' : 'Activate'}
                   </Text>
                 </TouchableOpacity>
+
                 {item.id !== user.id && (
                   <TouchableOpacity
                     style={[s.actionBtn, {
-                      backgroundColor: item.role === 'admin' ? COLORS.forest : COLORS.white,
-                      borderColor:     item.role === 'admin' ? COLORS.forest : COLORS.moss,
+                      backgroundColor: item.role === 'admin' ? `${C.amber}15` : `${C.moss}08`,
+                      borderColor:     item.role === 'admin' ? `${C.amber}35` : `${C.moss}25`,
                     }]}
                     onPress={() => handleChangeRole(item.id, item.role)}
                     activeOpacity={0.8}
@@ -779,15 +808,12 @@ export default function AdminDashboard() {
                     <Ionicons
                       name={item.role === 'admin' ? 'shield-checkmark' : 'person-outline'}
                       size={14}
-                      color={item.role === 'admin' ? COLORS.cream : COLORS.moss}
+                      color={item.role === 'admin' ? C.amber : C.moss}
                     />
-                    <Text style={[s.actionBtnText, { color: item.role === 'admin' ? COLORS.cream : COLORS.moss }]}>
+                    <Text style={[s.actionBtnText, { color: item.role === 'admin' ? C.amber : C.moss }]}>
                       {item.role === 'admin' ? 'Admin' : 'User'}
                     </Text>
-                    <Ionicons
-                      name="swap-horizontal" size={13}
-                      color={item.role === 'admin' ? COLORS.mint : COLORS.textLight}
-                    />
+                    <Ionicons name="swap-horizontal" size={13} color={item.role === 'admin' ? C.amber : C.stone} />
                   </TouchableOpacity>
                 )}
               </View>
@@ -798,57 +824,55 @@ export default function AdminDashboard() {
     );
   };
 
-  /* ════════════════════════════════════════════
-     ANALYTICS SECTION
-  ════════════════════════════════════════════ */
+  /* ═══════════════════════════════════════════
+     ANALYTICS SECTION  (logic unchanged, visual updated)
+  ═══════════════════════════════════════════ */
   const renderAnalytics = () => {
     if (loading)    return renderLoading('Analyzing mycelium network…');
     if (!analytics) return renderEmpty();
 
     const { users: U, mushrooms: M, timeline } = analytics;
 
-    // FIX: progress chart config & legend items (same pattern as home)
     const progressChartConfig = {
       ...chartConfig,
       color: (opacity = 1, index?: number) => {
-        const colors = [`rgba(58,140,92,${opacity})`, `rgba(201,64,64,${opacity})`, `rgba(74,103,65,${opacity})`];
+        const colors = [`rgba(58,140,92,${opacity})`, `rgba(201,64,64,${opacity})`, `rgba(74,124,71,${opacity})`];
         return colors[index ?? 0] ?? colors[0];
       },
     };
 
     return (
       <View style={s.page}>
-        <View style={s.pageHeader}>
-          <View>
-            <Text style={s.pageHeaderEyebrow}>FULL ANALYTICS</Text>
-            <Text style={s.pageHeaderTitle}>Insights</Text>
-            <Text style={s.pageHeaderSub}>Scan trends, species & locations</Text>
+        <View style={s.pageHero}>
+          <View style={s.pageHeroLeft}>
+            <Text style={s.pageHeroEyebrow}>FULL ANALYTICS</Text>
+            <Text style={s.pageHeroTitle}>Insights</Text>
+            <Text style={s.pageHeroSub}>Scan trends, species & locations</Text>
           </View>
-          <Text style={{ fontSize: 44 }}>📊</Text>
+          <View style={s.pageHeroIcon}>
+            <Ionicons name="bar-chart" size={30} color={C.sage} />
+          </View>
         </View>
 
-        {/* ═══ USER STATS ═══ */}
         <SectionHeader title="User Analytics" emoji="👥" />
         <View style={s.statGrid}>
-          <StatTile emoji="👥" value={U.total_users}    label="Total"    accentColor={COLORS.moss} />
-          <StatTile emoji="✅" value={U.active_users}   label="Active"   accentColor={COLORS.safeGreen} />
-          <StatTile emoji="⭕" value={U.inactive_users} label="Inactive" accentColor={COLORS.toxicRed} />
-          <StatTile emoji="⭐" value={U.admin_count}    label="Admins"   accentColor={COLORS.mushCap} />
+          <StatTile emoji="👥" value={U.total_users}    label="Total"    accentColor={C.moss} />
+          <StatTile emoji="✅" value={U.active_users}   label="Active"   accentColor={C.success} />
+          <StatTile emoji="⭕" value={U.inactive_users} label="Inactive" accentColor={C.danger} />
+          <StatTile emoji="⭐" value={U.admin_count}    label="Admins"   accentColor={C.amber} />
         </View>
 
-        {/* ── User Composition chart ── */}
         <SectionHeader title="User Composition" subtitle="Active vs Inactive vs Admins" emoji="📊" />
         <View style={rowStyle}>
           <View style={halfStyle}>
             <Card style={s.mb0}>
-              {/* FIX: wrap in ScrollView so bars never get clipped */}
               <ScrollView horizontal showsHorizontalScrollIndicator={false}>
                 <BarChart
                   data={{
                     labels: ['Active', 'Inactive', 'Admins'],
                     datasets: [{
                       data: [U.active_users, U.inactive_users, U.admin_count],
-                      colors: [() => COLORS.safeGreen, () => COLORS.toxicRed, () => COLORS.moss],
+                      colors: [() => C.success, () => C.danger, () => C.moss],
                     }],
                   }}
                   width={Math.max(CHART_W, 3 * BAR_ITEM_W)}
@@ -863,17 +887,12 @@ export default function AdminDashboard() {
               </ScrollView>
             </Card>
           </View>
-
-          {/* On web, scan timeline goes beside user composition */}
           {IS_WIDE && timeline && timeline.length > 0 && (
             <View style={halfStyle}>
               <Card style={s.mb0} title="Scan Timeline" subtitle="Daily activity">
                 <ScrollView horizontal showsHorizontalScrollIndicator={false}>
                   <LineChart
-                    data={{
-                      labels:   timelineLabels(timeline),
-                      datasets: [{ data: timeline.map(t => t.scans) }],
-                    }}
+                    data={{ labels: timelineLabels(timeline), datasets: [{ data: timeline.map(t => t.scans) }] }}
                     width={Math.max(CHART_W, timeline.length * 32)}
                     height={200}
                     chartConfig={chartConfig}
@@ -887,17 +906,13 @@ export default function AdminDashboard() {
           )}
         </View>
 
-        {/* On mobile: scan timeline gets its own full-width section */}
         {!IS_WIDE && timeline && timeline.length > 0 && (
           <>
             <SectionHeader title="Scan Timeline" subtitle="Daily scan activity" emoji="📈" />
             <Card>
               <ScrollView horizontal showsHorizontalScrollIndicator={false}>
                 <LineChart
-                  data={{
-                    labels:   timelineLabels(timeline),
-                    datasets: [{ data: timeline.map(t => t.scans) }],
-                  }}
+                  data={{ labels: timelineLabels(timeline), datasets: [{ data: timeline.map(t => t.scans) }] }}
                   width={Math.max(FULL_CHART_W, timeline.length * 52)}
                   height={200}
                   chartConfig={chartConfig}
@@ -910,15 +925,13 @@ export default function AdminDashboard() {
           </>
         )}
 
-        {/* ═══ MUSHROOM STATS ═══ */}
         <SectionHeader title="Mushroom Analytics" emoji="🍄" />
         <View style={s.statGridThree}>
-          <StatTile emoji="🔍" value={M.total_scans}                   label="Total Scans"  accentColor={COLORS.mushCap} wide />
-          <StatTile emoji="📅" value={M.scans_last_30d}                label="Last 30d"     accentColor={COLORS.sage}    wide />
-          <StatTile emoji="🎯" value={`${M.detection_success_rate}%`} label="Success Rate" accentColor={COLORS.safeGreen} wide />
+          <StatTile emoji="🔍" value={M.total_scans}                   label="Total Scans"  accentColor={C.amber}   wide />
+          <StatTile emoji="📅" value={M.scans_last_30d}                label="Last 30d"     accentColor={C.sage}    wide />
+          <StatTile emoji="🎯" value={`${M.detection_success_rate}%`} label="Success Rate" accentColor={C.success} wide />
         </View>
 
-        {/* ═══ RANK LISTS ═══ */}
         {(M.most_scanned_mushrooms.length > 0 || M.top_locations.length > 0) && (
           <View style={rowStyle}>
             {M.most_scanned_mushrooms.length > 0 && (
@@ -931,18 +944,15 @@ export default function AdminDashboard() {
                 </Card>
               </View>
             )}
-          
           </View>
         )}
 
-        {/* ═══ SPECIES CHART ═══ — FIX: always in ScrollView, width computed from item count */}
         {M.most_scanned_mushrooms.length > 0 && (
           <>
             <SectionHeader title="Species Chart" subtitle="Scan count by mushroom" emoji="🍄" />
             <View style={rowStyle}>
               <View style={halfStyle}>
                 <Card style={s.mb0}>
-                  {/* FIX: horizontal scroll + wider chart so wrapped labels fit */}
                   <ScrollView horizontal showsHorizontalScrollIndicator={false}>
                     {(() => {
                       const bd = safeBarData(M.most_scanned_mushrooms.map(m => ({ label: m.name, value: m.count })));
@@ -962,15 +972,10 @@ export default function AdminDashboard() {
                   </ScrollView>
                 </Card>
               </View>
-
-            
             </View>
           </>
         )}
 
-      
-
-        {/* ═══ EXPORT ═══ */}
         <SectionHeader title="Reports" emoji="📄" />
         <Card style={s.mb24}>
           <ExportButton
@@ -979,17 +984,17 @@ export default function AdminDashboard() {
             icon="bar-chart-outline"
           />
         </Card>
-
       </View>
     );
   };
 
-  /* ════════════════════════════════════════════
+  /* ═══════════════════════════════════════════
      ROOT RENDER
-  ════════════════════════════════════════════ */
+  ═══════════════════════════════════════════ */
   return (
     <ThemedView style={s.container}>
 
+      {/* ── NAVBAR — matches LandingPage / AboutPage ── */}
       <View style={s.topHeader}>
         <View style={s.topHeaderLeft}>
           <HamburgerMenu
@@ -999,22 +1004,26 @@ export default function AdminDashboard() {
           <NotificationDropdown iconColor={COLORS.mint} />
         </View>
         <View style={s.topHeaderCenter}>
-          <Text style={s.topHeaderLogo}>🍄</Text>
+          <View style={s.topHeaderLogoWrap}>
+            <Ionicons name="leaf" size={18} color={C.white} />
+          </View>
           <Text style={s.topHeaderTitle}>SnapShroom</Text>
         </View>
         <View style={s.topHeaderRight}>
           <View style={s.adminBadge}>
+            <Ionicons name="shield-checkmark" size={11} color={C.white} />
             <Text style={s.adminBadgeText}>Admin</Text>
           </View>
         </View>
       </View>
 
+      {/* ── TAB BAR ── */}
       <View style={s.tabBar}>
         {(['home', 'users', 'analytics'] as Section[]).map(section => {
-          const labels: Record<Section, { label: string; emoji: string }> = {
-            home:      { label: 'Overview',  emoji: '🏠' },
-            users:     { label: 'Users',     emoji: '👥' },
-            analytics: { label: 'Analytics', emoji: '📊' },
+          const meta: Record<Section, { label: string; icon: string }> = {
+            home:      { label: 'Overview',  icon: 'home-outline' },
+            users:     { label: 'Users',     icon: 'people-outline' },
+            analytics: { label: 'Analytics', icon: 'bar-chart-outline' },
           };
           const isActive = currentSection === section;
           return (
@@ -1024,16 +1033,20 @@ export default function AdminDashboard() {
               onPress={() => setCurrentSection(section)}
               activeOpacity={0.85}
             >
-              <Text style={[s.tabEmoji, isActive && s.tabEmojiActive]}>{labels[section].emoji}</Text>
-              <Text style={[s.tabLabel, isActive && s.tabLabelActive]}>{labels[section].label}</Text>
+              <Ionicons name={meta[section].icon as any} size={18} color={isActive ? C.sage : C.stone} />
+              <Text style={[s.tabLabel, isActive && s.tabLabelActive]}>{meta[section].label}</Text>
               {isActive && <View style={s.tabIndicator} />}
             </TouchableOpacity>
           );
         })}
       </View>
 
+      {/* ── CONTEXT STRIP ── */}
       <View style={s.contextStrip}>
-        <Text style={s.contextUser}>⊕ {user.name}</Text>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+          <Ionicons name="person-circle-outline" size={13} color={C.stone} />
+          <Text style={s.contextUser}>{user.name}</Text>
+        </View>
         <Text style={s.contextSection}>
           {currentSection === 'home'      && 'Dashboard Overview'}
           {currentSection === 'users'     && 'User Management'}
@@ -1042,9 +1055,9 @@ export default function AdminDashboard() {
       </View>
 
       <ScrollView
-        style={{ flex: 1, backgroundColor: COLORS.cream }}
+        style={{ flex: 1, backgroundColor: C.cream }}
         contentContainerStyle={{ paddingBottom: 40 }}
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={COLORS.moss} />}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={C.moss} />}
         showsVerticalScrollIndicator={false}
       >
         {currentSection === 'home'      && renderHome()}
@@ -1052,27 +1065,25 @@ export default function AdminDashboard() {
         {currentSection === 'analytics' && renderAnalytics()}
       </ScrollView>
 
-      {/* Custom Role Change Confirmation Modal */}
+      {/* ── ROLE CHANGE MODAL ── */}
       {isConfirmingRole && pendingRoleChange && (
         <View style={s.modalOverlay}>
           <View style={s.modalContent}>
-            <Text style={s.modalTitle}>Confirm Role Change</Text>
+            <View style={s.deactModalHeader}>
+              <View style={[s.modalHeaderIcon, { backgroundColor: `${C.moss}15` }]}>
+                <Ionicons name="swap-horizontal" size={20} color={C.moss} />
+              </View>
+              <Text style={s.modalTitle}>Confirm Role Change</Text>
+            </View>
             <Text style={s.modalMessage}>
-              {pendingRoleChange.actionLabel}? This will change the role to {pendingRoleChange.newRole}.
+              {pendingRoleChange.actionLabel}? This will change the role to{' '}
+              <Text style={{ fontWeight: '800', color: C.dark }}>{pendingRoleChange.newRole}</Text>.
             </Text>
             <View style={s.modalButtonRow}>
-              <TouchableOpacity
-                style={[s.modalBtn, s.modalBtnCancel]}
-                onPress={handleCancelRoleChange}
-                activeOpacity={0.8}
-              >
+              <TouchableOpacity style={[s.modalBtn, s.modalBtnCancel]} onPress={handleCancelRoleChange} activeOpacity={0.8}>
                 <Text style={s.modalBtnCancelText}>Cancel</Text>
               </TouchableOpacity>
-              <TouchableOpacity
-                style={[s.modalBtn, s.modalBtnConfirm]}
-                onPress={handleConfirmRoleChange}
-                activeOpacity={0.8}
-              >
+              <TouchableOpacity style={[s.modalBtn, s.modalBtnConfirm]} onPress={handleConfirmRoleChange} activeOpacity={0.8}>
                 <Text style={s.modalBtnConfirmText}>{pendingRoleChange.actionLabel}</Text>
               </TouchableOpacity>
             </View>
@@ -1080,65 +1091,45 @@ export default function AdminDashboard() {
         </View>
       )}
 
-      {/* Deactivation Reason Modal */}
+      {/* ── DEACTIVATION REASON MODAL ── */}
       {showDeactivateModal && (
         <View style={s.modalOverlay}>
           <View style={[s.modalContent, { maxWidth: 460, width: '92%' }]}>
-            {/* Header */}
             <View style={s.deactModalHeader}>
-              <Ionicons name="ban" size={20} color={COLORS.toxicRed} />
-              <Text style={[s.modalTitle, { color: COLORS.toxicRed, marginBottom: 0, marginLeft: 8 }]}>
-                Deactivate Account
-              </Text>
+              <View style={[s.modalHeaderIcon, { backgroundColor: `${C.danger}15` }]}>
+                <Ionicons name="ban" size={20} color={C.danger} />
+              </View>
+              <Text style={[s.modalTitle, { color: C.danger }]}>Deactivate Account</Text>
             </View>
-            <Text style={[s.modalMessage, { marginTop: 10 }]}>
+            <Text style={[s.modalMessage, { marginTop: 8 }]}>
               Select a reason for deactivating this account. The user will be notified by email.
             </Text>
-
-            {/* Reason list */}
             <View style={s.deactReasonList}>
               {DEACTIVATION_REASONS.map((reason, i) => (
                 <TouchableOpacity
                   key={i}
-                  style={[
-                    s.deactReasonItem,
-                    selectedDeactivateReason === reason && s.deactReasonItemSelected,
-                  ]}
+                  style={[s.deactReasonItem, selectedDeactivateReason === reason && s.deactReasonItemSelected]}
                   onPress={() => setSelectedDeactivateReason(reason)}
                   activeOpacity={0.8}
                 >
-                  <View style={[
-                    s.deactReasonRadio,
-                    selectedDeactivateReason === reason && s.deactReasonRadioSelected,
-                  ]} />
-                  <Text style={[
-                    s.deactReasonText,
-                    selectedDeactivateReason === reason && s.deactReasonTextSelected,
-                  ]}>
+                  <View style={[s.deactReasonRadio, selectedDeactivateReason === reason && s.deactReasonRadioSelected]} />
+                  <Text style={[s.deactReasonText, selectedDeactivateReason === reason && s.deactReasonTextSelected]}>
                     {reason}
                   </Text>
                 </TouchableOpacity>
               ))}
             </View>
-
             <View style={s.modalButtonRow}>
-              <TouchableOpacity
-                style={[s.modalBtn, s.modalBtnCancel]}
-                onPress={handleCancelDeactivate}
-                activeOpacity={0.8}
-              >
+              <TouchableOpacity style={[s.modalBtn, s.modalBtnCancel]} onPress={handleCancelDeactivate} activeOpacity={0.8}>
                 <Text style={s.modalBtnCancelText}>Cancel</Text>
               </TouchableOpacity>
               <TouchableOpacity
-                style={[
-                  s.modalBtn,
-                  { backgroundColor: selectedDeactivateReason ? COLORS.toxicRed : COLORS.spore },
-                ]}
+                style={[s.modalBtn, { backgroundColor: selectedDeactivateReason ? C.danger : C.mist }]}
                 onPress={handleConfirmDeactivate}
                 disabled={!selectedDeactivateReason}
                 activeOpacity={0.8}
               >
-                <Text style={[s.modalBtnConfirmText, { color: selectedDeactivateReason ? COLORS.cream : COLORS.unknownGray }]}>
+                <Text style={[s.modalBtnConfirmText, { color: selectedDeactivateReason ? C.white : C.stone }]}>
                   Deactivate
                 </Text>
               </TouchableOpacity>
@@ -1151,324 +1142,277 @@ export default function AdminDashboard() {
   );
 }
 
-/* ════════════════════════════════════════════
-   STYLES
-════════════════════════════════════════════ */
+/* ═════════════════════════════════════════════════════════════════════════════
+   STYLES  — aligned with LandingPage / AboutPage tokens
+═════════════════════════════════════════════════════════════════════════════*/
+const { width: SW } = Dimensions.get('window');
+
 const s = StyleSheet.create({
 
-  container: { flex: 1, backgroundColor: COLORS.cream },
+  container: { flex: 1, backgroundColor: C.cream },
 
+  /* ── Navbar ── */
   topHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: 'row', alignItems: 'center',
     paddingHorizontal: 16,
-    paddingTop: 52,
-    paddingBottom: 14,
-    backgroundColor: COLORS.forest,
-    borderBottomWidth: 1,
-    borderBottomColor: 'rgba(168,197,160,0.12)',
+    paddingTop: Platform.OS === 'ios' ? 52 : Platform.OS === 'android' ? 36 : 16,
+    paddingBottom: 12,
+    backgroundColor: C.dark,
+    borderBottomWidth: 1, borderBottomColor: `${C.forest}60`,
   },
   topHeaderLeft:   { flexDirection: 'row', alignItems: 'center', gap: 8, flex: 1 },
   topHeaderCenter: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   topHeaderRight:  { flex: 1, alignItems: 'flex-end' },
-  topHeaderLogo:   { fontSize: 22 },
-  topHeaderTitle:  { fontSize: 20, fontWeight: '800', color: COLORS.cream, letterSpacing: 0.4 },
-  adminBadge: {
-    backgroundColor: COLORS.moss,
-    paddingHorizontal: 10, paddingVertical: 4,
-    borderRadius: 20,
+  topHeaderLogoWrap: {
+    width: 32, height: 32, borderRadius: 10,
+    backgroundColor: C.moss, alignItems: 'center', justifyContent: 'center',
   },
-  adminBadgeText: { color: COLORS.cream, fontSize: 11, fontWeight: '700', letterSpacing: 0.5 },
+  topHeaderTitle: { fontSize: 20, fontWeight: '800', color: C.white, letterSpacing: -0.5 },
+  adminBadge: {
+    flexDirection: 'row', alignItems: 'center', gap: 4,
+    backgroundColor: C.moss, paddingHorizontal: 10, paddingVertical: 4, borderRadius: 999,
+  },
+  adminBadgeText: { color: C.white, fontSize: 11, fontWeight: '700', letterSpacing: 0.5 },
 
+  /* ── Tab Bar ── */
   tabBar: {
     flexDirection: 'row',
-    backgroundColor: COLORS.forestMid,
-    borderBottomWidth: 1,
-    borderBottomColor: 'rgba(168,197,160,0.12)',
+    backgroundColor: C.forest,
+    borderBottomWidth: 1, borderBottomColor: `${C.moss}30`,
   },
-  tabItem: {
-    flex: 1, alignItems: 'center', paddingVertical: 10, gap: 2, position: 'relative',
-  },
-  tabItemActive: { backgroundColor: 'rgba(168,197,160,0.1)' },
-  tabEmoji:       { fontSize: 16 },
-  tabEmojiActive: { transform: [{ scale: 1.1 }] },
-  tabLabel:       { fontSize: 11, color: COLORS.sage, fontWeight: '600' },
-  tabLabelActive: { color: COLORS.mint, fontWeight: '800' },
+  tabItem:        { flex: 1, alignItems: 'center', paddingVertical: 10, gap: 2, position: 'relative' },
+  tabItemActive:  { backgroundColor: `${C.sage}12` },
+  tabLabel:       { fontSize: 11, color: C.stone, fontWeight: '600' },
+  tabLabelActive: { color: C.sage, fontWeight: '800' },
   tabIndicator: {
-    position: 'absolute', bottom: 0, left: '15%', right: '15%',
-    height: 2.5, backgroundColor: COLORS.mint, borderRadius: 2,
+    position: 'absolute', bottom: 0, left: '20%', right: '20%',
+    height: 2.5, backgroundColor: C.sage, borderRadius: 2,
   },
 
+  /* ── Context strip ── */
   contextStrip: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
     paddingHorizontal: 16, paddingVertical: 8,
-    backgroundColor: COLORS.parchment,
-    borderBottomWidth: 1, borderBottomColor: COLORS.spore,
+    backgroundColor: C.sand,
+    borderBottomWidth: 1, borderBottomColor: C.mist,
   },
-  contextUser:    { color: COLORS.textLight, fontSize: 12 },
-  contextSection: { color: COLORS.textMid,   fontSize: 12, fontWeight: '700' },
+  contextUser:    { color: C.stone,  fontSize: 12 },
+  contextSection: { color: C.forest, fontSize: 12, fontWeight: '700' },
 
+  /* ── Page layout ── */
   page: { paddingHorizontal: 16, paddingTop: 20 },
 
-  pageHeader: {
+  pageHero: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-    backgroundColor: COLORS.forest, borderRadius: 18, padding: 20, marginBottom: 24,
+    backgroundColor: C.forest, borderRadius: 20, padding: 20, marginBottom: 20,
+    shadowColor: C.dark, shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.15, shadowRadius: 20, elevation: 5, overflow: 'hidden',
   },
-  pageHeaderEyebrow: { color: COLORS.mint, fontSize: 10, fontWeight: '800', letterSpacing: 2, marginBottom: 4 },
-  pageHeaderTitle:   { color: COLORS.cream, fontSize: 28, fontWeight: '900', letterSpacing: -0.5, marginBottom: 4 },
-  pageHeaderSub:     { color: COLORS.sage, fontSize: 12 },
+  pageHeroLeft:    { flex: 1 },
+  pageHeroEyebrow: { color: C.sage, fontSize: 10, fontWeight: '800', letterSpacing: 2.5, marginBottom: 4 },
+  pageHeroTitle:   { color: C.white, fontSize: 28, fontWeight: '900', letterSpacing: -0.8, marginBottom: 4 },
+  pageHeroSub:     { color: `${C.white}70`, fontSize: 12 },
+  pageHeroIcon: {
+    width: 56, height: 56, borderRadius: 16,
+    backgroundColor: `${C.sage}22`, alignItems: 'center', justifyContent: 'center',
+    borderWidth: 1, borderColor: `${C.sage}30`,
+  },
 
+  /* ── Section header ── */
   sectionHeader: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
     marginBottom: 10, marginTop: 4,
   },
   sectionHeaderLeft: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  sectionEmoji:      { fontSize: 18 },
-  sectionTitle:      { fontSize: 14, fontWeight: '800', color: COLORS.textDark, letterSpacing: 0.2 },
-  sectionSubtitle:   { fontSize: 11, color: COLORS.textLight, marginTop: 1 },
+  sectionIconWrap: {
+    width: 28, height: 28, borderRadius: 8,
+    backgroundColor: `${C.moss}15`, alignItems: 'center', justifyContent: 'center',
+  },
+  sectionTitle:    { fontSize: 14, fontWeight: '800', color: C.dark, letterSpacing: 0.2 },
+  sectionSubtitle: { fontSize: 11, color: C.stone, marginTop: 1 },
 
+  /* ── Card ── */
   card: {
-    backgroundColor: COLORS.white,
-    borderRadius: 16, padding: 16, marginBottom: 16,
-    shadowColor: COLORS.forest,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.07, shadowRadius: 8, elevation: 2,
-    borderWidth: 1, borderColor: COLORS.border,
+    backgroundColor: C.white, borderRadius: 16, padding: 16, marginBottom: 16,
+    shadowColor: C.dark, shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.07, shadowRadius: 10, elevation: 2,
+    borderWidth: 1, borderColor: C.mist,
   },
-  cardHeader:   { marginBottom: 14 },
-  cardTitle:    { fontSize: 14, fontWeight: '700', color: COLORS.textDark },
-  cardSubtitle: { fontSize: 11, color: COLORS.textLight, marginTop: 2 },
+  cardHeader:   { marginBottom: 12 },
+  cardTitle:    { fontSize: 14, fontWeight: '700', color: C.dark },
+  cardSubtitle: { fontSize: 11, color: C.stone, marginTop: 2 },
   chart:        { borderRadius: 10, alignSelf: 'center' },
-
   chartPlaceholder:     { height: 100, alignItems: 'center', justifyContent: 'center' },
-  chartPlaceholderText: { color: COLORS.textLight, fontSize: 12 },
+  chartPlaceholderText: { color: C.stone, fontSize: 12 },
 
-  statGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginBottom: 16 },
+  /* ── Stat tiles ── */
+  statGrid:      { flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginBottom: 16 },
+  statGridThree: { flexDirection: 'row', gap: 8, marginBottom: 16 },
   statTile: {
-    width: (Dimensions.get('window').width - 48 - 10) / 2,
-    backgroundColor: COLORS.white, borderRadius: 14, padding: 16,
-    alignItems: 'flex-start', overflow: 'hidden',
-    borderWidth: 1, borderColor: COLORS.border,
-    shadowColor: COLORS.forest, shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.06, shadowRadius: 4, elevation: 1,
+    width: (SW - 48 - 10) / 2,
+    backgroundColor: C.white, borderRadius: 14, padding: 16,
+    overflow: 'hidden', borderWidth: 1, borderColor: C.mist,
+    shadowColor: C.dark, shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05, shadowRadius: 6, elevation: 1,
   },
-  statTileWide: { width: (Dimensions.get('window').width - 48 - 20) / 3 },
-  statTileAccent: {
+  statTileWide:   { width: (SW - 48 - 20) / 3 },
+  statTileTopBar: {
     position: 'absolute', top: 0, left: 0, right: 0, height: 3,
     borderTopLeftRadius: 14, borderTopRightRadius: 14,
   },
-  statTileEmoji: { fontSize: 24, marginBottom: 8, marginTop: 4 },
+  statTileIconWrap: {
+    width: 40, height: 40, borderRadius: 11,
+    alignItems: 'center', justifyContent: 'center',
+    marginBottom: 8, marginTop: 4,
+  },
   statTileValue: { fontSize: 24, fontWeight: '900', letterSpacing: -0.5, marginBottom: 2 },
-  statTileLabel: { fontSize: 11, color: COLORS.textLight, fontWeight: '600' },
+  statTileLabel: { fontSize: 11, color: C.stone, fontWeight: '600' },
 
-  statGridThree: { flexDirection: 'row', gap: 8, marginBottom: 16 },
-
-  inlineStatRow:   { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-around', paddingVertical: 4 },
-  inlineDivider:   { width: 1, height: 40, backgroundColor: COLORS.border },
-  inlineStat:      { flex: 1, alignItems: 'center', gap: 3 },
-  inlineStatEmoji: { fontSize: 20 },
+  /* ── Inline stat row ── */
+  inlineStatRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-around', paddingVertical: 4 },
+  inlineDivider: { width: 1, height: 44, backgroundColor: C.mist },
+  inlineStat:    { flex: 1, alignItems: 'center', gap: 4 },
+  inlineIconWrap: { width: 36, height: 36, borderRadius: 10, alignItems: 'center', justifyContent: 'center' },
   inlineStatValue: { fontSize: 20, fontWeight: '900' },
-  inlineStatLabel: { fontSize: 11, color: COLORS.textLight, fontWeight: '600' },
+  inlineStatLabel: { fontSize: 11, color: C.stone, fontWeight: '600' },
 
+  /* ── Quick actions ── */
   quickRow: { flexDirection: 'row', gap: 10, marginBottom: 20 },
   quickBtn: {
-    flex: 1, borderRadius: 14, paddingVertical: 14, alignItems: 'center', gap: 6,
-    shadowColor: COLORS.forest, shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.15, shadowRadius: 6, elevation: 3,
+    flex: 1, borderRadius: 16, paddingVertical: 14, alignItems: 'center', gap: 6,
+    shadowColor: C.dark, shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.12, shadowRadius: 8, elevation: 3,
   },
-  quickBtnEmoji: { fontSize: 24 },
-  quickBtnLabel: { color: COLORS.cream, fontSize: 12, fontWeight: '700' },
+  quickBtnIconWrap: {
+    width: 44, height: 44, borderRadius: 13,
+    backgroundColor: 'rgba(255,255,255,0.18)', alignItems: 'center', justifyContent: 'center',
+  },
+  quickBtnLabel: { color: C.white, fontSize: 12, fontWeight: '700' },
 
-  rankItem: {
-    flexDirection: 'row', alignItems: 'center', gap: 12,
-    paddingVertical: 11, borderBottomWidth: 1, borderBottomColor: COLORS.parchment,
-  },
-  rankBadge:     { width: 32, height: 32, borderRadius: 16, alignItems: 'center', justifyContent: 'center', backgroundColor: COLORS.spore },
+  /* ── Rank items ── */
+  rankItem:      { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 11, borderBottomWidth: 1, borderBottomColor: C.sand },
+  rankBadge:     { width: 32, height: 32, borderRadius: 10, alignItems: 'center', justifyContent: 'center' },
   rankBadgeText: { fontSize: 12, fontWeight: '800' },
-  rankItemName:  { flex: 1, fontSize: 14, fontWeight: '600', color: COLORS.textDark },
+  rankItemName:  { flex: 1, fontSize: 14, fontWeight: '600', color: C.dark },
   rankItemRight: { alignItems: 'flex-end' },
-  rankItemCount: { fontSize: 15, fontWeight: '800', color: COLORS.textDark },
-  rankItemUnit:  { fontSize: 10, color: COLORS.textLight },
+  rankItemCount: { fontSize: 15, fontWeight: '800' },
+  rankItemUnit:  { fontSize: 10, color: C.stone },
 
+  /* ── Export button ── */
   exportBtn: {
-    flexDirection: 'row', alignItems: 'center', gap: 8,
-    backgroundColor: COLORS.moss, borderRadius: 12,
-    paddingHorizontal: 16, paddingVertical: 12, alignSelf: 'flex-start',
+    flexDirection: 'row', alignItems: 'center', gap: 10,
+    backgroundColor: C.forest, borderRadius: 12,
+    paddingHorizontal: 16, paddingVertical: 12,
   },
-  exportBtnText: { color: COLORS.cream, fontSize: 13, fontWeight: '700', flex: 1 },
+  exportBtnIcon: { width: 32, height: 32, borderRadius: 9, backgroundColor: `${C.sage}30`, alignItems: 'center', justifyContent: 'center' },
+  exportBtnText: { color: C.white, fontSize: 13, fontWeight: '700', flex: 1 },
 
+  /* ── Loading / Empty ── */
   loadingContainer: { paddingVertical: 80, alignItems: 'center' },
-  loadingIcon:      { fontSize: 56 },
-  loadingText:      { marginTop: 14, color: COLORS.textLight, fontSize: 14 },
+  loadingIconWrap:  { width: 80, height: 80, borderRadius: 24, backgroundColor: `${C.moss}15`, alignItems: 'center', justifyContent: 'center' },
+  loadingText:      { marginTop: 14, color: C.stone, fontSize: 14 },
   emptyContainer:   { paddingVertical: 80, alignItems: 'center' },
-  emptyTitle:       { marginTop: 16, color: COLORS.textDark, fontSize: 18, fontWeight: '800' },
-  emptySubtitle:    { marginTop: 6, color: COLORS.textLight, fontSize: 13 },
+  emptyIconWrap:    { width: 80, height: 80, borderRadius: 24, backgroundColor: C.mist, alignItems: 'center', justifyContent: 'center', marginBottom: 16 },
+  emptyTitle:       { color: C.dark, fontSize: 18, fontWeight: '800' },
+  emptySubtitle:    { marginTop: 6, color: C.stone, fontSize: 13 },
 
+  /* ── User cards ── */
   userCard: {
-    backgroundColor: COLORS.white, borderRadius: 16, padding: 16, marginBottom: 12,
-    shadowColor: COLORS.forest, shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.07, shadowRadius: 6, elevation: 2,
-    borderWidth: 1, borderColor: COLORS.border,
+    backgroundColor: C.white, borderRadius: 16, marginBottom: 12, overflow: 'hidden',
+    borderWidth: 1, borderColor: C.mist,
+    shadowColor: C.dark, shadowOffset: { width: 0, height: 3 }, shadowOpacity: 0.07, shadowRadius: 8, elevation: 2,
   },
-  userCardTop: { flexDirection: 'row', gap: 12, alignItems: 'flex-start', marginBottom: 12 },
-  avatar: { width: 48, height: 48, borderRadius: 24, alignItems: 'center', justifyContent: 'center' },
-  avatarText:  { fontSize: 20, fontWeight: '900', color: COLORS.cream },
+  userCardStripe: { height: 3 },
+  userCardTop:    { flexDirection: 'row', gap: 12, alignItems: 'flex-start', padding: 16, paddingBottom: 12 },
+  avatar: {
+    width: 52, height: 52, borderRadius: 16,
+    alignItems: 'center', justifyContent: 'center', borderWidth: 2,
+  },
+  avatarText:  { fontSize: 22, fontWeight: '900' },
   avatarBadge: {
-    position: 'absolute', bottom: -1, right: -1,
-    backgroundColor: COLORS.mushCap, borderRadius: 9,
+    position: 'absolute', bottom: -2, right: -2,
+    backgroundColor: C.amber, borderRadius: 9,
     width: 18, height: 18, alignItems: 'center', justifyContent: 'center',
-    borderWidth: 2, borderColor: COLORS.white,
+    borderWidth: 2, borderColor: C.white,
   },
-  userCardMeta: { flex: 1 },
-  userCardNameRow: {
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 3,
-  },
-  userCardName:  { fontSize: 15, fontWeight: '800', color: COLORS.textDark, flex: 1, marginRight: 6 },
-  rolePill:      { paddingHorizontal: 8, paddingVertical: 3, borderRadius: 20 },
-  rolePillText:  { fontSize: 10, fontWeight: '700' },
-  userCardEmail: { fontSize: 13, color: COLORS.textMid, marginBottom: 2 },
-  userCardInfo:  { fontSize: 11, color: COLORS.textLight },
-  userCardDivider: { height: 1, backgroundColor: COLORS.parchment, marginBottom: 12 },
+  userCardMeta:    { flex: 1 },
+  userCardNameRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 3 },
+  userCardName:    { fontSize: 15, fontWeight: '800', color: C.dark, flex: 1, marginRight: 6 },
+  rolePill:        { paddingHorizontal: 8, paddingVertical: 3, borderRadius: 8 },
+  rolePillText:    { fontSize: 10, fontWeight: '700' },
+  userCardEmail:   { fontSize: 13, color: C.forest, marginBottom: 2, fontStyle: 'italic' },
+  userCardInfo:    { fontSize: 11, color: C.stone },
+  userCardDivider: { height: 1, backgroundColor: C.sand, marginHorizontal: 0 },
   userCardStatusRow: {
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12,
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+    paddingHorizontal: 16, paddingVertical: 10,
   },
-  statusBadge:   { flexDirection: 'row', alignItems: 'center', gap: 5 },
+  statusBadge:   { flexDirection: 'row', alignItems: 'center', gap: 5, paddingHorizontal: 10, paddingVertical: 4, borderRadius: 8 },
   statusDot:     { width: 7, height: 7, borderRadius: 4 },
   statusLabel:   { fontSize: 12, fontWeight: '700' },
-  lastLoginText: { fontSize: 11, color: COLORS.textLight },
-  userCardActions: { flexDirection: 'row', gap: 8, flexWrap: 'wrap' },
+  lastLoginText: { fontSize: 11, color: C.stone },
+  userCardActions: { flexDirection: 'row', gap: 8, padding: 16, paddingTop: 4, flexWrap: 'wrap' },
   actionBtn: {
     flexDirection: 'row', alignItems: 'center', gap: 5,
-    paddingHorizontal: 12, paddingVertical: 8,
-    borderRadius: 10, borderWidth: 1,
+    paddingHorizontal: 12, paddingVertical: 8, borderRadius: 10, borderWidth: 1,
   },
   actionBtnText: { fontSize: 12, fontWeight: '700' },
 
-  // FIX: Custom ProgressChart legend styles
+  /* ── Progress legend ── */
   progressLegend: {
-    flexDirection: 'row',
-    justifyContent: 'space-evenly',
-    alignItems: 'center',
-    paddingTop: 12,
-    paddingBottom: 4,
-    borderTopWidth: 1,
-    borderTopColor: COLORS.border,
-    marginTop: 8,
+    flexDirection: 'row', justifyContent: 'space-evenly', alignItems: 'center',
+    paddingTop: 12, paddingBottom: 4, borderTopWidth: 1, borderTopColor: C.mist, marginTop: 8,
   },
-  progressLegendItem: {
-    flexDirection: 'column',
-    alignItems: 'center',
-    gap: 4,
-  },
-  progressLegendDot: {
-    width: 12,
-    height: 12,
-    borderRadius: 6,
-  },
-  progressLegendLabel: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: COLORS.textDark,
-  },
-  progressLegendPct: {
-    fontSize: 13,
-    fontWeight: '800',
-  },
+  progressLegendItem:  { flexDirection: 'column', alignItems: 'center', gap: 4 },
+  progressLegendDot:   { width: 12, height: 12, borderRadius: 6 },
+  progressLegendLabel: { fontSize: 12, fontWeight: '600', color: C.dark },
+  progressLegendPct:   { fontSize: 13, fontWeight: '800' },
 
+  /* ── Modals ── */
+  modalOverlay: {
+    position: 'absolute', top: 0, left: 0, right: 0, bottom: 0,
+    backgroundColor: 'rgba(26,35,24,0.55)',
+    alignItems: 'center', justifyContent: 'center', zIndex: 1000,
+  },
+  modalContent: {
+    backgroundColor: C.white, borderRadius: 20, padding: 24,
+    width: '85%', maxWidth: 400,
+    shadowColor: C.dark, shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.2, shadowRadius: 20, elevation: 10,
+    borderWidth: 1, borderColor: C.mist,
+  },
+  deactModalHeader: { flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 12 },
+  modalHeaderIcon:  { width: 40, height: 40, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
+  modalTitle:       { fontSize: 18, fontWeight: '900', color: C.dark, letterSpacing: -0.3 },
+  modalMessage:     { fontSize: 15, color: C.stone, lineHeight: 22, marginBottom: 20 },
+  modalButtonRow:   { flexDirection: 'row', gap: 10, alignItems: 'center' },
+  modalBtn:         { flex: 1, paddingHorizontal: 16, paddingVertical: 12, borderRadius: 12, alignItems: 'center' },
+  modalBtnCancel:   { backgroundColor: C.sand, borderWidth: 1, borderColor: C.mist },
+  modalBtnCancelText:  { fontSize: 14, fontWeight: '700', color: C.stone },
+  modalBtnConfirm:     { backgroundColor: C.moss },
+  modalBtnConfirmText: { fontSize: 14, fontWeight: '700', color: C.white },
+
+  /* ── Deactivation reason list ── */
+  deactReasonList: { marginBottom: 20, gap: 8 },
+  deactReasonItem: {
+    flexDirection: 'row', alignItems: 'center',
+    paddingVertical: 10, paddingHorizontal: 14,
+    borderRadius: 10, borderWidth: 1, borderColor: C.mist,
+    backgroundColor: C.sand, gap: 10,
+  },
+  deactReasonItemSelected: { borderColor: C.danger, backgroundColor: `${C.danger}06` },
+  deactReasonRadio: {
+    width: 16, height: 16, borderRadius: 8,
+    borderWidth: 2, borderColor: C.mist, backgroundColor: C.white,
+  },
+  deactReasonRadioSelected: { borderColor: C.danger, backgroundColor: C.danger },
+  deactReasonText:         { flex: 1, fontSize: 13, color: C.stone, lineHeight: 18 },
+  deactReasonTextSelected: { color: C.danger, fontWeight: '600' },
+
+  /* Utility */
   mb0:  { marginBottom: 0 },
   mb8:  { marginBottom: 8 },
   mb16: { marginBottom: 16 },
   mb20: { marginBottom: 20 },
   mb24: { marginBottom: 24 },
-
-  // ── Deactivation modal extras ───────────────────────────────────
-  deactModalHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 4,
-  },
-  deactReasonList: {
-    marginBottom: 20,
-    gap: 8,
-  },
-  deactReasonItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 10,
-    paddingHorizontal: 14,
-    borderRadius: 10,
-    borderWidth: 1,
-    borderColor: COLORS.border,
-    backgroundColor: COLORS.parchment,
-    gap: 10,
-  },
-  deactReasonItemSelected: {
-    borderColor: COLORS.toxicRed,
-    backgroundColor: 'rgba(201,64,64,0.06)',
-  },
-  deactReasonRadio: {
-    width: 16,
-    height: 16,
-    borderRadius: 8,
-    borderWidth: 2,
-    borderColor: COLORS.spore,
-    backgroundColor: COLORS.white,
-  },
-  deactReasonRadioSelected: {
-    borderColor: COLORS.toxicRed,
-    backgroundColor: COLORS.toxicRed,
-  },
-  deactReasonText: {
-    flex: 1,
-    fontSize: 13,
-    color: COLORS.textMid,
-    lineHeight: 18,
-  },
-  deactReasonTextSelected: {
-    color: COLORS.toxicRed,
-    fontWeight: '600',
-  },
-
-  // Modal styles
-  modalOverlay: {
-    position: 'absolute',
-    top: 0, left: 0, right: 0, bottom: 0,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    alignItems: 'center', justifyContent: 'center',
-    zIndex: 1000,
-  },
-  modalContent: {
-    backgroundColor: COLORS.white,
-    borderRadius: 18, padding: 24,
-    width: '85%', maxWidth: 400,
-    shadowColor: COLORS.forest,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.2, shadowRadius: 12, elevation: 8,
-    borderWidth: 1, borderColor: COLORS.border,
-  },
-  modalTitle: {
-    fontSize: 18, fontWeight: '800', color: COLORS.textDark, marginBottom: 12,
-  },
-  modalMessage: {
-    fontSize: 15, color: COLORS.textMid, lineHeight: 22, marginBottom: 20,
-  },
-  modalButtonRow: {
-    flexDirection: 'row', gap: 10, alignItems: 'center',
-  },
-  modalBtn: {
-    flex: 1, paddingHorizontal: 16, paddingVertical: 12,
-    borderRadius: 12, alignItems: 'center',
-  },
-  modalBtnCancel: {
-    backgroundColor: COLORS.parchment, borderWidth: 1, borderColor: COLORS.border,
-  },
-  modalBtnCancelText: {
-    fontSize: 14, fontWeight: '700', color: COLORS.textMid,
-  },
-  modalBtnConfirm: {
-    backgroundColor: COLORS.moss,
-  },
-  modalBtnConfirmText: {
-    fontSize: 14, fontWeight: '700', color: COLORS.cream,
-  },
 });
