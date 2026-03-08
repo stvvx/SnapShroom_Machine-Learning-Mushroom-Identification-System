@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef } from 'react';
 import {
   View,
   TextInput,
@@ -14,16 +14,10 @@ import {
 import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
-import * as WebBrowser from 'expo-web-browser';
-import * as Google from 'expo-auth-session/providers/google';
-import { GoogleAuthProvider, signInWithCredential } from 'firebase/auth';
 
-import { auth } from '@/firebase/config';
 import { ThemedText } from '@/components/themed-text';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/contexts/ToastContext';
-
-WebBrowser.maybeCompleteAuthSession();
 
 const { width } = Dimensions.get('window');
 const isSmallScreen = width < 375;
@@ -35,7 +29,6 @@ export default function RegisterScreen() {
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
-  const [googleLoading, setGoogleLoading] = useState(false);
 
   // Focus states
   const [usernameFocused, setUsernameFocused] = useState(false);
@@ -46,53 +39,11 @@ export default function RegisterScreen() {
   const { signup, isLoading, error, clearError } = useAuth();
   const { showToast } = useToast();
 
-  // 🔥 Google Auth Request
-  const [request, response, promptAsync] = Google.useAuthRequest({
-    iosClientId: '1098545643387-5tghhjihvbujg6h7fvrs5vllj3k9nkd8.apps.googleusercontent.com',
-    androidClientId: '1098545643387-lk4dej58chjpmhefaqomoljj2j98j2lp.apps.googleusercontent.com',
-    webClientId: '1098545643387-lk4dej58chjpmhefaqomoljj2j98j2lp.apps.googleusercontent.com',
-  });
-
   // Refs for input navigation
   const emailInputRef = useRef<TextInput>(null);
   const passwordInputRef = useRef<TextInput>(null);
   const confirmPasswordInputRef = useRef<TextInput>(null);
   const scrollViewRef = useRef<ScrollView>(null);
-
-  useEffect(() => {
-    if (response?.type === 'success') {
-      handleGoogleResponse(response.authentication?.idToken);
-    }
-  }, [response]);
-
-  // 🔥 Handle Google Sign Up
-  const handleGoogleResponse = async (idToken?: string) => {
-    if (!idToken) return;
-
-    try {
-      setGoogleLoading(true);
-      clearError();
-
-      const credential = GoogleAuthProvider.credential(idToken);
-      const userCredential = await signInWithCredential(auth, credential);
-
-      const firebaseToken = await userCredential.user.getIdToken();
-
-      await fetch('http://localhost:8000/protected', {
-        method: 'GET',
-        headers: {
-          Authorization: `Bearer ${firebaseToken}`,
-        },
-      });
-
-      showToast('Account created successfully with Google!', 'success');
-      router.replace('/');
-    } catch (err: any) {
-      Alert.alert('Google Sign Up Error', err.message);
-    } finally {
-      setGoogleLoading(false);
-    }
-  };
 
   // ---------- VALIDATION ----------
   const validateForm = () => {
@@ -201,32 +152,8 @@ export default function RegisterScreen() {
             <View style={styles.cardHeader}>
               <ThemedText style={styles.cardTitle}>Create Account</ThemedText>
               <ThemedText style={styles.cardSubtitle}>
-                Choose your preferred sign-up method
+                Fill in the details below to get started
               </ThemedText>
-            </View>
-
-            {/* Google Sign Up Button */}
-            <TouchableOpacity
-              style={styles.googleButton}
-              onPress={() => promptAsync()}
-              disabled={!request || googleLoading || isLoading}
-              activeOpacity={0.8}
-            >
-              {googleLoading ? (
-                <ActivityIndicator color="#7BA05B" />
-              ) : (
-                <>
-                  <Ionicons name="logo-google" size={20} color="#DB4437" />
-                  <ThemedText style={styles.googleText}>Continue with Google</ThemedText>
-                </>
-              )}
-            </TouchableOpacity>
-
-            {/* Divider */}
-            <View style={styles.divider}>
-              <View style={styles.dividerLine} />
-              <ThemedText style={styles.dividerText}>OR</ThemedText>
-              <View style={styles.dividerLine} />
             </View>
 
             {/* Error Message */}
@@ -254,7 +181,7 @@ export default function RegisterScreen() {
                   onChangeText={setUsername}
                   onFocus={handleUsernameFocus}
                   onBlur={() => setUsernameFocused(false)}
-                  editable={!isLoading && !googleLoading}
+                  editable={!isLoading}
                   returnKeyType="next"
                   blurOnSubmit={false}
                   onSubmitEditing={() => emailInputRef.current?.focus()}
@@ -280,7 +207,7 @@ export default function RegisterScreen() {
                   onBlur={() => setEmailFocused(false)}
                   autoCapitalize="none"
                   keyboardType="email-address"
-                  editable={!isLoading && !googleLoading}
+                  editable={!isLoading}
                   returnKeyType="next"
                   blurOnSubmit={false}
                   onSubmitEditing={() => passwordInputRef.current?.focus()}
@@ -305,14 +232,14 @@ export default function RegisterScreen() {
                   onFocus={handlePasswordFocus}
                   onBlur={() => setPasswordFocused(false)}
                   secureTextEntry={!showPassword}
-                  editable={!isLoading && !googleLoading}
+                  editable={!isLoading}
                   returnKeyType="next"
                   blurOnSubmit={false}
                   onSubmitEditing={() => confirmPasswordInputRef.current?.focus()}
                 />
                 <TouchableOpacity
                   onPress={() => setShowPassword(!showPassword)}
-                  disabled={isLoading || googleLoading}
+                  disabled={isLoading}
                   style={styles.eyeButton}
                   hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
                 >
@@ -338,7 +265,7 @@ export default function RegisterScreen() {
                   onFocus={handleConfirmPasswordFocus}
                   onBlur={() => setConfirmPasswordFocused(false)}
                   secureTextEntry={!showPassword}
-                  editable={!isLoading && !googleLoading}
+                  editable={!isLoading}
                   returnKeyType="done"
                   onSubmitEditing={handleRegister}
                 />
@@ -376,13 +303,13 @@ export default function RegisterScreen() {
 
             {/* Create Account Button */}
             <TouchableOpacity
-              style={[styles.submitButton, (isLoading || googleLoading) && styles.submitButtonDisabled]}
+              style={[styles.submitButton, (isLoading) && styles.submitButtonDisabled]}
               onPress={handleRegister}
-              disabled={isLoading || googleLoading}
+              disabled={isLoading}
               activeOpacity={0.8}
             >
               <LinearGradient
-                colors={isLoading || googleLoading ? ['#B5C9A7', '#A3B895'] : ['#7BA05B', '#5A8040']}
+                colors={isLoading ? ['#B5C9A7', '#A3B895'] : ['#7BA05B', '#5A8040']}
                 style={styles.submitGradient}
               >
                 {isLoading ? (
@@ -401,7 +328,7 @@ export default function RegisterScreen() {
               <ThemedText style={styles.signinText}>Already have an account? </ThemedText>
               <TouchableOpacity
                 onPress={() => { clearError(); router.push('/(auth)/login'); }}
-                disabled={isLoading || googleLoading}
+                disabled={isLoading}
               >
                 <ThemedText style={styles.signinLink}>Sign in</ThemedText>
               </TouchableOpacity>
@@ -478,34 +405,8 @@ export default function RegisterScreen() {
           <View style={styles.cardHeader}>
             <ThemedText style={styles.cardTitle}>Create Account</ThemedText>
             <ThemedText style={styles.cardSubtitle}>
-              Choose your preferred sign-up method
+              Fill in the details below to get started
             </ThemedText>
-          </View>
-
-          {/* 🔥 Google Sign Up Button */}
-          <TouchableOpacity
-            style={styles.googleButton}
-            onPress={() => promptAsync()}
-            disabled={!request || googleLoading || isLoading}
-            activeOpacity={0.8}
-          >
-            {googleLoading ? (
-              <ActivityIndicator color="#7BA05B" />
-            ) : (
-              <>
-                <Ionicons name="logo-google" size={20} color="#DB4437" />
-                <ThemedText style={styles.googleText}>
-                  Continue with Google
-                </ThemedText>
-              </>
-            )}
-          </TouchableOpacity>
-
-          {/* Divider */}
-          <View style={styles.divider}>
-            <View style={styles.dividerLine} />
-            <ThemedText style={styles.dividerText}>OR</ThemedText>
-            <View style={styles.dividerLine} />
           </View>
 
           {/* Error Message */}
@@ -542,7 +443,7 @@ export default function RegisterScreen() {
                 onChangeText={setUsername}
                 onFocus={handleUsernameFocus}
                 onBlur={() => setUsernameFocused(false)}
-                editable={!isLoading && !googleLoading}
+                editable={!isLoading}
                 returnKeyType="next"
                 blurOnSubmit={false}
                 onSubmitEditing={() => emailInputRef.current?.focus()}
@@ -577,7 +478,7 @@ export default function RegisterScreen() {
                 onBlur={() => setEmailFocused(false)}
                 autoCapitalize="none"
                 keyboardType="email-address"
-                editable={!isLoading && !googleLoading}
+                editable={!isLoading}
                 returnKeyType="next"
                 blurOnSubmit={false}
                 onSubmitEditing={() => passwordInputRef.current?.focus()}
@@ -611,14 +512,14 @@ export default function RegisterScreen() {
                 onFocus={handlePasswordFocus}
                 onBlur={() => setPasswordFocused(false)}
                 secureTextEntry={!showPassword}
-                editable={!isLoading && !googleLoading}
+                editable={!isLoading}
                 returnKeyType="next"
                 blurOnSubmit={false}
                 onSubmitEditing={() => confirmPasswordInputRef.current?.focus()}
               />
               <TouchableOpacity
                 onPress={() => setShowPassword(!showPassword)}
-                disabled={isLoading || googleLoading}
+                disabled={isLoading}
                 style={styles.eyeButton}
                 hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
               >
@@ -657,7 +558,7 @@ export default function RegisterScreen() {
                 onFocus={handleConfirmPasswordFocus}
                 onBlur={() => setConfirmPasswordFocused(false)}
                 secureTextEntry={!showPassword}
-                editable={!isLoading && !googleLoading}
+                editable={!isLoading}
                 returnKeyType="done"
                 onSubmitEditing={handleRegister}
               />
@@ -721,15 +622,15 @@ export default function RegisterScreen() {
           <TouchableOpacity
             style={[
               styles.submitButton,
-              (isLoading || googleLoading) && styles.submitButtonDisabled,
+              (isLoading) && styles.submitButtonDisabled,
             ]}
             onPress={handleRegister}
-            disabled={isLoading || googleLoading}
+            disabled={isLoading}
             activeOpacity={0.8}
           >
             <LinearGradient
               colors={
-                isLoading || googleLoading
+                isLoading
                   ? ['#B5C9A7', '#A3B895']
                   : ['#7BA05B', '#5A8040']
               }
@@ -758,7 +659,7 @@ export default function RegisterScreen() {
                 clearError();
                 router.push('/(auth)/login');
               }}
-              disabled={isLoading || googleLoading}
+              disabled={isLoading}
             >
               <ThemedText style={styles.signinLink}>Sign in</ThemedText>
             </TouchableOpacity>

@@ -1,11 +1,10 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useRef } from 'react';
 import {
   View,
   Text,
   TextInput,
   TouchableOpacity,
   StyleSheet,
-  Alert,
   ActivityIndicator,
   Dimensions,
   Platform,
@@ -17,16 +16,10 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
-import * as WebBrowser from 'expo-web-browser';
-import * as Google from 'expo-auth-session/providers/google';
-import { GoogleAuthProvider, signInWithCredential } from 'firebase/auth';
 
-import { auth } from '@/firebase/config';
 import { ThemedText } from '@/components/themed-text';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/contexts/ToastContext';
-
-WebBrowser.maybeCompleteAuthSession();
 
 const { width } = Dimensions.get('window');
 const isSmallScreen = width < 375;
@@ -38,7 +31,6 @@ export default function LoginScreen() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
-  const [googleLoading, setGoogleLoading] = useState(false);
   const [deactivatedModalVisible, setDeactivatedModalVisible] = useState(false);
   const [deactivatedReason, setDeactivatedReason] = useState('');
 
@@ -49,57 +41,16 @@ export default function LoginScreen() {
   const passwordInputRef = useRef<TextInput>(null);
   const scrollViewRef = useRef<ScrollView>(null);
 
-  // 🔥 Google Auth Request
-  const [request, response, promptAsync] = Google.useAuthRequest({
-    iosClientId: '1098545643387-5tghhjihvbujg6h7fvrs5vllj3k9nkd8.apps.googleusercontent.com',
-    androidClientId: '1098545643387-lk4dej58chjpmhefaqomoljj2j98j2lp.apps.googleusercontent.com',
-    webClientId: '1098545643387-lk4dej58chjpmhefaqomoljj2j98j2lp.apps.googleusercontent.com',
-  });
-
-  useEffect(() => {
-    if (response?.type === 'success') {
-      handleGoogleResponse(response.authentication?.idToken);
-    }
-  }, [response]);
-
-  const handleGoogleResponse = async (idToken?: string) => {
-    if (!idToken) return;
-
-    try {
-      setGoogleLoading(true);
-
-      const credential = GoogleAuthProvider.credential(idToken);
-      const userCredential = await signInWithCredential(auth, credential);
-
-      const firebaseToken = await userCredential.user.getIdToken();
-
-      // 🔐 Send to backend if needed
-      await fetch('http://localhost:8000/protected', {
-        method: 'GET',
-        headers: {
-          Authorization: `Bearer ${firebaseToken}`,
-        },
-      });
-
-      showToast('Google login successful!', 'success');
-      router.replace('/');
-    } catch (err: any) {
-      Alert.alert('Google Login Error', err.message);
-    } finally {
-      setGoogleLoading(false);
-    }
-  };
-
   const handleLogin = async () => {
     clearError();
 
     if (!email.trim() || !email.includes('@')) {
-      Alert.alert('Error', 'Please enter a valid email');
+      showToast('Please enter a valid email', 'error');
       return;
     }
 
     if (!password) {
-      Alert.alert('Error', 'Password is required');
+      showToast('Password is required', 'error');
       return;
     }
 
@@ -110,16 +61,17 @@ export default function LoginScreen() {
     } catch (err: any) {
       const code: string = err?.code || '';
       if (code === 'email_not_verified') {
-        Alert.alert(
-          'Email Not Verified',
+        showToast(
           err.message || 'Please verify your email before logging in. Check your inbox for the verification link.',
-          [{ text: 'OK' }]
+          'error',
+          5000
         );
       } else if (code === 'account_disabled') {
         setDeactivatedReason(err?.deactivation_reason || '');
         setDeactivatedModalVisible(true);
+      } else {
+        showToast(err.message || 'Login failed. Please try again.', 'error');
       }
-      // other errors already shown via AuthContext error state in the form
     }
   };
 
@@ -284,30 +236,6 @@ export default function LoginScreen() {
               </LinearGradient>
             </TouchableOpacity>
 
-            {/* Divider */}
-            <View style={styles.divider}>
-              <View style={styles.dividerLine} />
-              <ThemedText style={styles.dividerText}>OR</ThemedText>
-              <View style={styles.dividerLine} />
-            </View>
-
-            {/* Google Button */}
-            <TouchableOpacity
-              style={styles.googleButton}
-              onPress={() => promptAsync()}
-              disabled={!request || googleLoading}
-              activeOpacity={0.8}
-            >
-              {googleLoading ? (
-                <ActivityIndicator color="#7BA05B" />
-              ) : (
-                <>
-                  <Ionicons name="logo-google" size={20} color="#DB4437" />
-                  <ThemedText style={styles.googleText}>Continue with Google</ThemedText>
-                </>
-              )}
-            </TouchableOpacity>
-
             {/* Guest Login */}
             <TouchableOpacity style={styles.guestButton} onPress={handleGuestLogin}>
               <Ionicons name="person-outline" size={20} color="#7BA05B" />
@@ -435,32 +363,6 @@ export default function LoginScreen() {
                 </>
               )}
             </LinearGradient>
-          </TouchableOpacity>
-
-          {/* Divider */}
-          <View style={styles.divider}>
-            <View style={styles.dividerLine} />
-            <ThemedText style={styles.dividerText}>OR</ThemedText>
-            <View style={styles.dividerLine} />
-          </View>
-
-          {/* 🔥 GOOGLE BUTTON */}
-          <TouchableOpacity
-            style={styles.googleButton}
-            onPress={() => promptAsync()}
-            disabled={!request || googleLoading}
-            activeOpacity={0.8}
-          >
-            {googleLoading ? (
-              <ActivityIndicator color="#7BA05B" />
-            ) : (
-              <>
-                <Ionicons name="logo-google" size={20} color="#DB4437" />
-                <ThemedText style={styles.googleText}>
-                  Continue with Google
-                </ThemedText>
-              </>
-            )}
           </TouchableOpacity>
 
           {/* Guest Login */}
